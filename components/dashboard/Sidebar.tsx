@@ -30,13 +30,13 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
   return (
    <>
     {/* Overlay backdrop */}
-      {isOpen && window.innerWidth < 1024 && (
+      {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
           className="fixed inset-0 bg-black/20 backdrop-blur-md z-40 lg:hidden"
         />
       )}
-      <div className={`fixed top-0 left-0 h-screen pt-20  transition-transform w-[264px] z-40 bg-[#150E46] text-[#E9E6FF] shadow-md ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+      <div className={`fixed top-0 left-0 h-screen pt-20 transition-transform w-[264px] z-40 bg-[#150E46] text-[#E9E6FF] shadow-md ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:block`}>
    <div className="flex flex-col gap-[8px] antialiased font-inter font-normal h-full overflow-y-auto hide-scrollbar pb-8 px-3">
       {Sidemenuitems.map((items, index) => {
   return (

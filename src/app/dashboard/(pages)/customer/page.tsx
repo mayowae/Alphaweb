@@ -351,56 +351,56 @@ export default function CustomersPage() {
 
     return (
         <div className="font-sans min-h-screen p-6 bg-gray-50">
-
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
                     <p className="text-gray-500 mt-1">View and manage all your customers. Track their activity, status, and key details</p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-end space-x-2 w-full">
                     <div className="relative w-full sm:w-auto bg-[#e9e6ff] text-indigo-500 rounded-lg">
                         <select className="block w-full bg-[#e9e6ff] appearance-none rounded-lg text-indigo-500 pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <option>Export</option>
                             <option>PDF</option>
                             <option>CSV</option>
                         </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500">
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500 pt-5">
                             <LuChevronDown className="h-5 w-5" />
                         </div>
                     </div>
                     <button
                         onClick={() => setIsSidebarOpen(true)}
+                        aria-label="Add customer"
                         className="flex items-center px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-sm font-medium text-sm hover:bg-indigo-700 transition-colors"
                     >
-                        <LuPlus className="h-4 w-4 mr-1" />
-                        Add customer
+                        <LuPlus className="h-4 w-4 mr-0 sm:mr-1" />
+                        <span className="hidden sm:inline">Add customer</span>
                     </button>
                 </div>
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-                <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-                    <div className="flex w-full lg:w-auto items-center space-x-4">
-                        <button className="flex items-center px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                    <div className="flex w-full lg:w-auto items-stretch lg:items-center gap-4">
+                        <button className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors w-full lg:w-auto">
                             <img src="/icons/filter.png" />
                             Filter
                         </button>
-                        <div className="flex items-center rounded-md border border-gray-300 shadow-sm p-1.5 focus:ring-indigo-500 focus:border-indigo-500">
+                        <div className="flex items-center rounded-md border border-gray-300 shadow-sm p-1.5 focus:ring-indigo-500 focus:border-indigo-500 w-full lg:w-auto">
                             <label htmlFor="rows-per-page" className="text-sm text-gray-700 mr-2">Show</label>
-                            <select id="rows-per-page" className="text-sm" value={itemsPerPage} onChange={e => setItemsPerPage(parseInt(e.target.value))}>
+                            <select id="rows-per-page" className="text-sm w-full lg:w-auto" value={itemsPerPage} onChange={e => setItemsPerPage(parseInt(e.target.value))}>
                                 <option value={10}>10 per row</option>
                                 <option value={25}>25 per row</option>
                                 <option value={50}>50 per row</option>
                             </select>
                         </div>
                     </div>
-                    <div className="flex w-full lg:w-auto items-center space-x-4">
-                        <button className="px-3 py-2 border border-gray-300 text-indigo-700 rounded-md text-sm hover:bg-gray-50 transition-colors">
+                    <div className="flex w-full lg:w-auto items-stretch lg:items-center gap-4">
+                        <button className="px-3 py-2 border border-gray-300 text-indigo-700 rounded-md text-sm hover:bg-gray-50 transition-colors w-full lg:w-auto">
                             Reassign
                         </button>
-                        <div className="relative w-full lg:w-auto">
+                        <div className="relative w-full lg:w-64">
                             <input type="text" placeholder="Search" className="pl-8 pr-4 border py-2 w-full text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-                            <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>

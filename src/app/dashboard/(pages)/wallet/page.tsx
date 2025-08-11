@@ -233,14 +233,24 @@ export default function Wallet() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen pt-3">
       <h1 className="font-inter font-semibold text-2xl leading-8 ">Wallets</h1>
-      <div className="flex items-center">
+      <div className="flex flex-col md:flex-row md:items-center">
         <p className="text-sm">Manage transactions and balances across organization and customer wallets.</p>
-        <div className="ml-auto">
-          <button type="button" onClick={() => setIsSidebarOpen(true)} className="auth-btn flex" style={{ background: 'none', border: '1px solid #4E37FB', color: '#4E37FB' }}> 
+        <div className="mt-4 md:ml-auto md:mt-0 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="auth-btn flex justify-center w-full md:w-auto"
+            style={{ background: 'none', border: '1px solid #4E37FB', color: '#4E37FB' }}
+          >
             {/* The icon can be an SVG or a library component like Lucide-React's Plus */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>&nbsp;&nbsp; Transfer
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus-circle">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 12h8" />
+              <path d="M12 8v8" />
+            </svg>
+            &nbsp;&nbsp; Transfer
           </button>
         </div>
       </div>
@@ -286,8 +296,8 @@ export default function Wallet() {
             
             {activeTab === 'activities' && (
               <>
-                <div className="flex mt-4">
-                  <div className="relative inline-block">
+                <div className="flex mt-4 flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="relative inline-block w-full sm:w-auto">
                     <div className="flex filter-btn items-center px-4 py-3"
                       ref={filterButtonRef}
                       onClick={toggleFilterCard}
@@ -372,10 +382,10 @@ export default function Wallet() {
                       </div>
                     )}
                   </div>
-                  <div className="ml-auto flex gap-3">
-                    <div className="relative" style={{ width: '100px' }}>
+                  <div className="ml-0 sm:ml-auto flex flex-col sm:flex-row gap-3 w-full">
+                    <div className="relative sm:w-[100px] md:w-[120px] w-full">
                       <select
-                        className="input-field appearance-none"
+                        className="input-field appearance-none w-full"
                         value={export_option}
                         onChange={(e) => setExportOption(e.target.value)}
                       >
@@ -387,12 +397,30 @@ export default function Wallet() {
                         <ChevronDown className="w-4 h-4" />
                       </div>
                     </div>
-                    <div className="mt-1">
-                      <div className="relative">
-                        <input type="text" className="search-input" placeholder="Search" />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <div className="mt-1 w-full flex justify-start md:justify-end">
+                      <div className="relative w-full md:w-64 pl-0">
+                        <div className="absolute inset-y-0 left-0 pl-3 pt-5 flex items-center pointer-events-none">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="lucide lucide-search text-gray-400"
+                          >
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.3-4.3" />
+                          </svg>
                         </div>
+                        <input
+                          type="text"
+                          className="search-input w-full pl-10"
+                          placeholder="Search"
+                        />
                       </div>
                     </div>
                   </div>
@@ -488,7 +516,7 @@ export default function Wallet() {
 
             {activeTab === 'customer-wallets' && (
               <>
-                <div className="flex mt-4">
+                <div className="flex mt-4 flex-col sm:flex-row sm:items-center gap-3">
                   <div className="relative w-full sm:w-auto">
                     <select
                       className="block w-full rounded-lg border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer"
@@ -499,10 +527,10 @@ export default function Wallet() {
                       <ChevronDown className="h-5  w-5" />
                     </div>
                   </div>
-                  <div className="ml-auto flex gap-3">
-                    <div className="relative" style={{ width: '100px' }}>
+                  <div className="ml-0 sm:ml-auto flex flex-col sm:flex-row gap-3 w-full">
+                    <div className="relative sm:w-[100px] md:w-[120px] w-full">
                       <select
-                        className="input-field appearance-none"
+                        className="input-field appearance-none w-full"
                         value={export_option}
                         onChange={(e) => setExportOption(e.target.value)}
                       >
@@ -514,12 +542,30 @@ export default function Wallet() {
                         <ChevronDown className="w-4 h-4" />
                       </div>
                     </div>
-                    <div className="mt-1">
-                      <div className="relative">
-                        <input type="text" className="search-input" placeholder="Search" />
-                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search text-gray-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <div className="mt-1 w-full flex justify-start md:justify-end">
+                      <div className="relative w-full md:w-64 pl-0">
+                        <div className="absolute inset-y-0 left-0 pl-3 pt-5 flex items-center pointer-events-none">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="lucide lucide-search text-gray-400"
+                          >
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.3-4.3" />
+                          </svg>
                         </div>
+                        <input
+                          type="text"
+                          className="search-input w-full pl-10"
+                          placeholder="Search"
+                        />
                       </div>
                     </div>
                   </div>

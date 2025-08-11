@@ -295,7 +295,7 @@ export default function BranchManagement() {
   return (
     <div className="min-h-screen font-sans antialiased">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mt-3 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Branch managment</h1>
           <p className="text-gray-600">Create, update and manage branch details</p>
@@ -311,7 +311,7 @@ export default function BranchManagement() {
 
       {/* Control Panel Section */}
       <div className="bg-white p-6 shadow-sm mb-8">
-        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
           {/* Show rows dropdown (Left) */}
           <div className="relative w-full md:w-auto">
             <label htmlFor="show-rows" className="sr-only">Show rows per page</label>

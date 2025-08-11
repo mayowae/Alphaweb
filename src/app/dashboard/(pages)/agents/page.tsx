@@ -562,10 +562,11 @@ export default function Page() {
         <div className='ml-auto'>
           <button
             onClick={() => setIsAddAgentSidebarOpen(true)} // Open Add Agent Sidebar
+            aria-label="Add agent"
             className="flex items-center space-x-2 bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition-colors w-full sm:w-auto max-w-xs mx-auto md:mx-0 mt-4 md:mt-0"
           >
             <Plus className="h-5 w-5" />
-            <span>Add agent</span>
+            <span className="hidden sm:inline">Add agent</span>
           </button>
         </div>
       </div>

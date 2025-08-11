@@ -255,17 +255,21 @@ export default function StaffPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row pt-3 justify-between md:items-center mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800">Staff management</h1>
           <p className="text-gray-500 text-sm">Manage and monitor all platform staff.</p>
         </div>
-        <button type="button" onClick={openSidebar} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium flex items-center">
+        <button
+          type="button"
+          onClick={openSidebar}
+          className="px-4 py-2 mt-4 md:mt-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium flex items-center justify-center w-full md:w-auto"
+        >
           <LuPlus className="mr-2" /> Create staff
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 ">
         <div className="border-b px-4 pt-4">
           <nav className="flex space-x-6 text-sm font-medium">
             <button onClick={() => setTab("members")} className={tab === "members" ? "text-indigo-600 border-b-2 border-indigo-600 pb-2" : "text-gray-500 hover:text-gray-700 pb-2"}>
@@ -326,7 +330,7 @@ export default function StaffPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm text-left border-t border-gray-200">
+              <table className="min-w-full text-sm text-left border-t border-gray-200 ">
                 <thead className="bg-gray-50 text-gray-500">
                   <tr>
                     <th className="px-4 py-2">ID</th>

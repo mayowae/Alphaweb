@@ -601,27 +601,27 @@ const App = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen p-8 font-sans antialiased">
-      <div className="max-w-7xl mx-auto">
+    <div className="bg-gray-50 min-h-screen font-sans antialiased">
+      <div className="max-w-7xl mx-auto pt-3">
         {/* Header Section */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col px-5 md:flex-row md:justify-between md:items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Charges</h1>
             <p className="text-gray-500 mt-1">
               Create charges and add charges to the customers who needs to pay them.
             </p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 mt-4 md:mt-0 md:flex-row">
             <button
               onClick={() => setIsCreateChargeSidebarOpen(true)}
-              className="bg-white text-indigo-600 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center gap-2 transition-colors duration-200 hover:bg-gray-50"
+              className="bg-white text-indigo-600 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 hover:bg-gray-50"
             >
               <Plus size={18} />
               Create charges
             </button>
             <button
               onClick={() => setIsAssignChargeSidebarOpen(true)}
-              className="bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center gap-2 transition-colors duration-200 hover:bg-indigo-700"
+              className="bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 hover:bg-indigo-700"
             >
               <Plus size={18} />
               Assign charges
@@ -662,10 +662,10 @@ const App = () => {
             </button>
           </div>
 
-          <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
               {activeTab === 'Charges history' && (
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -695,11 +695,11 @@ const App = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <button className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium text-sm transition-colors duration-200 hover:bg-gray-50">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
+              <button className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium text-sm transition-colors duration-200 hover:bg-gray-50 w-full sm:w-auto">
                 Reassign
               </button>
-              <div className="relative">
+              <div className="relative w-full sm:w-64">
                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
@@ -709,7 +709,7 @@ const App = () => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-64 pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
