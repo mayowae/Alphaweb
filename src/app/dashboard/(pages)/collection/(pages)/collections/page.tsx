@@ -134,8 +134,8 @@ const Page = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full">
-          <table className="table-auto w-full min-w-[700px] hidden md:table">
+        <div className='overflow-auto w-full'>
+          <table className="table-auto w-full whitespace-nowrap hidden md:table">
             <thead className="bg-gray-50 border-b border-[#D9D4D4]">
               <tr className="h-[40px] text-left">
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
@@ -199,28 +199,29 @@ const Page = () => {
             </div>
           </div>
         </div>
-      </div>
+      
       <div className='border-t w-full mt-5'></div>
       <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
         {/* Prev Button */}
         <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0"
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
         >
           <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
           Previous
         </button>
         {/* Page Numbers */}
-        <div className="flex gap-2 items-center justify-center w-full md:w-auto">
+        <div className="flex gap-2 items-center justify-center">
           <p>1234</p>
         </div>
         {/* Next Button */}
         <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center"
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
         >
           Next
-          <Image src="/icons/right.svg" alt="Prev" width={10} height={10} className="ml-1" />
+          <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
         </button>
       </div>
+     </div>
     </div>
   )
 }

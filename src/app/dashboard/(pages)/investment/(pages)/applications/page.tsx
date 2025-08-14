@@ -1,6 +1,5 @@
 "use client"
 import React, { useState } from 'react'
-import { FaPlus } from 'react-icons/fa'
 import { FaAngleDown } from 'react-icons/fa';
 import Image from 'next/image';
 import {
@@ -17,10 +16,6 @@ const Page = () => {
 
   const [show, setShow] = useState<boolean>(false)
   const [filter, setFilter] = useState(false)
-
-  const [packag, setPackag] = useState<boolean>(false)
-
-  const [edit, setEdit] = useState(false)
 
   {/*const [rowsPerPage, setRowsPerPage] = useState('10');
   const handleRowsPerPageChange = (value: string) => {
@@ -51,7 +46,8 @@ const Page = () => {
               </button>
 
               {filter &&
-                <div className='fixed md:absolute z-50 left-0 right-0 md:left-auto md:right-auto top-0 md:top-auto mx-auto md:mx-0 w-[95%] md:w-[400px] lg:w-[510px] max-w-full md:max-w-[510px] min-w-[230px] md:min-w-[250px] mb-0 md:mb-8 bg-white rounded-b-[8px] md:rounded-[4px] shadow-lg md:p-0' >
+                <div className='fixed md:absolute flex flex-col justify-center  z-50 left-0 right-0 md:left-auto md:right-auto top-0 md:top-auto mx-auto md:mx-0 w-[95%] md:w-[400px] lg:w-[510px] max-w-full md:max-w-[510px] min-w-[230px] md:min-w-[250px] mb-0 md:mb-8 bg-white rounded-b-[8px] md:rounded-[4px] shadow-lg md:p-0' >
+
 
                   <div className="flex items-center justify-between max-md:flex-col max-md:gap-[5px] mb-2 md:p-4">
                     <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Choose your filters</h1>
@@ -75,7 +71,7 @@ const Page = () => {
                     </div>
 
 
-                    <p className='mb-1 font-inter font-semibold text-[14px] leading-[20px]'>Status</p>
+                    <p className='mb-1 font-inter font-semibold text-[14px] leading-[20px]'>Date</p>
 
                     <div className='flex gap-[15px]'>
                       <div className="outline-none leading-[24px] rounded-[4px] w-full md:w-[330px] font-inter text-[14px] bg-white transition-all">
@@ -164,9 +160,8 @@ const Page = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full">
-
-          <table className="table-auto w-full min-w-[700px] hidden md:table">
+       <div className='overflow-auto w-full'>
+          <table className="table-auto w-full whitespace-nowrap hidden md:table">
             <thead className="bg-gray-50 border-b border-[#D9D4D4]">
               <tr className="h-[40px] text-left">
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Customer</th>
@@ -212,43 +207,40 @@ const Page = () => {
           {/* Mobile stacked row */}
           <div className="md:hidden block border-b p-2">
             <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm text-gray-600"><span>ID:</span><span className="font-semibold">PKG01A34</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Name:</span><span className="font-semibold">Alpha 500</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Type:</span><span className="font-semibold">Fixed</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Seed amount/Percentage:</span><span className="font-semibold">5000</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Seed type:</span><span className="font-semibold">First saving</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Period:</span><span className="font-semibold">360</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Collection days:</span><span className="font-semibold">Daily</span></div>
-              <div className="flex justify-end cursor-pointer"><Image src="/icons/edit1.svg" alt="edit" width={17} height={17} onClick={() => setEdit(true)} /></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">PKG01A34</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">Alpha 500</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Target amount:</span><span className="font-semibold">Fixed</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Duration:</span><span className="font-semibold">5000</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">First saving</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Date Applied:</span><span className="font-semibold">360</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Status:</span><span className="font-semibold">Daily</span></div>
+             
             </div>
           </div>
         </div>
-      </div>
-
-
+      
       <div className='border-t-[1px] w-full mt-[20px]'></div>
 
-      <div className="flex flex-wrap pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
+      <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
         {/* Prev Button */}
         <button
-          className={`flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-[100px] sm:w-auto justify-center`}
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
         >
-          <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className=" mr-1" />
+          <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
           Previous
         </button>
-
         {/* Page Numbers */}
         <div className="flex gap-2 items-center justify-center">
           <p>1234</p>
         </div>
-
         {/* Next Button */}
         <button
-          className={`flex items-center px-3 py-2  text-sm border border-[#D0D5DD] font-medium rounded-md w-[100px] sm:w-auto justify-center`}
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
         >
           Next
-          <Image src="/icons/right.svg" alt="Prev" width={10} height={10} className=" ml-1" />
+          <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
         </button>
+      </div>
       </div>
 
     </div>

@@ -96,7 +96,7 @@ const Page = () => {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            
+
             <Select >
               <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                 <SelectValue placeholder="Show 10 per row" />
@@ -132,8 +132,8 @@ const Page = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full">
-          <table className="table-auto w-full min-w-[700px] hidden md:table">
+        <div className='overflow-auto w-full'>
+          <table className="table-auto w-full whitespace-nowrap hidden md:table">
             <thead className="bg-gray-50 border-b border-[#D9D4D4]">
               <tr className="h-[40px] text-left">
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
@@ -149,10 +149,10 @@ const Page = () => {
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Account number</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Package</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                 Amount              
+                  Amount
                 </th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                 Branch
+                  Branch
                 </th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
                   <div className="flex items-center gap-[3px]">
@@ -164,12 +164,12 @@ const Page = () => {
                   </div>
                 </th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] "><div className="flex items-center gap-[3px]">
-                    Date
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div></th>
+                  Date
+                  <div className="flex flex-col gap-[1px] shrink-0">
+                    <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                    <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                  </div>
+                </div></th>
               </tr>
             </thead>
             <tbody className="border-b border-[#D9D4D4] w-full">
@@ -194,37 +194,38 @@ const Page = () => {
           <div className="md:hidden block border-b p-2">
             <div className="flex flex-col gap-1">
               <div className="flex justify-between text-sm text-gray-600"><span>Transaction ID:</span><span className="font-semibold">COL-103-A45</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Package:</span><span className="font-semibold">Type 1</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">Type 1</span></div>
               <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">94565647567</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Amount:</span><span className="font-semibold">N1,000</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">James Odunayo</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">John brown</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Date:</span><span className="font-semibold">23 Jan, 2025</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Status:</span><span className="font-semibold">Pending</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Package:</span><span className="font-semibold">N1,000</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Amount:</span><span className="font-semibold">James Odunayo</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Branch:</span><span className="font-semibold">John brown</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">23 Jan, 2025</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Date:</span><span className="font-semibold">Pending</span></div>
             </div>
           </div>
         </div>
-      </div>
-      <div className='border-t w-full mt-5'></div>
-      <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
-        {/* Prev Button */}
-        <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0"
-        >
-          <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
-          Previous
-        </button>
-        {/* Page Numbers */}
-        <div className="flex gap-2 items-center justify-center w-full md:w-auto">
-          <p>1234</p>
+
+        <div className='border-t w-full mt-5'></div>
+        <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
+          {/* Prev Button */}
+          <button
+            className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
+          >
+            <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
+            Previous
+          </button>
+          {/* Page Numbers */}
+          <div className="flex gap-2 items-center justify-center">
+            <p>1234</p>
+          </div>
+          {/* Next Button */}
+          <button
+            className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
+          >
+            Next
+            <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
+          </button>
         </div>
-        {/* Next Button */}
-        <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center"
-        >
-          Next
-          <Image src="/icons/right.svg" alt="Prev" width={10} height={10} className="ml-1" />
-        </button>
       </div>
 
     </div>

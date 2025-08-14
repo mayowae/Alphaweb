@@ -12,14 +12,28 @@ interface pack {
 const Editpackage = ({ edit, onClose }: pack) => {
 
   return (
-    <div className='fixed inset-0 z-50 flex  items-center justify-center bg-black/20'>
-      <div className="bg-white lg:w-[532px] hide-scrollbar w-[70%] max-h-screen absolute top-0  right-0  shadow-lg  overflow-y-auto">
-        <div className="flex p-4 items-center justify-between">
-          <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Edit investment package</h1>
-          <Image src="/icons/close.svg" alt="dashboard" width={14} height={14} className="cursor-pointer" onClick={onClose} />
-        </div>
-        <div className='border-t-[1px] w-full mb-1'></div>
-        <div className="p-4 w-full">
+    <>
+     {/* Overlay backdrop */}
+      {edit&&  (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/20  z-50 "
+        />
+      )}
+
+      <div  className={`fixed top-0 right-0 h-screen w-full max-w-full sm:w-[532px] bg-white shadow-xl
+          transform transition-transform duration-300 ease-in-out z-50
+          flex flex-col ${edit ? 'translate-x-0' : 'translate-x-full'}`}>
+
+       
+  
+          <div className="flex p-4 items-center justify-between">
+            <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Edit investment package</h1>
+            <Image src="/icons/close.svg" alt="dashboard" width={14} height={14} className="cursor-pointer" onClick={onClose} />
+          </div>
+          <div className='border-t-[1px] w-full mb-1'></div>
+   
+        <div className="p-4 w-full overflow-y-auto hide-scrollbar">
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Name</p>
             <input type="text" placeholder='Alpha1k' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
@@ -37,7 +51,7 @@ const Editpackage = ({ edit, onClose }: pack) => {
               </div>
             </div>
           </div>
-          
+
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Target amount</p>
             <input type="number" placeholder='0.00' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
@@ -81,7 +95,7 @@ const Editpackage = ({ edit, onClose }: pack) => {
           </button>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 

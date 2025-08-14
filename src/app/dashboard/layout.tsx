@@ -1,6 +1,6 @@
 "use client"
 import React, {useState} from 'react';
-import DashboardHeader from '../../..//components/dashboard/Header';
+import DashboardHeader from '../../../components/dashboard/Header';
 import DashBoardSidebar from '../../../components/dashboard/Sidebar';
 import DashBoardFooter from '../../../components/dashboard/Footer';
 
@@ -9,21 +9,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   return (
-    <div className="flex flex-col min-h-screen w-full">
+    <div className="flex flex-col h-screen w-full">
       {/* header  */}
       <DashboardHeader setIsOpen={setIsOpen} isOpen={isOpen} />
-
+    
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar  */}
-        <DashBoardSidebar setIsOpen={setIsOpen} isOpen={isOpen} />
+       {/* Sidebar  */}
+       <DashBoardSidebar setIsOpen={setIsOpen} isOpen={isOpen} />
 
-        <div className='flex flex-col flex-1 bg-[#EBEBEB] min-w-0'>
-          <main className="flex-1 overflow-y-auto p-4 pt-0 mt-[56px] md:mt-[80px] antialiased">
-            {children}
-          </main>
+       <div className='flex flex-col flex-1 min-w-0 bg-[#EBEBEB]'>
+        <main   className=" flex-1 overflow-y-auto p-4 pt-[80px] antialiased ">
+          {children}
+        </main>
 
-          <DashBoardFooter />
+        <DashBoardFooter />
         </div>
+
       </div>
     </div>
   );

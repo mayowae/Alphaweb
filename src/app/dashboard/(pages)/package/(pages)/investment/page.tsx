@@ -93,25 +93,11 @@ const Page = () => {
                     </div>
 
                     <div className="mb-6">
-                      <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Branch</p>
+                      <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Investment type</p>
                       <div className='relative w-full'>
                         <select className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
-                          <option value="Flexible">Guranty branch</option>
-                          <option value="Fixed">Fixed deposit</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
-                          <FaAngleDown className="w-[16px] h-[16px] text-[#8E8E93]" />
-                        </div>
-                      </div>
-                    </div>
-
-
-                    <div className="mb-1">
-                      <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Agent</p>
-                      <div className='relative w-full'>
-                        <select className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
-                          <option value="Flexible">John doe</option>
-                          <option value="Fixed">mayowa</option>
+                          <option value="Flexible">Fixed</option>
+                          <option value="Fixed">Flexible</option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
                           <FaAngleDown className="w-[16px] h-[16px] text-[#8E8E93]" />
@@ -189,9 +175,8 @@ const Page = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full">
-
-          <table className="table-auto w-full min-w-[700px] hidden md:table">
+         <div className='overflow-auto w-full'>
+          <table className="table-auto w-full whitespace-nowrap hidden md:table">
             <thead className="bg-gray-50 border-b border-[#D9D4D4]">
               <tr className="h-[40px] text-left">
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Package name</th>
@@ -248,43 +233,42 @@ const Page = () => {
           {/* Mobile stacked row */}
           <div className="md:hidden block border-b p-2">
             <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm text-gray-600"><span>ID:</span><span className="font-semibold">PKG01A34</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Name:</span><span className="font-semibold">Alpha 500</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Type:</span><span className="font-semibold">Fixed</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Seed amount/Percentage:</span><span className="font-semibold">5000</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Seed type:</span><span className="font-semibold">First saving</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Period:</span><span className="font-semibold">360</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Collection days:</span><span className="font-semibold">Daily</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Package name:</span><span className="font-semibold">PKG01A34</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Investment type:</span><span className="font-semibold">Alpha 500</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Target amount:</span><span className="font-semibold">Fixed</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Investment period:</span><span className="font-semibold">5000</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>% interest:</span><span className="font-semibold">First saving</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Extra charges:</span><span className="font-semibold">360</span></div>
+              <div className="flex justify-between text-sm text-gray-600"><span>Default penalty:</span><span className="font-semibold">Default days</span></div>
               <div className="flex justify-end cursor-pointer"><Image src="/icons/edit1.svg" alt="edit" width={17} height={17} onClick={() => setEdit(true)} /></div>
             </div>
           </div>
         </div>
-      </div>
+     
 
 
       <div className='border-t-[1px] w-full mt-[20px]'></div>
 
-      <div className="flex flex-wrap pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
+      <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-5">
         {/* Prev Button */}
         <button
-          className={`flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-[100px] sm:w-auto justify-center`}
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
         >
-          <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className=" mr-1" />
+          <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
           Previous
         </button>
-
         {/* Page Numbers */}
         <div className="flex gap-2 items-center justify-center">
           <p>1234</p>
         </div>
-
         {/* Next Button */}
         <button
-          className={`flex items-center px-3 py-2  text-sm border border-[#D0D5DD] font-medium rounded-md w-[100px] sm:w-auto justify-center`}
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
         >
           Next
-          <Image src="/icons/right.svg" alt="Prev" width={10} height={10} className=" ml-1" />
+          <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
         </button>
+      </div>
       </div>
 
     </div>
