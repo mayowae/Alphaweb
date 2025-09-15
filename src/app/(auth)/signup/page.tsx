@@ -8,6 +8,8 @@ import { registerUser } from "../../../../services/api";
 
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'loading' | 'success'>('idle');
 
   const [businessName, setBusinessName] = useState("");
   const [businessAlias, setBusinessAlias] = useState("");
@@ -19,6 +21,8 @@ export default function SignUp() {
   const router = useRouter();
 
   const signup = async () => {
+    if (isLoading) return;
+    
     // Check for empty fields
     if (!businessName || !businessAlias || !phoneNumber || !email || !currency || !password || !confirmPassword) {
       Swal.fire({
@@ -37,6 +41,10 @@ export default function SignUp() {
       });
       return;
     }
+    
+    setIsLoading(true);
+    setButtonState('loading');
+    
     try {
       const userData = {
         businessName,
@@ -48,22 +56,31 @@ export default function SignUp() {
         confirmPassword
       };
       const result = await registerUser(userData);
+
+      // Store email in localStorage for OTP verification
+      localStorage.setItem('email', email);
+
+      setButtonState('success');
+      
       Swal.fire({
         icon: "success",
         title: "Registration Successful",
-        text: result.message || "You can now log in.",
+        text: result.message || "Please check your email for OTP verification.",
         showConfirmButton: false,
         timer: 2000
       });
       setTimeout(() => {
-        router.push('/login');
+        router.push('/verify-otp');
       }, 2000);
     } catch (error: any) {
+      setButtonState('idle');
       Swal.fire({
         icon: "error",
         title: "Registration Failed",
         text: error?.message || "An error occurred during registration."
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -189,7 +206,14 @@ export default function SignUp() {
                         </div> 
                     </div>
                     <div className="form-group mt-4">
-                        <button type="button" className="auth-btn" onClick={signup}>Continue</button>
+                        <button 
+                            type="button" 
+                            className={`auth-btn ${buttonState === 'loading' ? 'loading' : ''} ${buttonState === 'success' ? 'success' : ''}`}
+                            onClick={signup}
+                            disabled={isLoading}
+                        >
+                            {buttonState === 'loading' ? 'Creating Account...' : buttonState === 'success' ? 'Success!' : 'Continue'}
+                        </button>
                     </div>
                     <div className="form-group mt-3 text-center">
                         <span className="text-sm">Already have an account? </span>&nbsp;&nbsp;

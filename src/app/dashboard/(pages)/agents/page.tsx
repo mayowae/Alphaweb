@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import Swal from "sweetalert2";
-import { addAgent, updateAgent, fetchAgents } from "../../../../../services/api";
 import { Plus, ChevronDown, ChevronUp, Search, Filter, MoreHorizontal, Edit, PowerOff, X } from 'lucide-react';
+import LoadingButton from '../../../../../components/LoadingButton';
 import { useRouter } from 'next/navigation';
+import { fetchAgents, updateAgentStatus, addAgent, updateAgent } from '../../../../../services/api';
 
 // Define the Agent interface
 interface Agent {
@@ -11,10 +11,11 @@ interface Agent {
   fullName: string;
   email: string;
   phoneNumber: string;
+  password?: string;
   branch: string;
   customers: number;
-  status: string;
-  createdAt: string;
+  dateCreated: string;
+  status: 'Active' | 'Inactive';
 }
 
 // Props interface for the sidebar components
@@ -25,7 +26,7 @@ interface SidebarProps {
 
 // Add Agent Sidebar Component
 interface AddAgentSidebarProps extends SidebarProps {
-  onAddAgent: (newAgent: Omit<Agent, 'id' | 'customers' | 'dateCreated' | 'status'>) => void;
+  onAddAgent: (newAgent: { fullName: string; phoneNumber: string; email: string; password: string; branch: string; merchantId: number; }) => void;
 }
 
 const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAddAgent }) => {
@@ -36,9 +37,10 @@ const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAd
     email: '',
     password: '',
     branch: '',
-    createdAt: '',
+    merchantId: 1, // Default merchant ID - this should come from user context
   });
   const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Effect to handle clicks outside the sidebar to close it
   useEffect(() => {
@@ -67,37 +69,30 @@ const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAd
     event.preventDefault();
 
     // Basic validation
-    if (!formData.fullName || !formData.phoneNumber || !formData.email || !formData.branch) {
-      setFormError("Full Name, Phone Number, Email, and Branch are required.");
+    if (!formData.fullName || !formData.phoneNumber || !formData.email || !formData.password || !formData.branch) {
+      setFormError("Full Name, Phone Number, Email, Password, and Branch are required.");
       return;
     }
 
     try {
-      const result = await addAgent(formData);
-      Swal.fire({
-        icon: "success",
-        title: "Agent Added",
-        text: result.message || "Agent has been added successfully.",
-        showConfirmButton: false,
-        timer: 2000
-      });
-      onAddAgent(formData); // Only add to state if API call succeeds
+      setSubmitting(true);
+      await onAddAgent(formData as any);
       setFormData({
         fullName: '',
         phoneNumber: '',
         email: '',
         password: '',
         branch: '',
-        createdAt: '',
+        merchantId: 1,
       });
       setFormError('');
       onClose();
-    } catch (error: any) {
-      Swal.fire({
-        icon: "error",
-        title: "Failed to Add Agent",
-        text: error?.message || "An error occurred while adding the agent."
-      });
+    } catch (e: any) {
+      const message = e?.message || 'Failed to add agent';
+      setFormError(message);
+      if (typeof window !== 'undefined') alert(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -197,12 +192,14 @@ const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAd
           </div>
           {formError && <p className="text-red-500 text-sm">{formError}</p>}
           <div className="mt-8">
-            <button
+            <LoadingButton
               type="submit"
-              className="w-full py-4 px-6 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+              loading={submitting}
+              loadingText="Adding..."
+              className="w-full py-4 px-6 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700"
             >
               Add agent
-            </button>
+            </LoadingButton>
           </div>
         </form>
       </aside>
@@ -220,6 +217,7 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [editedAgentData, setEditedAgentData] = useState<Agent | any>(null);
   const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Populate form data when agentToEdit changes
   useEffect(() => {
@@ -266,23 +264,16 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
     }
 
     try {
-      const result = await updateAgent(editedAgentData);
-      Swal.fire({
-        icon: "success",
-        title: "Agent Updated",
-        text: result.message || "Agent details updated successfully.",
-        showConfirmButton: false,
-        timer: 2000
-      });
-      onUpdateAgent(editedAgentData); // Only update state if API call succeeds
+      setSubmitting(true);
+      await onUpdateAgent(editedAgentData);
       setFormError('');
       onClose();
-    } catch (error: any) {
-      Swal.fire({
-        icon: "error",
-        title: "Failed to Update Agent",
-        text: error?.message || "An error occurred while updating the agent."
-      });
+    } catch (e: any) {
+      const message = e?.message || 'Failed to update agent';
+      setFormError(message);
+      if (typeof window !== 'undefined') alert(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -384,12 +375,14 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
           </div>
           {formError && <p className="text-red-500 text-sm">{formError}</p>}
           <div className="mt-8">
-            <button
+            <LoadingButton
               type="submit"
-              className="w-full py-4 px-6 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+              loading={submitting}
+              loadingText="Updating..."
+              className="w-full py-4 px-6 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700"
             >
               Update details
-            </button>
+            </LoadingButton>
           </div>
         </form>
       </aside>
@@ -400,18 +393,16 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
 
 // Main Page Component
 export default function Page() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  useEffect(() => {
-    const getAgents = async () => {
-      try {
-        const result = await fetchAgents();
-        setAgents(result.agents || []);
-      } catch (error) {
-        // Optionally handle error (e.g., show a message)
-      }
-    };
-    getAgents();
-  }, []);
+  const [agents, setAgents] = useState<Agent[]>(new Array(23).fill(null).map((_, i) => ({
+    id: i + 1,
+    fullName: `Agent ${i + 1} Long Name Example`,
+    email: `agent${i + 1}@example.com`,
+    phoneNumber: '08034353536',
+    branch: 'Tanke branch',
+    customers: Math.floor(Math.random() * 50),
+    dateCreated: '23 Jan, 2025 - 10:00',
+    status: i % 2 === 0 ? 'Active' : 'Inactive',
+  })));
 
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -424,10 +415,27 @@ export default function Page() {
     direction: 'ascending',
   });
 
+  // State for dynamic data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
   const sortedAgents = useMemo(() => {
-    let sortableItems = [...agents];
+    let filteredAgents = [...agents];
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredAgents = filteredAgents.filter(agent =>
+        agent.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agent.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agent.phoneNumber.includes(searchTerm) ||
+        agent.branch.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply sorting
     if (sortConfig.key !== null) {
-      sortableItems.sort((a:any, b:any) => {
+      filteredAgents.sort((a:any, b:any) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
         
@@ -446,8 +454,8 @@ export default function Page() {
         return 0;
       });
     }
-    return sortableItems;
-  }, [agents, sortConfig]);
+    return filteredAgents;
+  }, [agents, sortConfig, searchTerm]);
 
   const requestSort = (key: keyof Agent) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -474,7 +482,7 @@ export default function Page() {
   };
 
 
-  const totalPages = Math.ceil(agents.length / rowsPerPage);
+  const totalPages = Math.ceil(sortedAgents.length / rowsPerPage);
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentAgents = sortedAgents.slice(indexOfFirstItem, indexOfLastItem);
@@ -537,40 +545,111 @@ export default function Page() {
   };
 
   // Function to handle deactivating an agent
-  const handleDeactivate = (agentId: number) => {
-    setAgents(prevAgents =>
-      prevAgents.map(agent =>
-        agent.id === agentId ? { ...agent, status: 'Inactive' } : agent
-      )
-    );
-    setOpenDropdownId(null); // Close dropdown after action
+  const handleDeactivate = async (agentId: number) => {
+    try {
+      const response = await updateAgentStatus(agentId, 'Inactive');
+      if (response.success) {
+        setAgents(prevAgents =>
+          prevAgents.map(agent =>
+            agent.id === agentId ? { ...agent, status: 'Inactive' } : agent
+          )
+        );
+        setOpenDropdownId(null); // Close dropdown after action
+      }
+    } catch (error) {
+      console.error('Error deactivating agent:', error);
+      setError('Failed to deactivate agent. Please try again.');
+    }
   };
 
   // Function to add a new agent
-  const handleAddAgent = (newAgentData: Omit<Agent, 'id' | 'customers' | 'dateCreated' | 'status'>) => {
-    const newId = agents.length > 0 ? Math.max(...agents.map(a => a.id)) + 1 : 1;
-    const newAgent: Agent = {
-      id: newId,
-      ...newAgentData,
-      customers: 0, // Default for new agent
-      createdAt: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + ' - ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      status: 'Active', // Default for new agent
-    };
-    setAgents(prevAgents => [...prevAgents, newAgent]);
+  const handleAddAgent = async (newAgentData: { fullName: string; phoneNumber: string; email: string; password: string; branch: string; merchantId: number; }) => {
+    try {
+      const response = await addAgent(newAgentData);
+      if (response.success) {
+        // Refresh the agents list
+        await fetchData();
+      }
+    } catch (error) {
+      console.error('Error adding agent:', error);
+      const message = (error as any)?.message || 'Failed to add agent';
+      setError(message);
+      if (typeof window !== 'undefined') {
+        alert(message);
+      }
+    }
   };
 
   // Function to update an existing agent
-  const handleUpdateAgent = (updatedAgent: Agent) => {
-    setAgents(prevAgents =>
-      prevAgents.map(agent =>
-        agent.id === updatedAgent.id ? updatedAgent : agent
-      )
-    );
+  const handleUpdateAgent = async (updatedAgent: Agent) => {
+    try {
+      const agentData = {
+        id: updatedAgent.id,
+        fullName: updatedAgent.fullName,
+        phoneNumber: updatedAgent.phoneNumber,
+        email: updatedAgent.email,
+        password: updatedAgent.password || '',
+        branch: updatedAgent.branch,
+        status: updatedAgent.status,
+      };
+      const response = await updateAgent(agentData);
+      if (response.success) {
+        // Refresh the agents list
+        await fetchData();
+      }
+    } catch (error) {
+      console.error('Error updating agent:', error);
+      const message = (error as any)?.message || 'Failed to update agent';
+      setError(message);
+      if (typeof window !== 'undefined') {
+        alert(message);
+      }
+    }
   };
   const viewAgent = (agent_id:any)=>{
     router.push('/dashboard/view-agent');
   }
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch data function
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetchAgents();
+      if (response.success) {
+        const formattedAgents = response.agents.map((agent: any) => ({
+          id: agent.id,
+          fullName: agent.fullName,
+          phoneNumber: agent.phoneNumber,
+          email: agent.email,
+          branch: agent.branch,
+          customers: agent.customersCount || 0,
+          dateCreated: new Date(agent.createdAt).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          }) + ' - ' + new Date(agent.createdAt).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          status: agent.status || 'Active',
+        }));
+        setAgents(formattedAgents);
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      setError('Failed to load agents. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   // Effect to handle clicks outside of the dropdown
   useEffect(() => {
@@ -588,6 +667,35 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.400z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Agents</h1>
@@ -595,7 +703,17 @@ export default function Page() {
             Manage your agents. View profiles, track performance, and control access to agent accounts.
           </p>
         </div>
-        <div className='ml-auto'>
+        <div className='ml-auto flex gap-2'>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center space-x-2 bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-gray-700 transition-colors w-full sm:w-auto max-w-xs mx-auto md:mx-0 mt-4 md:mt-0"
+          >
+            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="hidden sm:inline">{loading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
           <button
             onClick={() => setIsAddAgentSidebarOpen(true)} // Open Add Agent Sidebar
             aria-label="Add agent"
@@ -647,7 +765,9 @@ export default function Page() {
               </div>
               <input
                 type="text"
-                placeholder="Search"
+                placeholder="Search agents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               />
             </div>
@@ -689,11 +809,20 @@ export default function Page() {
               </th>
               <th
                 className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell cursor-pointer"
-                onClick={() => requestSort('createdAt')}
+                onClick={() => requestSort('customers')}
+              >
+                <div className="flex items-center">
+                  Customers
+                  {getSortIcon('customers')}
+                </div>
+              </th>
+              <th
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell cursor-pointer"
+                onClick={() => requestSort('dateCreated')}
               >
                 <div className="flex items-center">
                   Date created
-                  {getSortIcon('createdAt')}
+                  {getSortIcon('dateCreated')}
                 </div>
               </th>
               <th
@@ -711,18 +840,38 @@ export default function Page() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentAgents.map(agent => (
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-4 text-center">
+                  <div className="flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 text-indigo-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading agents...
+                  </div>
+                </td>
+              </tr>
+            ) : currentAgents.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
+                  {searchTerm ? 'No agents found matching your search' : 'No agents found'}
+                </td>
+              </tr>
+            ) : (
+              currentAgents.map(agent => (
               <tr key={agent.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-4 text-sm text-gray-900 font-medium truncate max-w-xs">{agent.fullName}</td>
                 <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{agent.phoneNumber}</td>
                 <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{agent.branch}</td>
-                <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{agent.createdAt}</td>
+                <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{agent.customers}</td>
+                <td className="px-4 py-4 text-sm text-gray-900 hidden md:table-cell">{agent.dateCreated}</td>
                 <td className="px-4 py-4 text-sm">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${agent.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                     {agent.status}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-sm text-right relative">
+                <td className="px-4 py-4 text-sm flex text-right relative">
                   <button onClick={()=>viewAgent(agent.id)} className="px-4 py-2 rounded-lg text-indigo-600 border border-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium">
                     View
                   </button>
@@ -759,7 +908,8 @@ export default function Page() {
                   )}
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
 
