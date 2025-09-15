@@ -2,18 +2,33 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
+import Swal from "sweetalert2";
+import { verifyOtp, resendOtp } from "../../../../services/api";
 import '../../../../global.css';
 
 export default function VerifyOtp() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
-  const [email, setEmail] = useState("johndoe@gmail.com");
+  const [email, setEmail] = useState("");
   const router = useRouter();
   const inputRefs:any = useRef([]);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const fullOtp = otp.join("");
-    // console.log("Verifying OTP:", fullOtp);
-    router.push('/change-password');
+    if (fullOtp.length !== 6) {
+      Swal.fire({ icon: "warning", title: "Invalid OTP", text: "Please enter the 6-digit OTP." });
+      return;
+    }
+    if (!email) {
+      Swal.fire({ icon: "error", title: "Missing email", text: "Email not found. Please signup again." });
+      return;
+    }
+    try {
+      await verifyOtp(email, fullOtp);
+      Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
+      router.push('/login');
+    } catch (err:any) {
+      Swal.fire({ icon: "error", title: "Verification failed", text: err?.message || 'Unable to verify OTP' });
+    }
   };
 
   const handleChange = (e:any, index:any) => {
@@ -37,6 +52,8 @@ export default function VerifyOtp() {
 
 
   useEffect(() => {
+    const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
+    if (savedEmail) setEmail(savedEmail);
     document.body.style.backgroundImage = "url('/images/body-bg.png')";
     document.body.style.backgroundRepeat = "no-repeat";
     document.body.style.backgroundSize = "cover";
@@ -51,6 +68,19 @@ export default function VerifyOtp() {
         document.body.style.backgroundColor = "";
     };
   }, []);
+
+  const handleResend = async () => {
+    if (!email) {
+      Swal.fire({ icon: "error", title: "Missing email", text: "Email not found. Please signup again." });
+      return;
+    }
+    try {
+      await resendOtp(email);
+      Swal.fire({ icon: "success", title: "OTP resent", text: `A new OTP has been sent to ${email}.` });
+    } catch (err:any) {
+      Swal.fire({ icon: "error", title: "Resend failed", text: err?.message || 'Unable to resend OTP' });
+    }
+  };
   
   return (
     <div className="w-full max-w-6xl mx-auto px-6">
@@ -93,9 +123,9 @@ export default function VerifyOtp() {
                 <div className="mt-6 text-center">
                   <span className="text-sm text-gray-600">Didn't receive OTP?</span>
                   &nbsp;&nbsp;
-                  <Link href="/forgot-password" className="text-[#4E37FB] hover:underline font-medium">
+                  <button type="button" onClick={handleResend} className="text-[#4E37FB] hover:underline font-medium">
                     Resend OTP
-                  </Link>
+                  </button>
                 </div>
               </form>
             </div>

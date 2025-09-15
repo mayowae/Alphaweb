@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { FaPlus } from 'react-icons/fa'
 import { FaAngleDown } from 'react-icons/fa';
 import Image from 'next/image';
@@ -13,32 +13,224 @@ import {
 } from "@/components/ui/select"
 import Addpackage from './Addpackage';
 import Editpackage from './Editpackage';
+import { fetchPackages, deletePackage } from '../../../../../../../services/api';
 
 const Page = () => {
+  // Define Package interface
+  interface Package {
+    id: number;
+    name: string;
+    type: string;
+    amount: number;
+    seedAmount: number;
+    seedType: string;
+    period: number;
+    collectionDays: string;
+    duration: number;
+    benefits: string[];
+    description?: string;
+    status: string;
+    createdAt: string;
+  }
 
+  // State for dynamic data
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
 
   const [show, setShow] = useState<boolean>(false)
-
   const [packag, setPackag] = useState<boolean>(false)
-
   const [edit, setEdit] = useState(false)
+  const [packageToEdit, setPackageToEdit] = useState(null);
 
-  {/*const [rowsPerPage, setRowsPerPage] = useState('10');
+  // Fetch data function
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetchPackages();
+      if (response.success) {
+        setPackages(response.packages);
+      }
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+      setError('Failed to load packages. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Handle rows per page change
   const handleRowsPerPageChange = (value: string) => {
-    setRowsPerPage(value);
-    console.log('Rows per page changed:', value);
-  };*/}
+    setRowsPerPage(Number(value));
+    setCurrentPage(1);
+  };
+
+  // Handle search
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  // Handle sorting
+  const requestSort = (key: string) => {
+    let direction = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Get sort icon
+  const getSortIcon = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return (
+        <div className='flex flex-col gap-[1px]'>
+          <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+          <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+        </div>
+      );
+    }
+    return (
+      <div className='flex flex-col gap-[1px]'>
+        <Image 
+          src={sortConfig.direction === 'asc' ? "/icons/uparr.svg" : "/icons/downarr.svg"} 
+          alt="sort" 
+          width={8} 
+          height={8} 
+          className="shrink-0" 
+        />
+      </div>
+    );
+  };
+
+  // Filter and sort packages
+  const filteredAndSortedPackages = useMemo(() => {
+    let filteredPackages = [...packages];
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredPackages = filteredPackages.filter(pkg =>
+        pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pkg.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        pkg.seedType?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply sorting
+    if (sortConfig) {
+      filteredPackages.sort((a, b) => {
+        let aValue: any = a[sortConfig.key as keyof Package];
+        let bValue: any = b[sortConfig.key as keyof Package];
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+
+        return 0;
+      });
+    }
+    
+    return filteredPackages;
+  }, [packages, searchTerm, sortConfig]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedPackages.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const currentPackages = filteredAndSortedPackages.slice(startIndex, startIndex + rowsPerPage);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Handle edit package
+  const handleEditPackage = (pkg: any) => {
+    ;(window as any).__pkgToEdit = pkg
+    setPackageToEdit(pkg);
+    setEdit(true);
+  };
+
+  // Handle delete package
+  const handleDeletePackage = async (packageId: number) => {
+    if (window.confirm('Are you sure you want to delete this package?')) {
+      try {
+        await deletePackage(packageId);
+        await fetchData(); // Refresh the list
+      } catch (error) {
+        console.error('Error deleting package:', error);
+        setError('Failed to delete package. Please try again.');
+      }
+    }
+  };
 
   return (
     <div className='w-[100%]'>
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.400z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className='flex flex-wrap justify-between gap-4 md:gap-0 max-md:flex-col max-md:gap-[10px]'>
         <div className='flex flex-col gap-[3px] min-w-0 w-full md:w-auto'>
           <h1 className='font-inter font-semibold leading-[32px] text-[24px]'>Collection packages</h1>
           <p className='leading-[24px] font-inter font-normal text-[#717680] text-[14px] '>Create and manage collection packages.</p>
         </div>
 
-        <div className='flex items-end mt-4 md:mt-0 w-full md:w-auto' onClick={() => setPackag(true)}>
-          <button className='bg-[#4E37FB] flex h-[40px] cursor-pointer w-full md:w-[167px] rounded-[4px] items-center gap-[9px] justify-center'>
+        <div className='flex items-end mt-4 md:mt-0 w-full md:w-auto gap-2'>
+          <button 
+            onClick={fetchData}
+            disabled={loading}
+            className='bg-gray-600 flex h-[40px] cursor-pointer w-full md:w-auto px-4 rounded-[4px] items-center gap-[9px] justify-center'
+          >
+            <svg className={`w-4 h-4 text-white ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className='text-[14px] font-inter text-white font-medium'>{loading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+          <button onClick={() => setPackag(true)} className='bg-[#4E37FB] flex h-[40px] cursor-pointer w-full md:w-[167px] rounded-[4px] items-center gap-[9px] justify-center'>
             <FaPlus className='text-white font-normal w-[12px]' />
             <p className='text-[14px] font-inter text-white font-medium'>Create package</p>
           </button>
@@ -46,14 +238,14 @@ const Page = () => {
 
       </div>
 
-      {packag && <Addpackage packag={packag} onClose={() => setPackag(false)} />}
-      {edit && <Editpackage edit={edit} onClose={() => setEdit(false)} />}
+      {packag && <Addpackage packag={packag} onClose={() => { setPackag(false); fetchData(); }} />}
+      {edit && <Editpackage edit={edit} onClose={() => { setEdit(false); setPackageToEdit(null); fetchData(); }} />}
 
       <div className='bg-white shadow-sm mt-[25px] w-full relative'>
 
         <div className='flex flex-wrap items-center justify-between gap-4 max-md:flex-col max-md:gap-[10px] p-[10px] md:p-[20px] '>
 
-          <Select >
+          <Select onValueChange={handleRowsPerPageChange} value={String(rowsPerPage)}>
             <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
               <SelectValue placeholder="Show 10 per row" />
             </SelectTrigger>
@@ -95,8 +287,10 @@ const Page = () => {
 
               <input
                 type="text"
-                placeholder="Search"
-                className="  outline-none px-3 py-2 w-full text-sm"
+                placeholder="Search packages..."
+                value={searchTerm}
+                onChange={handleSearch}
+                className="outline-none px-3 py-2 w-full text-sm"
               />
             </div>
 
@@ -107,51 +301,156 @@ const Page = () => {
           <table className="table-auto w-full whitespace-nowrap hidden md:table">
             <thead className="bg-gray-50 border-b border-[#D9D4D4]">
               <tr className="h-[40px] text-left">
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('id')}>
                   <div className="flex items-center gap-[2px]">
                     ID
-                    <div className='flex flex-col gap-[1px]'>
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
+                    {getSortIcon('id')}
                   </div>
                 </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Name</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Type</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Seed amount/Percentage</th>
-                <th className="px-1 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Seed type</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Period</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Collection days</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]"></th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('name')}>
+                  <div className="flex items-center gap-[2px]">
+                    Name
+                    {getSortIcon('name')}
+                  </div>
+                </th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('type')}>
+                  <div className="flex items-center gap-[2px]">
+                    Type
+                    {getSortIcon('type')}
+                  </div>
+                </th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('seedAmount')}>
+                  <div className="flex items-center gap-[2px]">
+                    Seed Percentage
+                    {getSortIcon('seedAmount')}
+                  </div>
+                </th>
+                <th className="px-1 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('seedType')}>
+                  <div className="flex items-center gap-[2px]">
+                    Seed type
+                    {getSortIcon('seedType')}
+                  </div>
+                </th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('period')}>
+                  <div className="flex items-center gap-[2px]">
+                    Period
+                    {getSortIcon('period')}
+                  </div>
+                </th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] cursor-pointer" onClick={() => requestSort('collectionDays')}>
+                  <div className="flex items-center gap-[2px]">
+                    Collection days
+                    {getSortIcon('collectionDays')}
+                  </div>
+                </th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414]">Actions</th>
               </tr>
             </thead>
 
             <tbody className='border-b border-[#D9D4D4] w-full'>
-              <tr className="bg-white transition-all duration-500 hover:bg-gray-50">
-                <td className="px-5 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">PKG01A34</td>
-                <td className="px-5 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">Alpha 500</td>
-                <td className="px-5 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">Fixed</td>
-                <td className="px-5 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">5000</td>
-                <td className="px-1 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">First saving</td>
-                <td className="px-5 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">360</td>
-                <td className="px-5 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell">Daily</td>
-                <td className="px-3 py-4 hidden text-gray-600 text-[14px] leading-[20px] font-lato font-normal md:table-cell cursor-pointer"><Image src="/icons/edit1.svg" alt="edit" onClick={() => setEdit(true)} width={17} height={17} /></td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-4 text-center">
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin h-5 w-5 text-indigo-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading packages...
+                    </div>
+                  </td>
+                </tr>
+              ) : currentPackages.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-4 text-center text-gray-500">
+                    {searchTerm ? 'No packages found matching your search' : 'No packages found'}
+                  </td>
+                </tr>
+              ) : (
+                currentPackages.map((pkg, index) => (
+                  <tr key={pkg.id} className="bg-white transition-all duration-500 hover:bg-gray-50">
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">PKG{String(pkg.id).padStart(5, '0')}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{pkg.name}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{pkg.type}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{pkg.type === 'Fixed' ? parseFloat(String(pkg.seedAmount)).toLocaleString() : `${parseFloat(String(pkg.seedAmount)).toLocaleString()}%`}</td>
+                    <td className="px-1 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{pkg.seedType}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{pkg.period}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{pkg.collectionDays}</td>
+                    <td className="px-3 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal cursor-pointer">
+                      <div className="flex gap-2">
+                        <Image 
+                          src="/icons/edit1.svg" 
+                          alt="edit" 
+                          onClick={() => handleEditPackage(pkg)} 
+                          width={17} 
+                          height={17} 
+                          className="hover:opacity-70"
+                        />
+                        <button 
+                          onClick={() => handleDeletePackage(pkg.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
 
-          {/* Mobile stacked row */}
-          <div className="md:hidden block border-b p-2">
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm text-gray-600"><span>ID:</span><span className="font-semibold">PKG01A34</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Name:</span><span className="font-semibold">Alpha 500</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Type:</span><span className="font-semibold">Fixed</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Seed amount/Percentage:</span><span className="font-semibold">5000</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Seed type:</span><span className="font-semibold">First saving</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Period:</span><span className="font-semibold">360</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Collection days:</span><span className="font-semibold">Daily</span></div>
-              <div className="flex justify-end cursor-pointer"><Image src="/icons/edit1.svg" alt="edit" width={17} height={17} onClick={() => setEdit(true)} /></div>
-            </div>
+          {/* Mobile stacked rows */}
+          <div className="md:hidden block">
+            {loading ? (
+              <div className="border-b p-4 text-center">
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 text-indigo-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading packages...
+                </div>
+              </div>
+            ) : currentPackages.length === 0 ? (
+              <div className="border-b p-4 text-center text-gray-500">
+                {searchTerm ? 'No packages found matching your search' : 'No packages found'}
+              </div>
+            ) : (
+              currentPackages.map((pkg, index) => (
+                <div key={pkg.id} className="border-b p-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-sm text-gray-600"><span>ID:</span><span className="font-semibold">PKG{String(pkg.id).padStart(5, '0')}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Name:</span><span className="font-semibold">{pkg.name}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Type:</span><span className="font-semibold">{pkg.type}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Seed amount/Percentage:</span><span className="font-semibold">₦{parseFloat(String(pkg.seedAmount)).toLocaleString()}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Seed type:</span><span className="font-semibold">{pkg.seedType}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Period:</span><span className="font-semibold">{pkg.period}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Collection days:</span><span className="font-semibold">{pkg.collectionDays}</span></div>
+                    <div className="flex justify-end gap-2 cursor-pointer">
+                      <Image 
+                        src="/icons/edit1.svg" 
+                        alt="edit" 
+                        width={17} 
+                        height={17} 
+                        onClick={() => handleEditPackage(pkg)} 
+                        className="hover:opacity-70"
+                      />
+                      <button 
+                        onClick={() => handleDeletePackage(pkg.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       
@@ -160,18 +459,24 @@ const Page = () => {
       <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-5">
         {/* Prev Button */}
         <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
           Previous
         </button>
         {/* Page Numbers */}
         <div className="flex gap-2 items-center justify-center">
-          <p>1234</p>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages} ({filteredAndSortedPackages.length} packages)
+          </span>
         </div>
         {/* Next Button */}
         <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next
           <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
