@@ -609,27 +609,27 @@ const AgentProfilePage = () => {
                       >
                         {label}
                         {/* Conditionally render the up/down arrows */}
-                        {sortConfig.key === key && (
+                        {/* {sortConfig.key === key && (
                           sortConfig.direction === 'ascending' ? (
                             <ChevronUp className="h-4 w-4" />
                           ) : (
                             <ChevronDown className="h-4 w-4" />
                           )
-                        )}
+                        )} */}
                         {/* Show both arrows if not currently sorted */}
-                        {sortConfig.key !== key && (
+                        {/* {sortConfig.key !== key && (
                           <div className="flex flex-col text-gray-300">
                             <ChevronUp className="h-4 w-4 mb-[-4px]" />
                             <ChevronDown className="h-4 w-4" />
                           </div>
-                        )}
+                        )} */}
                       </button>
                     </th>
                   ))}
                   {/* The Action column is not sortable, so it's handled separately */}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Action
-                  </th>
+                  </th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

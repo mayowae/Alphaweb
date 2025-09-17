@@ -3,8 +3,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import '../../../../../global.css';
 import React, { useState, useRef, useEffect } from 'react';
+import Swal from "sweetalert2";
+import { createBranch, updateBranch, fetchBranches, deleteBranch } from "../../../../../services/api";
 import Link from "next/link";
-import { Plus, Search, Edit, X, ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
+import { Plus, Search, Edit, X, ArrowDown, ArrowUp, ChevronsUpDown, Trash2 } from 'lucide-react';
 import { LuChevronDown, LuX } from "react-icons/lu";
 
 // Define a TypeScript interface for a Branch object
@@ -23,11 +25,275 @@ interface CreateBranchSidebarProps {
   onClose: () => void;
 }
 
-// The new sidebar component
+export default function BranchManagement() {
+    // ...existing code...
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [stateFilter, setStateFilter] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    React.useEffect(() => {
+      const loadBranches = async () => {
+        try {
+          const data = await fetchBranches();
+          if (data && data.branches) {
+            setBranches(data.branches.map((b: any) => ({
+              id: b.id,
+              name: b.name,
+              state: b.state,
+              location: b.location,
+              agents: b.agents || 0,
+              customers: b.customers || 0,
+            })));
+          }
+        } catch (error) {
+          console.error('Failed to fetch branches:', error);
+          // Swal.fire({
+          //   icon: 'error',
+          //   title: 'Error',
+          //   text: 'Failed to load branches',
+          // });
+        }
+      };
+      loadBranches();
+    }, []);
+
+    // Delete branch handler
+    const handleDelete = async (branchId: number) => {
+      const confirmResult = await Swal.fire({
+        title: 'Are you sure?',
+        text: 'This action will delete the branch permanently.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+      });
+      if (confirmResult.isConfirmed) {
+        try {
+          await deleteBranch(branchId);
+          setBranches(prev => prev.filter(b => b.id !== branchId));
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'Branch has been deleted.',
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        } catch (error: any) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to delete branch',
+            text: error?.message || 'An error occurred while deleting the branch.',
+          });
+        }
+      }
+    };
+
+    // Edit Branch Modal
+    const EditBranchModal = () => {
+      if (!isEditModalOpen || !branchToEdit) return null;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-8 relative">
+            <button onClick={() => setIsEditModalOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+              <X className="h-6 w-6" />
+            </button>
+            <h2 className="text-2xl font-bold mb-6">Edit Branch</h2>
+            <form onSubmit={handleEditSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="edit-branch-name" className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  id="edit-branch-name"
+                  name="name"
+                  value={branchToEdit.name}
+                  onChange={handleEditChange}
+                  className="block w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-state" className="block text-sm font-semibold text-gray-700 mb-1">State</label>
+                <select
+                  id="edit-state"
+                  name="state"
+                  value={branchToEdit.state}
+                  onChange={handleEditChange}
+                  className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                >
+                  <option value="Oyo">Oyo</option>
+                  <option value="Kwara">Kwara</option>
+                  <option value="Lagos">Lagos</option>
+                  {/* Add more states here */}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="edit-location" className="block text-sm font-semibold text-gray-700 mb-1">Location</label>
+                <input
+                  type="text"
+                  id="edit-location"
+                  name="location"
+                  value={branchToEdit.location}
+                  onChange={handleEditChange}
+                  className="block w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className={`px-6 py-3 bg-indigo-600 text-white font-semibold rounded-md transition-colors ${
+                    isUpdating
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-indigo-700'
+                  }`}
+                >
+                  {isUpdating ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Updating...
+                    </div>
+                  ) : (
+                    'Update Branch'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    };
+    // Handles sorting when a column header is clicked
+    const requestSort = (key: keyof Branch) => {
+      setSortConfig(prev => {
+        if (prev.key === key) {
+          // Toggle direction
+          return {
+            key,
+            direction: prev.direction === 'ascending' ? 'descending' : 'ascending',
+          };
+        } else {
+          // New sort key
+          return {
+            key,
+            direction: 'ascending',
+          };
+        }
+      });
+    };
+    const router = useRouter();
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Branch | null; direction: 'ascending' | 'descending' | null }>({ key: null, direction: null });
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [branchToEdit, setBranchToEdit] = useState<Branch | null>(null);
+
+    // Filtering and searching logic
+    const filteredBranches = React.useMemo(() => {
+      let filtered = [...branches];
+
+      // Apply search filter
+      if (searchTerm) {
+        filtered = filtered.filter(branch =>
+          branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          branch.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          branch.state.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      // Apply state filter
+      if (stateFilter) {
+        filtered = filtered.filter(branch => branch.state === stateFilter);
+      }
+
+      return filtered;
+    }, [branches, searchTerm, stateFilter]);
+
+    // Sorting logic
+    const sortedBranches = React.useMemo(() => {
+      let sortableItems = [...filteredBranches];
+      if (sortConfig.key !== null) {
+        sortableItems.sort((a, b) => {
+          const aValue = a[sortConfig.key as keyof Branch];
+          const bValue = b[sortConfig.key as keyof Branch];
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            if (aValue.toLowerCase() < bValue.toLowerCase()) return sortConfig.direction === 'ascending' ? -1 : 1;
+            if (aValue.toLowerCase() > bValue.toLowerCase()) return sortConfig.direction === 'ascending' ? 1 : -1;
+          } else {
+            if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+          return 0;
+        });
+      }
+      return sortableItems;
+    }, [filteredBranches, sortConfig]);
+
+    // Reset to page 1 when filters change
+    React.useEffect(() => {
+      setCurrentPage(1);
+    }, [searchTerm, stateFilter]);
+
+    // Pagination logic
+    const totalPages = Math.ceil(sortedBranches.length / rowsPerPage);
+    const indexOfLastItem = currentPage * rowsPerPage;
+    const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+    const currentBranches = sortedBranches.slice(indexOfFirstItem, indexOfLastItem);
+
+    // Edit modal logic
+    const handleEdit = (branchId: number) => {
+      const branch = branches.find(b => b.id === branchId) || null;
+      setBranchToEdit(branch);
+      setIsEditModalOpen(true);
+    };
+
+    const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      if (!branchToEdit) return;
+      const { name, value } = e.target;
+      setBranchToEdit(prev => prev ? { ...prev, [name]: value } : null);
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!branchToEdit || !branchToEdit.name || !branchToEdit.state || !branchToEdit.location) {
+        Swal.fire({
+          icon: "warning",
+          title: "All fields are required",
+          text: "Please fill in all fields."
+        });
+        return;
+      }
+      setIsUpdating(true);
+      try {
+        const result = await updateBranch(branchToEdit);
+        Swal.fire({
+          icon: "success",
+          title: "Branch Updated",
+          text: result.message || "Branch has been updated successfully.",
+          showConfirmButton: false,
+          timer: 2000
+        });
+        setBranches(prev => prev.map(b => b.id === branchToEdit.id ? { ...branchToEdit } : b));
+        setIsEditModalOpen(false);
+        setBranchToEdit(null);
+      } catch (error: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Failed to Update Branch",
+          text: error?.message || "An error occurred while updating the branch."
+        });
+      } finally {
+        setIsUpdating(false);
+      }
+    };
+// --- CreateBranchSidebar as a separate component ---
 const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClose }) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const [formData, setFormData] = useState({ name: '', state: 'Oyo', location: '' });
+  const [formError, setFormError] = useState('');
 
-  // This effect handles closing the sidebar when a click occurs outside of it.
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
@@ -42,23 +308,62 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
     };
   }, [isOpen, onClose]);
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    console.log("Form submitted. Implement create branch logic here.");
-    // Add your form submission logic here
-    onClose();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formError) setFormError('');
   };
 
-  return (
-    <>
-      {/* Backdrop */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ease-in-out"
-          onClick={onClose}
-        ></div>
-      )}
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!formData.name || !formData.state || !formData.location) {
+      setFormError('All fields are required.');
+      return;
+    }
+    setIsCreating(true);
+    try {
+      const result = await createBranch(formData);
+      Swal.fire({
+        icon: "success",
+        title: "Branch Created",
+        text: result.message || "Branch has been created successfully.",
+        showConfirmButton: false,
+        timer: 2000
+      });
+      // Add new branch to state
+      if (result.branch) {
+        setBranches(prev => [...prev, {
+          id: result.branch.id,
+          name: result.branch.name,
+          state: result.branch.state,
+          location: result.branch.location,
+          agents: 0,
+          customers: 0,
+        }]);
+      }
+      setFormData({ name: '', state: 'Oyo', location: '' });
+      setFormError('');
+      onClose();
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Create Branch",
+        text: error?.message || "An error occurred while creating the branch."
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
+  if (!isOpen) return null;
+
+  return (
+    <div>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ease-in-out"
+        onClick={onClose}
+      ></div>
       {/* Sidebar container */}
       <aside 
         ref={sidebarRef}
@@ -79,7 +384,6 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
             <LuX className="h-6 w-6" />
           </button>
         </div>
-
         {/* Form content */}
         <form onSubmit={handleSubmit} className="p-6 flex-grow overflow-y-auto space-y-6">
           {/* Name input */}
@@ -90,12 +394,13 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
             <input
               type="text"
               id="branch-name"
-              name="branch-name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
               placeholder="Enter name"
               className="block w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             />
           </div>
-
           {/* State dropdown */}
           <div>
             <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-1">
@@ -105,12 +410,47 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
               <select
                 id="state"
                 name="state"
+                value={formData.state}
+                onChange={handleChange}
                 className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 pt-5 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
-                defaultValue="Oyo"
               >
-                <option value="Oyo">Oyo</option>
-                <option value="Kwara">Kwara</option>
-                <option value="Lagos">Lagos</option>
+                <option value="abia">Abia</option>
+                <option value="adamawa">Adamawa</option>
+                <option value="akwa-ibom">Akwa Ibom</option>
+                <option value="anambra">Anambra</option>
+                <option value="bauchi">Bauchi</option>
+                <option value="bayelsa">Bayelsa</option>
+                <option value="benue">Benue</option>
+                <option value="borno">Borno</option>
+                <option value="cross-river">Cross River</option>
+                <option value="delta">Delta</option>
+                <option value="ebonyi">Ebonyi</option>
+                <option value="edo">Edo</option>
+                <option value="ekiti">Ekiti</option>
+                <option value="enugu">Enugu</option>
+                <option value="fct">Federal Capital Territory (FCT)</option>
+                <option value="gombe">Gombe</option>
+                <option value="imo">Imo</option>
+                <option value="jigawa">Jigawa</option>
+                <option value="kaduna">Kaduna</option>
+                <option value="kano">Kano</option>
+                <option value="katsina">Katsina</option>
+                <option value="kebbi">Kebbi</option>
+                <option value="kogi">Kogi</option>
+                <option value="kwara">Kwara</option>
+                <option value="lagos">Lagos</option>
+                <option value="nasarawa">Nasarawa</option>
+                <option value="niger">Niger</option>
+                <option value="ogun">Ogun</option>
+                <option value="ondo">Ondo</option>
+                <option value="osun">Osun</option>
+                <option value="oyo">Oyo</option>
+                <option value="plateau">Plateau</option>
+                <option value="rivers">Rivers</option>
+                <option value="sokoto">Sokoto</option>
+                <option value="taraba">Taraba</option>
+                <option value="yobe">Yobe</option>
+                <option value="zamfara">Zamfara</option>
                 {/* Add more states here */}
               </select>
               <div className="pointer-events-none pt-5 absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -118,7 +458,6 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
               </div>
             </div>
           </div>
-
           {/* Location input */}
           <div>
             <label htmlFor="location" className="block text-sm font-semibold text-gray-700 mb-1">
@@ -128,113 +467,38 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
               type="text"
               id="location"
               name="location"
+              value={formData.location}
+              onChange={handleChange}
               placeholder="Iwo road, Ibadan"
               className="block w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             />
           </div>
+          {formError && <p className="text-red-500 text-sm">{formError}</p>}
+          <div className="p-6 border-t border-gray-200">
+            <button
+              type="submit"
+              disabled={isCreating}
+              className={`w-full px-4 py-3 bg-indigo-600 text-white font-semibold rounded-md transition-colors ${
+                isCreating
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-indigo-700'
+              }`}
+            >
+              {isCreating ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Creating...
+                </div>
+              ) : (
+                'Create branch'
+              )}
+            </button>
+          </div>
         </form>
-
-        {/* Footer with button */}
-        <div className="p-6 border-t border-gray-200">
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            className="w-full px-4 py-3 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors"
-          >
-            Create branch
-          </button>
-        </div>
       </aside>
-    </>
+    </div>
   );
 };
-
-
-export default function BranchManagement() {
-  const router = useRouter();
-
-  // Your dummy data
-  const DUMMY_BRANCH_DATA: Branch[] = [
-    { id: 1, name: 'Tanko Branch', state: 'Kwara', location: 'Tanko, Ilorin', agents: 4, customers: 2000 },
-    { id: 2, name: 'Iwo road branch', state: 'Oyo state', location: 'Iwo road, Ibadan', agents: 4, customers: 2000 },
-    { id: 3, name: 'Lagos Branch', state: 'Lagos state', location: 'Lekki, Lagos', agents: 5, customers: 3000 },
-    { id: 4, name: 'Abeokuta Branch', state: 'Ogun state', location: 'Sapon, Abeokuta', agents: 3, customers: 1500 },
-    { id: 5, name: 'Enugu Branch', state: 'Enugu state', location: 'Oji River, Enugu', agents: 4, customers: 2200 },
-    { id: 6, name: 'Kaduna Branch', state: 'Kaduna state', location: 'Ungwan Sarki, Kaduna', agents: 5, customers: 2800 },
-    { id: 7, name: 'Kano Branch', state: 'Kano state', location: 'Sabon Gari, Kano', agents: 6, customers: 3500 },
-    { id: 8, name: 'Jos Branch', state: 'Plateau state', location: 'Bukuru, Jos', agents: 3, customers: 1800 },
-    { id: 9, name: 'Port Harcourt Branch', state: 'Rivers state', location: 'Trans Amadi, Port Harcourt', agents: 7, customers: 4000 },
-    { id: 10, name: 'Maiduguri Branch', state: 'Borno state', location: 'Customs Street, Maiduguri', agents: 2, customers: 1000 },
-    { id: 11, name: 'Benin Branch', state: 'Edo state', location: 'Akpakpava Road, Benin City', agents: 5, customers: 2700 },
-    { id: 12, name: 'Abuja Branch', state: 'FCT', location: 'Wuse, Abuja', agents: 8, customers: 5000 },
-    { id: 13, name: 'Ibadan Branch', state: 'Oyo state', location: 'Challenge, Ibadan', agents: 4, customers: 2500 },
-    { id: 14, name: 'Calabar Branch', state: 'Cross River state', location: 'Mary Slessor, Calabar', agents: 3, customers: 1900 },
-  ];
-
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for the new sidebar
-  
-  // New state for sorting
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Branch | null; direction: 'ascending' | 'descending' | null }>({
-    key: null,
-    direction: null,
-  });
-
-  // Function to handle sorting
-  const requestSort = (key: keyof Branch) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    // If the same key is clicked, toggle the direction
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  // Get a sorted version of the data
-  const sortedBranches = React.useMemo(() => {
-    let sortableItems = [...DUMMY_BRANCH_DATA];
-    if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key as keyof Branch];
-        const bValue = b[sortConfig.key as keyof Branch];
-        
-        // Handle string comparison for 'name'
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          if (aValue.toLowerCase() < bValue.toLowerCase()) {
-            return sortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aValue.toLowerCase() > bValue.toLowerCase()) {
-            return sortConfig.direction === 'ascending' ? 1 : -1;
-          }
-        }
-        // Handle numeric comparison for other columns if needed
-        else {
-           if (aValue < bValue) {
-            return sortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aValue > bValue) {
-            return sortConfig.direction === 'ascending' ? 1 : -1;
-          }
-        }
-        return 0;
-      });
-    }
-    return sortableItems;
-  }, [DUMMY_BRANCH_DATA, sortConfig]);
-
-  // Calculate the total number of pages based on the sorted data
-  const totalPages = Math.ceil(sortedBranches.length / rowsPerPage);
-
-  // Get the data for the current page from the sorted list
-  const indexOfLastItem = currentPage * rowsPerPage;
-  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
-  const currentBranches = sortedBranches.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handleEdit = (branchId: number) => {
-    console.log(`Editing branch with ID: ${branchId}`);
-    // Implement your edit logic here, e.g., open a modal or navigate to a new page
-  };
   
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setRowsPerPage(Number(event.target.value));
@@ -330,8 +594,25 @@ export default function BranchManagement() {
             </div>
           </div>
 
-          {/* Export and Search (Right) */}
+          {/* Export, Filter and Search (Right) */}
           <div className="flex flex-col md:flex-row w-full md:w-auto space-y-4 md:space-y-0 md:space-x-4 ml-0 md:ml-auto">
+            {/* State Filter Dropdown */}
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={stateFilter}
+                onChange={(e) => setStateFilter(e.target.value)}
+                className="block w-full rounded-lg border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+              >
+                <option value="">All States</option>
+                <option value="Oyo">Oyo</option>
+                <option value="Kwara">Kwara</option>
+                <option value="Lagos">Lagos</option>
+              </select>
+              <div className="pointer-events-none absolute pt-5 inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <LuChevronDown className="h-5 w-5" />
+              </div>
+            </div>
+
             {/* Export Dropdown */}
             <div className="relative w-full sm:w-auto bg-[#e9e6ff] text-indigo-500 rounded-lg">
               <select className="block w-full bg-[#e9e6ff] appearance-none rounded-lg text-indigo-200 pl-4 pr-10 py-3 text-sm focus:outline-none">
@@ -354,6 +635,8 @@ export default function BranchManagement() {
                 id="search-input"
                 type="text"
                 placeholder="Search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
             </div>
@@ -421,11 +704,17 @@ export default function BranchManagement() {
                     {branch.customers}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button 
+                    <button
                       onClick={() => handleEdit(branch.id)}
-                      className="text-gray-500 hover:text-[#6b47ff] transition-colors"
+                      className="text-gray-500 hover:text-[#6b47ff] transition-colors mr-2"
                     >
                       <Edit className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(branch.id)}
+                      className="text-gray-500 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-5 w-5" />
                     </button>
                   </td>
                 </tr>
@@ -461,6 +750,8 @@ export default function BranchManagement() {
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)} 
       />
+      {/* The edit modal component */}
+      <EditBranchModal />
     </div>
   );
 }

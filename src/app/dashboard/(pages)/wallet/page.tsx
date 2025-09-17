@@ -4,6 +4,15 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, X, ChevronUp, ChevronRight, Menu } from 'lucide-react';
 import Link from "next/link";
 import '../../../../../global.css';
+import { 
+  getWalletBalance, 
+  fetchWalletTransactions, 
+  fetchCustomerWallets, 
+  transferToCustomer,
+  fetchCustomers,
+  createCustomerWallet
+} from 'services/api';
+import LoadingButton from '../../../../../components/LoadingButton';
 
 // The main Wallet component with tab functionality
 export default function Wallet() {
@@ -18,6 +27,23 @@ export default function Wallet() {
   
   // State to manage which tab is currently active
   const [activeTab, setActiveTab] = useState('activities');
+
+  // State for dynamic data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState({
+    total: 0,
+    available: 0,
+    pending: 0,
+    currency: 'NGN'
+  });
+  const [walletTransactions, setWalletTransactions] = useState([]);
+  const [customerWallets, setCustomerWallets] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [merchantInfo, setMerchantInfo] = useState({
+    accountNumber: '',
+    accountLevel: 'Tier 1'
+  });
 
   // Toggle the visibility of the filter card
   const toggleFilterCard = () => {
@@ -42,52 +68,77 @@ export default function Wallet() {
     };
   }, []);
 
-  const mockData = [
-    { refId: 'WRET10211A', type: 'Credit', amount: '₦200,000', transactionType: 'Cash', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Credit', amount: '₦200,000', transactionType: 'Cash', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦200,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211A', type: 'Debit', amount: '₦100,000', transactionType: 'Bank account', date: '20/02/2025', status: 'Successful' },
-    { refId: 'WRET10211B', type: 'Credit', amount: '₦50,000', transactionType: 'Cash', date: '21/02/2025', status: 'Successful' },
-    { refId: 'WRET10211B', type: 'Debit', amount: '₦75,000', transactionType: 'Bank account', date: '21/02/2025', status: 'Successful' },
-    { refId: 'WRET10211C', type: 'Credit', amount: '₦125,000', transactionType: 'Cash', date: '22/02/2025', status: 'Successful' },
-    { refId: 'WRET10211C', type: 'Debit', amount: '₦25,000', transactionType: 'Bank account', date: '22/02/2025', status: 'Successful' },
-    { refId: 'WRET10211D', type: 'Credit', amount: '₦150,000', transactionType: 'Cash', date: '23/02/2025', status: 'Successful' },
-    { refId: 'WRET10211D', type: 'Debit', amount: '₦10,000', transactionType: 'Bank account', date: '23/02/2025', status: 'Successful' },
-    { refId: 'WRET10211E', type: 'Credit', amount: '₦100,000', transactionType: 'Cash', date: '24/02/2025', status: 'Successful' },
-    { refId: 'WRET10211E', type: 'Debit', amount: '₦60,000', transactionType: 'Bank account', date: '24/02/2025', status: 'Successful' },
-    { refId: 'WRET10211F', type: 'Credit', amount: '₦25,000', transactionType: 'Cash', date: '25/02/2025', status: 'Successful' },
-    { refId: 'WRET10211F', type: 'Debit', amount: '₦180,000', transactionType: 'Bank account', date: '25/02/2025', status: 'Successful' },
-  ];
-  
-  // New mock data for the customer wallets tab
-  const mockCustomerData = [
-    { customerName: 'John Doe', accountNumber: '0123456789', balance: '₦50,000', lastTransactionDate: '25/02/2025' },
-    { customerName: 'Jane Smith', accountNumber: '0987654321', balance: '₦120,000', lastTransactionDate: '24/02/2025' },
-    { customerName: 'Peter Jones', accountNumber: '1122334455', balance: '₦75,000', lastTransactionDate: '23/02/2025' },
-    { customerName: 'Mary Johnson', accountNumber: '5566778899', balance: '₦250,000', lastTransactionDate: '22/02/2025' },
-    { customerName: 'Michael Brown', accountNumber: '9988776655', balance: '₦15,000', lastTransactionDate: '21/02/2025' },
-    { customerName: 'Sarah Davis', accountNumber: '4455667788', balance: '₦90,000', lastTransactionDate: '20/02/2025' },
-    { customerName: 'David Wilson', accountNumber: '3344556677', balance: '₦30,000', lastTransactionDate: '19/02/2025' },
-    { customerName: 'Emily Clark', accountNumber: '2233445566', balance: '₦180,000', lastTransactionDate: '18/02/2025' },
-    { customerName: 'Robert Evans', accountNumber: '6677889900', balance: '₦60,000', lastTransactionDate: '17/02/2025' },
-    { customerName: 'Linda White', accountNumber: '7788990011', balance: '₦20,000', lastTransactionDate: '16/02/2025' },
-    { customerName: 'John Doe', accountNumber: '0123456789', balance: '₦50,000', lastTransactionDate: '25/02/2025' },
-    { customerName: 'Jane Smith', accountNumber: '0987654321', balance: '₦120,000', lastTransactionDate: '24/02/2025' },
-    { customerName: 'Peter Jones', accountNumber: '1122334455', balance: '₦75,000', lastTransactionDate: '23/02/2025' },
-    { customerName: 'Mary Johnson', accountNumber: '5566778899', balance: '₦250,000', lastTransactionDate: '22/02/2025' },
-    { customerName: 'Michael Brown', accountNumber: '9988776655', balance: '₦15,000', lastTransactionDate: '21/02/2025' },
-    { customerName: 'Sarah Davis', accountNumber: '4455667788', balance: '₦90,000', lastTransactionDate: '20/02/2025' },
-    { customerName: 'David Wilson', accountNumber: '3344556677', balance: '₦30,000', lastTransactionDate: '19/02/2025' },
-    { customerName: 'Emily Clark', accountNumber: '2233445566', balance: '₦180,000', lastTransactionDate: '18/02/2025' },
-    { customerName: 'Robert Evans', accountNumber: '6677889900', balance: '₦60,000', lastTransactionDate: '17/02/2025' },
-    { customerName: 'Linda White', accountNumber: '7788990011', balance: '₦20,000', lastTransactionDate: '16/02/2025' },
-  ];
+  // Fetch data function
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [balanceResponse, transactionsResponse, customersResponse, customerWalletsResponse] = await Promise.all([
+        getWalletBalance(),
+        fetchWalletTransactions(),
+        fetchCustomers(),
+        fetchCustomerWallets({ page: 1, limit: 100 })
+      ]);
+
+      if (balanceResponse.success) {
+        setWalletBalance(balanceResponse.balance);
+      }
+      
+      if (transactionsResponse.success) {
+        const formattedTransactions = transactionsResponse.transactions.map((tx: any) => {
+          const isDebit = tx.type === 'debit';
+          const amountNum = parseFloat(tx.amount);
+          return {
+            refId: tx.reference,
+            type: isDebit ? 'Debit' : 'Credit',
+            amount: `${isDebit ? '-' : ''}₦${Math.abs(amountNum).toLocaleString()}`,
+            transactionType: isDebit ? 'Debit' : 'Credit',
+            paymentMethod: tx.payment_method || tx.paymentMethod || '—',
+            date: new Date(tx.date).toLocaleDateString('en-GB'),
+            status: tx.status === 'Completed' ? 'Successful' : tx.status
+          };
+        });
+        setWalletTransactions(formattedTransactions);
+      }
+
+      if (customersResponse.customers) {
+        setCustomers(customersResponse.customers);
+      } else {
+        setCustomers([]);
+      }
+
+      if (customerWalletsResponse.success && customerWalletsResponse.wallets) {
+        const formattedWallets = customerWalletsResponse.wallets.map((wallet: any) => ({
+          customerName: wallet.customer?.fullName || 'Unknown Customer',
+          accountNumber: wallet.accountNumber,
+          accountLevel: wallet.accountLevel,
+          balance: `₦${Math.abs(parseFloat(wallet.balance || 0)).toLocaleString()}`,
+          lastTransactionDate: new Date(wallet.activationDate || wallet.createdAt).toLocaleDateString('en-GB'),
+          status: wallet.status,
+          customerId: wallet.customerId,
+          merchantId: wallet.merchantId
+        }));
+        setCustomerWallets(formattedWallets);
+      } else {
+        setCustomerWallets([]);
+      }
+    } catch (error) {
+      console.error('Error fetching wallet data:', error);
+      setError('Failed to load wallet data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Use dynamic data instead of mock data
+  const mockData = walletTransactions;
+  const mockCustomerData = customerWallets;
 
   const itemsPerPage = 10;
 
@@ -234,10 +285,51 @@ export default function Wallet() {
 
   return (
     <div className="relative min-h-screen pt-3">
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={() => setError(null)}
+                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 className="font-inter font-semibold text-2xl leading-8 ">Wallets</h1>
       <div className="flex flex-col md:flex-row md:items-center">
         <p className="text-sm">Manage transactions and balances across organization and customer wallets.</p>
-        <div className="mt-4 md:ml-auto md:mt-0 w-full md:w-auto">
+        <div className="mt-4 md:ml-auto md:mt-0 w-full md:w-auto flex gap-2">
+          <button
+            type="button"
+            onClick={fetchData}
+            disabled={loading}
+            className="auth-btn flex justify-center w-full md:w-auto"
+            style={{ background: 'none', border: '1px solid #6B7280', color: '#6B7280' }}
+          >
+            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            &nbsp;&nbsp; {loading ? 'Wait' : 'Refresh'}
+          </button>
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
@@ -245,31 +337,37 @@ export default function Wallet() {
             style={{ background: 'none', border: '1px solid #4E37FB', color: '#4E37FB' }}
           >
             {/* The icon can be an SVG or a library component like Lucide-React's Plus */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus-circle w-5 h-5">
               <circle cx="12" cy="12" r="10" />
               <path d="M8 12h8" />
               <path d="M12 8v8" />
             </svg>
-            &nbsp;&nbsp; Transfer
+            &nbsp;&nbsp; <div className='mb-1'>
+              Transfer
+            </div>
           </button>
         </div>
       </div>
       {/* The Sidebar Component */}
-      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} customers={customers} />
       <div className="flex flex-col md:flex-row gap-4 mt-4">
         <div className="w-full">
           <div className="dashboard-card bg-white flex items-center gap-4 flex-col md:flex-row">
             <div className="w-full md:w-4/12">
               <div className="balance-overview items-center">
                 <p className="text-sm">Live wallet balance</p>
-                <p className="text-md text-black">₦1,000,000</p>
+                <p className="text-md text-black">
+                  {loading ? 'Loading...' : `₦${walletBalance.total.toLocaleString()}`}
+                </p>
               </div>
             </div>
             <div className="w-full md:w-6/12">
               <div className="balance-overview flex items-center">
                 <div>
-                  <p className="text-sm">Paga - Gbenga daniel</p>
-                  <p className="text-md text-black">0112435467</p>
+                  <p className="text-sm">Available Balance</p>
+                  <p className="text-md text-black">
+                    {loading ? 'Loading...' : `₦${walletBalance.available.toLocaleString()}`}
+                  </p>
                 </div>
                 <div className="ml-auto">
                   <p className="live-text">Live account: Tier 3</p>
@@ -436,12 +534,12 @@ export default function Wallet() {
                               {getSortIcon('refId')}
                             </button>
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                          {/* <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                             <button onClick={() => requestSort('type')} className="flex items-center focus:outline-none">
                               Type
                               {getSortIcon('type')}
                             </button>
-                          </th>
+                          </th> */}
                           <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                             <button onClick={() => requestSort('amount')} className="flex items-center focus:outline-none">
                               Amount
@@ -452,6 +550,12 @@ export default function Wallet() {
                             <button onClick={() => requestSort('transactionType')} className="flex items-center focus:outline-none">
                               Transaction Type
                               {getSortIcon('transactionType')}
+                            </button>
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            <button onClick={() => requestSort('paymentMethod')} className="flex items-center focus:outline-none">
+                              Payment Method
+                              {getSortIcon('paymentMethod')}
                             </button>
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -469,12 +573,32 @@ export default function Wallet() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {currentItems.map((item:any, index) => (
+                        {loading ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-4 text-center">
+                              <div className="flex items-center justify-center">
+                                <svg className="animate-spin h-5 w-5 text-indigo-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Loading transactions...
+                              </div>
+                            </td>
+                          </tr>
+                        ) : currentItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                              No transactions found
+                            </td>
+                          </tr>
+                        ) : (
+                          currentItems.map((item:any, index) => (
                           <tr key={index}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.refId}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.type}</td>
+                            {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.type}</td> */}
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.amount}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.transactionType}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.paymentMethod}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.date}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -482,7 +606,8 @@ export default function Wallet() {
                               </span>
                             </td>
                           </tr>
-                        ))}
+                        ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -605,15 +730,35 @@ export default function Wallet() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {currentItems.map((item: any, index) => (
+                        {loading ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-4 text-center">
+                              <div className="flex items-center justify-center">
+                                <svg className="animate-spin h-5 w-5 text-indigo-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Loading customer wallets...
+                              </div>
+                            </td>
+                          </tr>
+                        ) : currentItems.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                              No customer wallets found
+                            </td>
+                          </tr>
+                        ) : (
+                          currentItems.map((item: any, index) => (
                           <tr key={index}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.customerName}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.accountNumber}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"></td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.accountLevel}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.balance}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.lastTransactionDate}</td>
                           </tr>
-                        ))}
+                        ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -644,6 +789,7 @@ export default function Wallet() {
               </>
             )}
           </div>
+          
         </div>
       </div>
     </div>
@@ -654,10 +800,122 @@ export default function Wallet() {
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  customers: any[]; // Add customerWallets to the props
 }
 
-const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
+const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const [transferring, setTransferring] = useState(false);
+  const [transferStatus, setTransferStatus] = useState('');
+  
+
+  const [transferForm, setTransferForm] = useState({
+    customerId: '',
+    amount: '',
+    description: '',
+    transactionType: 'credit', // debit or credit relative to customer wallet
+    paymentMethod: 'Cash'
+  });
+
+  // Handle transfer submission
+  const handleTransferSubmit = async () => {
+    try {
+      if (!transferForm.customerId || !transferForm.amount) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      setTransferring(true);
+      
+      // Find the customer by account number or ID
+      const selectedCustomer = customers.find(customer => String(customer.id) === String(transferForm.customerId));
+      
+      if (!selectedCustomer) {
+        alert('Customer not found');
+        return;
+      }
+
+      const customerId = parseInt(selectedCustomer.id || selectedCustomer.customerId || '0');
+
+      try {
+        setTransferStatus('Attempting transfer...');
+        // First, try to transfer directly
+      const response = await transferToCustomer({
+          customerId: customerId,
+        amount: parseFloat(transferForm.amount),
+          description: transferForm.description,
+          transactionType: transferForm.transactionType,
+          type: transferForm.transactionType as 'credit' | 'debit',
+          paymentMethod: transferForm.paymentMethod
+      });
+
+      if (response.success) {
+          setTransferStatus('Transfer completed successfully!');
+          setTimeout(() => {
+            setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'transfer' });
+        setIsSidebarOpen(false);
+        // Refresh the page to show updated data
+        window.location.reload();
+          }, 1500);
+          return;
+        }
+      } catch (transferError: any) {
+        // If transfer fails due to missing wallet, try to create one
+        if (transferError.message && transferError.message.includes('Customer wallet not found')) {
+          try {
+            setTransferStatus('Creating customer wallet...');
+            // Create customer wallet first
+            const walletResponse = await createCustomerWallet({
+              customerId: customerId,
+              accountNumber: selectedCustomer.accountNumber || `CW${Date.now()}`,
+              balance: 0,
+              notes: 'Auto-created wallet for transfer'
+            });
+
+            if (walletResponse.success) {
+              setTransferStatus('Wallet created! Completing transfer...');
+              // Now try the transfer again
+              const retryResponse = await transferToCustomer({
+                customerId: customerId,
+                amount: parseFloat(transferForm.amount),
+                description: transferForm.description,
+                transactionType: transferForm.transactionType,
+                type: transferForm.transactionType as 'credit' | 'debit',
+                paymentMethod: transferForm.paymentMethod
+              });
+
+              if (retryResponse.success) {
+                setTransferStatus('Transfer completed successfully! Customer wallet was automatically created.');
+                setTimeout(() => {
+                  setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'transfer' });
+                  setIsSidebarOpen(false);
+                  // Refresh the page to show updated data
+                  window.location.reload();
+                }, 1500);
+                return;
+              }
+            }
+          } catch (walletError: any) {
+            console.error('Failed to create customer wallet:', walletError);
+            setTransferStatus('Failed to create customer wallet: ' + walletError.message);
+            setTimeout(() => setTransferStatus(''), 3000);
+            return;
+          }
+        }
+        
+        // If we get here, the transfer failed for another reason
+        throw transferError;
+      }
+    } catch (error) {
+      console.error('Transfer failed:', error);
+      // Show immediate alert with backend message (e.g., "Insufficient balance in merchant wallet")
+      alert((error as Error)?.message || 'Transfer failed');
+      setTransferStatus('Transfer failed: ' + (error as Error).message);
+      setTimeout(() => setTransferStatus(''), 3000);
+    } finally {
+      setTransferring(false);
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -706,33 +964,41 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
         <div className="p-6 flex-grow overflow-y-auto space-y-6">
           <div>
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-              Amount
+              Amount <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
               <input
-                type="text"
+                type="number"
                 name="amount"
                 id="amount"
                 className="block w-full rounded-md border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="N0.00"
+                placeholder="0.00"
+                min="0.01"
+                step="0.01"
+                value={transferForm.amount}
+                onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+                required
               />
             </div>
+            {transferForm.amount && parseFloat(transferForm.amount) <= 0 && (
+              <p className="mt-1 text-sm text-red-600">Amount must be greater than 0</p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="transfer-to" className="block text-sm font-medium text-gray-700 mb-1">
-              Transfer to
+            <label htmlFor="transaction-type" className="block text-sm font-medium text-gray-700 mb-1">
+              Transaction Type <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
               <select
-                id="transfer-to"
-                name="transfer-to"
+                id="transaction-type"
+                name="transaction-type"
                 className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                value={transferForm.transactionType}
+                onChange={(e) => setTransferForm({ ...transferForm, transactionType: e.target.value as 'credit' | 'debit' })}
               >
-                <option>Select customer</option>
-                <option>Customer A</option>
-                <option>Customer B</option>
-                <option>Customer C</option>
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <ChevronDown className="h-5 w-5" />
@@ -741,27 +1007,184 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
           </div>
 
           <div>
-            <label htmlFor="account-number" className="block text-sm font-medium text-gray-700 mb-1">
-              Account number
+            <label htmlFor="payment-method" className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Method <span className="text-red-500">*</span>
+            </label>
+            <div className="relative mt-1 rounded-md shadow-sm">
+              <select
+                id="payment-method"
+                name="payment-method"
+                className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                value={transferForm.paymentMethod}
+                onChange={(e) => setTransferForm({ ...transferForm, paymentMethod: e.target.value })}
+              >
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="POS">POS</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Mobile Money">Mobile Money</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <ChevronDown className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="transfer-to" className="block text-sm font-medium text-gray-700 mb-1">
+              Select Customer <span className="text-red-500">*</span>
+              <span className="text-xs text-gray-500 ml-2">({customers.length} available)</span>
+            </label>
+            
+            {/* Customer Search Input */}
+            <div className="mb-3">
+              <input
+                type="text"
+                placeholder="Search customers by name, phone, or email..."
+                className="block w-full rounded-md border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => {
+                  const searchTerm = e.target.value.toLowerCase();
+                  const filteredCustomers = customers.filter((customer: any) => {
+                    const name = (customer.fullName || customer.customerName || '').toLowerCase();
+                    const phone = (customer.phoneNumber || '').toLowerCase();
+                    const email = (customer.email || '').toLowerCase();
+                    const accountNumber = (customer.accountNumber || '').toLowerCase();
+                    return name.includes(searchTerm) || phone.includes(searchTerm) || email.includes(searchTerm) || accountNumber.includes(searchTerm);
+                  });
+                  // You could add state for filtered customers here if needed
+                }}
+              />
+            </div>
+            
+            <div className="relative mt-1 rounded-md shadow-sm">
+              <select
+                id="transfer-to"
+                name="transfer-to"
+                className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                value={transferForm.customerId}
+                onChange={(e) => setTransferForm({ ...transferForm, customerId: e.target.value })}
+                disabled={customers.length === 0}
+              >
+                <option value="">
+                  {customers.length === 0 ? 'No customers available' : 'Select a customer to transfer to'}
+                </option>
+                {customers.map((customer: any) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.fullName || customer.customerName} - {customer.accountNumber || customer.phoneNumber || customer.email}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <ChevronDown className="h-5 w-5" />
+              </div>
+            </div>
+            
+            {customers.length === 0 && (
+              <div className="mt-2 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                <p className="text-sm text-yellow-800">
+                  No customers available. Please add customers first.
+                </p>
+          </div>
+            )}
+            
+            {transferForm.customerId && (
+              <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Selected Customer:</span> {
+                    customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.fullName || 
+                    customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.customerName
+                  }
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Account: {transferForm.customerId}
+                </p>
+                <p className="text-xs text-blue-600">
+                  Phone: {customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.phoneNumber || 'N/A'}
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  <span className="font-medium">Note:</span> If this customer doesn't have a wallet, one will be automatically created during the transfer.
+                </p>
+            </div>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              Description (optional)
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
               <input
                 type="text"
-                name="account-number"
-                id="account-number"
+                name="description"
+                id="description"
                 className="block w-full rounded-md border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="01234565"
+                placeholder="e.g., Payment for services"
+                value={transferForm.description}
+                onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
               />
             </div>
           </div>
+          
+          {/* Transfer Summary */}
+          {transferForm.customerId && transferForm.amount && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Transfer Summary</h4>
+              <div className="space-y-1 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>To:</span>
+                  <span className="font-medium">
+                    {customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.fullName || 
+                     customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.customerName}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Type:</span>
+                  <span className="font-medium capitalize">{transferForm.transactionType}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Payment Method:</span>
+                  <span className="font-medium">{transferForm.paymentMethod}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Amount:</span>
+                  <span className="font-medium">₦{parseFloat(transferForm.amount || '0').toLocaleString()}</span>
+                </div>
+                {transferForm.description && (
+                  <div className="flex justify-between">
+                    <span>Description:</span>
+                    <span className="font-medium">{transferForm.description}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+        
+        {/* Transfer Status */}
+        {transferStatus && (
+          <div className="px-6 py-3 border-t border-gray-200">
+            <div className={`p-3 rounded-md text-sm ${
+              transferStatus.includes('successfully') || transferStatus.includes('completed') 
+                ? 'bg-green-50 text-green-800 border border-green-200' 
+                : transferStatus.includes('failed') || transferStatus.includes('Failed')
+                ? 'bg-red-50 text-red-800 border border-red-200'
+                : 'bg-blue-50 text-blue-800 border border-blue-200'
+            }`}>
+              {transferStatus}
+            </div>
+          </div>
+        )}
 
         <div className="p-6 border-t border-gray-200 flex justify-center">
-          <button
+          <LoadingButton
+            onClick={handleTransferSubmit}
+            loading={transferring}
+            loadingText={transferStatus || "Transferring..."}
             className="btn-sm"
+            disabled={!transferForm.customerId || !transferForm.amount || parseFloat(transferForm.amount || '0') <= 0}
           >
-            Transfer
-          </button>
+            {transferring ? (transferStatus || 'Transferring...') : 'Transfer'}
+          </LoadingButton>
         </div>
       </aside>
     </>
