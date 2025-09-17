@@ -1,6 +1,6 @@
 "use client"
-import React, { useState } from 'react'
-import { FaPlus } from 'react-icons/fa'
+import React, { useState, useEffect } from 'react'
+import { FaPlus, FaEdit, FaTrash, FaCheck, FaTimes } from 'react-icons/fa'
 import { FaAngleDown } from 'react-icons/fa';
 import Image from 'next/image';
 import {
@@ -11,25 +11,179 @@ import {
   SelectValue,
   SelectGroup
 } from "@/components/ui/select"
+import { fetchLoans, fetchCustomers, fetchAgents, updateLoanStatus, deleteLoan, fetchLoanStats } from '../../../../../../../services/api';
+import Swal from 'sweetalert2';
+
+interface Loan {
+  id: number;
+  customerName: string;
+  accountNumber?: string;
+  loanAmount: number;
+  interestRate: number;
+  duration: number;
+  agentName?: string;
+  branch?: string;
+  status: string;
+  dateIssued: string;
+  dueDate: string;
+  totalAmount: number;
+  amountPaid: number;
+  remainingAmount: number;
+}
+
+interface Customer {
+  id: number;
+  fullName: string;
+  phone?: string;
+}
+
+interface Agent {
+  id: number;
+  fullName: string;
+}
 
 const Page = () => {
-
-
-  const [show, setShow] = useState<boolean>(false)
-  const [filter, setFilter] = useState(false)
-
-  const [packag, setPackag] = useState<boolean>(false)
-
-  const [edit, setEdit] = useState(false)
-
-  {/*const [rowsPerPage, setRowsPerPage] = useState('10');
-  const handleRowsPerPageChange = (value: string) => {
-    setRowsPerPage(value);
-    console.log('Rows per page changed:', value);
-  };*/}
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState(false);
+  const [show, setShow] = useState<boolean>(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [stats, setStats] = useState({
+    totalCollection: 0,
+    totalCollectionAmount: 0
+  });
 
   const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
 
+  useEffect(() => {
+    fetchData();
+    fetchStats();
+  }, [currentPage, itemsPerPage, selectedStatus, fromDate, toDate]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [loansData, customersData, agentsData] = await Promise.all([
+        fetchLoans({
+          status: selectedStatus !== 'All' ? selectedStatus : undefined,
+          search: searchTerm || undefined,
+          fromDate: fromDate || undefined,
+          toDate: toDate || undefined,
+          page: currentPage,
+          limit: itemsPerPage
+        }),
+        fetchCustomers(),
+        fetchAgents()
+      ]);
+
+      setLoans(loansData.data || []);
+      setTotalPages(loansData.pagination?.totalPages || 1);
+      setCustomers(customersData.data || []);
+      setAgents(agentsData.data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      Swal.fire('Error', 'Failed to fetch data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const statsData = await fetchLoanStats();
+      setStats({
+        totalCollection: statsData.data?.totalLoans || 0,
+        totalCollectionAmount: statsData.data?.totalCollection || 0
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchData();
+  };
+
+  const handleStatusUpdate = async (loanId: number, newStatus: string) => {
+    try {
+      await updateLoanStatus(loanId, { status: newStatus });
+      Swal.fire('Success', 'Loan status updated successfully', 'success');
+      fetchData();
+      fetchStats();
+    } catch (error) {
+      console.error('Error updating loan status:', error);
+      Swal.fire('Error', 'Failed to update loan status', 'error');
+    }
+  };
+
+  const handleDelete = async (loanId: number) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteLoan(loanId);
+        Swal.fire('Deleted!', 'Loan has been deleted.', 'success');
+        fetchData();
+        fetchStats();
+      } catch (error) {
+        console.error('Error deleting loan:', error);
+        Swal.fire('Error', 'Failed to delete loan', 'error');
+      }
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Active': return 'text-green-600 bg-green-100';
+      case 'Completed': return 'text-blue-600 bg-blue-100';
+      case 'Defaulted': return 'text-red-600 bg-red-100';
+      case 'Pending': return 'text-yellow-600 bg-yellow-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
 
   return (
     <div className='w-full'>
@@ -45,14 +199,18 @@ const Page = () => {
           <div className="flex flex-wrap flex-col md:flex-row p-4 gap-4 md:gap-0 items-stretch md:items-center justify-between">
             <div className='w-full md:w-[330px]'>
               <p className='pb-2'>Agent</p>
-              <Select >
+              <Select onValueChange={(value) => setSelectedStatus(value)}>
                 <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
                 <SelectContent className="w-full md:w-[330px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
                   <SelectGroup>
-                    <SelectItem value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]  ">1 Agent</SelectItem>
-                    <SelectItem value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">2 Agent</SelectItem>
+                    <SelectItem value="All" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Agents</SelectItem>
+                    {agents.map((agent) => (
+                      <SelectItem key={agent.id} value={agent.id.toString()} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">
+                        {agent.fullName}
+                      </SelectItem>
+                    ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -61,6 +219,8 @@ const Page = () => {
               <p className="text-[14px] font-inter pb-2">From</p>
               <input
                 type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
                 className="w-full h-[40px]  border border-[#D0D5DD] rounded-[4px] font-inter p-1"
               />
             </div>
@@ -68,6 +228,8 @@ const Page = () => {
               <p className='text-[14px] font-inter pb-2'>To</p>
               <input
                 type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
                 className="w-full h-[40px]  border border-[#D0D5DD] rounded-[4px] font-inter p-1"
               />
             </div>
@@ -76,11 +238,11 @@ const Page = () => {
           <div className="flex flex-wrap flex-col md:flex-row p-4 gap-4 md:gap-[20px]">
             <div className="bg-[#FFF8E5] px-5 py-4 rounded-[4px] w-full md:w-[229px] h-[82px] mb-2 md:mb-0">
               <p className='text-[#737373] font-inter font-normal'>Total collection</p>
-              <h1 className='font-inter font-semibold text-[20px]'>200</h1>
+              <h1 className='font-inter font-semibold text-[20px]'>{stats.totalCollection}</h1>
             </div>
             <div className="bg-[#FFF8E5] px-5 py-4 rounded-[4px] w-full md:w-[229px] h-[82px]">
               <p className='text-[#737373] font-inter font-normal'>Total collection amount</p>
-              <h1 className='font-inter font-semibold text-[20px]'>N1,000,000</h1>
+              <h1 className='font-inter font-semibold text-[20px]'>{formatCurrency(stats.totalCollectionAmount)}</h1>
             </div>
           </div>
 
@@ -89,25 +251,29 @@ const Page = () => {
 
         <div className='flex flex-wrap flex-col md:flex-row items-center justify-between gap-4 md:gap-10 p-2 md:p-5'>
           <div className='flex flex-wrap flex-col md:flex-row items-center gap-2 md:gap-5 w-full md:w-auto'>
-            <Select >
+            <Select onValueChange={(value) => setSelectedStatus(value)} value={selectedStatus}>
               <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="w-full md:w-[185px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
                 <SelectGroup>
-                  <SelectItem value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]  ">Pending</SelectItem>
-                  <SelectItem value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">Completed</SelectItem>
+                  <SelectItem value="All" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Status</SelectItem>
+                  <SelectItem value="Pending" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Pending</SelectItem>
+                  <SelectItem value="Active" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Active</SelectItem>
+                  <SelectItem value="Completed" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Completed</SelectItem>
+                  <SelectItem value="Defaulted" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Defaulted</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <Select >
+            <Select onValueChange={handleItemsPerPageChange} value={itemsPerPage.toString()}>
               <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                 <SelectValue placeholder="Show 10 per row" />
               </SelectTrigger>
               <SelectContent className="w-full md:w-[185px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
                 <SelectGroup>
-                  <SelectItem value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]  ">Show 10 per row</SelectItem>
-                  <SelectItem value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">Show 15 per row</SelectItem>
+                  <SelectItem value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 10 per row</SelectItem>
+                  <SelectItem value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 15 per row</SelectItem>
+                  <SelectItem value="20" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 20 per row</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -128,116 +294,203 @@ const Page = () => {
               <input
                 type="text"
                 placeholder="Search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 className="outline-none px-3 py-2 w-full text-sm"
               />
             </div>
           </div>
         </div>
 
-         <div className='overflow-auto w-full'>
-          <table className="table-auto w-full whitespace-nowrap hidden md:table">
-            <thead className="bg-gray-50 border-b border-[#D9D4D4]">
-              <tr className="h-[40px] text-left">
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Customer
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Account number</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Loan amount</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Amount
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Due date
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Agent
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Date added
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Status</th>
-              </tr>
-            </thead>
-            <tbody className="border-b border-[#D9D4D4] w-full">
-              <tr className="bg-white transition-all duration-500 hover:bg-gray-50">
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">COL-103-A45</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">Type 1</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">94565647567</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">N1,000</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">James Odunayo</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">John brown</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">23 Jan, 2025</td>
-                <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">Pending</td>
-              </tr>
-            </tbody>
-          </table>
-          {/* Mobile stacked row */}
-          <div className="md:hidden block border-b p-2">
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">COL-103-A45</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">Type 1</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Loan amount:</span><span className="font-semibold">94565647567</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Amount:</span><span className="font-semibold">N1,000</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Due date:</span><span className="font-semibold">James Odunayo</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">John brown</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Date added:</span><span className="font-semibold">23 Jan, 2025</span></div>
-              <div className="flex justify-between text-sm text-gray-600"><span>Status:</span><span className="font-semibold">Pending</span></div>
-            </div>
+        {loading ? (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
           </div>
-        </div>
-      
-      <div className='border-t w-full mt-5'></div>
-      <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
-        {/* Prev Button */}
-        <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
-        >
-          <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
-          Previous
-        </button>
-        {/* Page Numbers */}
-        <div className="flex gap-2 items-center justify-center">
-          <p>1234</p>
-        </div>
-        {/* Next Button */}
-        <button
-          className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
-        >
-          Next
-          <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
-        </button>
+        ) : (
+          <>
+            <div className='overflow-auto w-full'>
+              <table className="table-auto w-full whitespace-nowrap hidden md:table">
+                <thead className="bg-gray-50 border-b border-[#D9D4D4]">
+                  <tr className="h-[40px] text-left">
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
+                      <div className="flex items-center gap-[3px]">
+                        Customer
+                        <div className="flex flex-col gap-[1px] shrink-0">
+                          <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                          <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                        </div>
+                      </div>
+                    </th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Account number</th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Loan amount</th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
+                      <div className="flex items-center gap-[3px]">
+                        Amount
+                        <div className="flex flex-col gap-[1px] shrink-0">
+                          <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                          <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                        </div>
+                      </div>
+                    </th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
+                      <div className="flex items-center gap-[3px]">
+                        Due date
+                        <div className="flex flex-col gap-[1px] shrink-0">
+                          <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                          <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                        </div>
+                      </div>
+                    </th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
+                      <div className="flex items-center gap-[3px]">
+                        Agent
+                        <div className="flex flex-col gap-[1px] shrink-0">
+                          <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                          <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                        </div>
+                      </div>
+                    </th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
+                      <div className="flex items-center gap-[3px]">
+                        Date added
+                        <div className="flex flex-col gap-[1px] shrink-0">
+                          <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                          <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                        </div>
+                      </div>
+                    </th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Status</th>
+                    <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="border-b border-[#D9D4D4] w-full">
+                  {loans.map((loan) => (
+                    <tr key={loan.id} className="bg-white transition-all duration-500 hover:bg-gray-50">
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.customerName}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.accountNumber || 'N/A'}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(loan.loanAmount)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(loan.totalAmount)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(loan.dueDate)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.agentName || 'N/A'}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(loan.dateIssued)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(loan.status)}`}>
+                          {loan.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
+                        <div className="flex gap-2">
+                          {loan.status === 'Pending' && (
+                            <>
+                              <button
+                                onClick={() => handleStatusUpdate(loan.id, 'Active')}
+                                className="text-green-600 hover:text-green-800"
+                                title="Approve"
+                              >
+                                <FaCheck className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(loan.id, 'Defaulted')}
+                                className="text-red-600 hover:text-red-800"
+                                title="Reject"
+                              >
+                                <FaTimes className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDelete(loan.id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete"
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Mobile stacked rows */}
+              {loans.map((loan) => (
+                <div key={loan.id} className="md:hidden block border-b p-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">{loan.customerName}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">{loan.accountNumber || 'N/A'}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Loan amount:</span><span className="font-semibold">{formatCurrency(loan.loanAmount)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Total amount:</span><span className="font-semibold">{formatCurrency(loan.totalAmount)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Due date:</span><span className="font-semibold">{formatDate(loan.dueDate)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">{loan.agentName || 'N/A'}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Date added:</span><span className="font-semibold">{formatDate(loan.dateIssued)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Status:</span><span className="font-semibold">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(loan.status)}`}>
+                        {loan.status}
+                      </span>
+                    </span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Actions:</span>
+                      <div className="flex gap-2">
+                        {loan.status === 'Pending' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusUpdate(loan.id, 'Active')}
+                              className="text-green-600 hover:text-green-800"
+                              title="Approve"
+                            >
+                              <FaCheck className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleStatusUpdate(loan.id, 'Defaulted')}
+                              className="text-red-600 hover:text-red-800"
+                              title="Reject"
+                            >
+                              <FaTimes className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleDelete(loan.id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          
+            <div className='border-t w-full mt-5'></div>
+            <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
+              {/* Prev Button */}
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
+                Previous
+              </button>
+              {/* Page Numbers */}
+              <div className="flex gap-2 items-center justify-center">
+                <span>Page {currentPage} of {totalPages}</span>
+              </div>
+              {/* Next Button */}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+                <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />
+              </button>
+            </div>
+          </>
+        )}
       </div>
-     </div>
     </div>
   )
 }

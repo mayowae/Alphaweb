@@ -1,5 +1,5 @@
 "use client"
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa'
 
@@ -9,9 +9,49 @@ interface pack {
   onClose: () => void;
 }
 
+import { createPackage } from '../../../../../../../services/api'
+
 const Addpackage = ({ packag, onClose }: pack) => {
+  const [form, setForm] = useState({
+    name: '',
+    type: 'Flexible',
+    seedType: 'Percentage',
+    seedAmount: '',
+    period: '',
+    collectionDays: 'Daily',
+    amount: '',
+    duration: '',
+  })
+  const [loading, setLoading] = useState(false)
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { value, tagName } = e.target as any
+    const id = (e.target as any).id
+    setForm(prev => ({ ...prev, [id]: value }))
+  }
 
+  const handleSubmit = async () => {
+    try {
+      setLoading(true)
+      await createPackage({
+        name: form.name,
+        type: form.type,
+        amount: Number(form.amount || 0),
+        seedAmount: Number(form.seedAmount || 0),
+        seedType: form.seedType,
+        period: Number(form.period || 0),
+        collectionDays: form.collectionDays,
+        duration: Number(form.duration || 0),
+        benefits: [],
+        packageCategory: 'Collection',
+      })
+      onClose()
+    } catch (e) {
+      // no-op; page shows error toast area
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
 <>
@@ -37,13 +77,13 @@ const Addpackage = ({ packag, onClose }: pack) => {
         <div className="p-4 w-full overflow-y-auto hide-scrollbar">
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Name</p>
-            <input type="text" placeholder='Alpha1k' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
+            <input id="name" value={form.name} onChange={handleChange} type="text" placeholder='Alpha1k' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
           </div>
 
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Type</p>
             <div className='relative w-full'>
-              <select className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
+              <select id="type" value={form.type} onChange={handleChange} className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
                 <option value="Flexible">Flexible</option>
                 <option value="Fixed">Fixed</option>
               </select>
@@ -57,7 +97,7 @@ const Addpackage = ({ packag, onClose }: pack) => {
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed type</p>
             <div className='relative w-full'>
-              <select className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
+              <select id="seedType" value={form.seedType} onChange={handleChange} className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
                 <option value="Percentage">Percentage</option>
                 <option value="First Saving">First Saving</option>
               </select>
@@ -69,21 +109,21 @@ const Addpackage = ({ packag, onClose }: pack) => {
 
 
           <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed amount/percentage</p>
-            <input type="text" placeholder='10%' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
+            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed Percentage</p>
+            <input id="seedAmount" value={form.seedAmount} onChange={handleChange} type="text" placeholder='10%' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
           </div>
 
 
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Period (days)</p>
-            <input type="text" placeholder='4' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px]' />
+            <input id="period" value={form.period} onChange={handleChange} type="text" placeholder='4' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px]' />
           </div>
 
 
           <div className="mb-2">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Collection days</p>
             <div className='relative w-full'>
-              <select className='w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none '>
+              <select id="collectionDays" value={form.collectionDays} onChange={handleChange} className='w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none '>
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
               </select>
@@ -92,14 +132,26 @@ const Addpackage = ({ packag, onClose }: pack) => {
               </div>
             </div>
           </div>
+
+          {/* <div className="mb-4 grid grid-cols-2 gap-3">
+            <div>
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Amount</p>
+              <input id="amount" value={form.amount} onChange={handleChange} type="text" placeholder='1000' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px]' />
+            </div>
+            <div>
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Duration (days)</p>
+              <input id="duration" value={form.duration} onChange={handleChange} type="text" placeholder='30' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px]' />
+            </div>
+          </div> */}
         </div>
 
 
         <div className='border-t-[1px] w-full mb-1  mt-5'></div>
 
         <div className='mt-[15px] flex justify-center mb-8'>
-          <button className='bg-[#4E37FB] flex h-[40px] cursor-pointer w-[167px] rounded-[4px] items-center gap-[9px] justify-center'>
-            <p className='text-[14px] font-inter text-white font-medium'>Create package</p>
+          <button onClick={handleSubmit} disabled={loading} className='bg-[#4E37FB] flex h-[40px] cursor-pointer w-[167px] rounded-[4px] items-center gap-[9px] justify-center disabled:opacity-60'>
+            {loading && (<svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"></svg>)}
+            <p className='text-[14px] font-inter text-white font-medium'>{loading ? 'Creating...' : 'Create package'}</p>
           </button>
         </div>
 
