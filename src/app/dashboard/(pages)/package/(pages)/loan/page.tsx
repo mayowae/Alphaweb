@@ -248,8 +248,8 @@ const Page = () => {
                     <tr key={pkg.id} className="bg-white transition-all duration-500 hover:bg-gray-50">
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.name}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.type}</td>
-                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(pkg.loanAmount || pkg.amount)}</td>
-                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.loanPeriod || pkg.period} days</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(pkg.loanAmount)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.loanPeriod} days</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.loanInterestRate}%</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(pkg.defaultAmount)}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.gracePeriod} days</td>
@@ -298,11 +298,11 @@ const Page = () => {
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Loan amount:</span>
-                      <span className="font-semibold">{formatCurrency(pkg.loanAmount || pkg.amount)}</span>
+                      <span className="font-semibold">{formatCurrency(pkg.loanAmount)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Loan period:</span>
-                      <span className="font-semibold">{pkg.loanPeriod || pkg.period} days</span>
+                      <span className="font-semibold">{pkg.loanPeriod} days</span>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Loan interest:</span>

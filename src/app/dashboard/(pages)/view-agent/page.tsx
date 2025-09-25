@@ -201,7 +201,7 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, in
   );
 };
 // Helper component for displaying a single detail item
-export const DetailItem: React.FC<{ label: string; value: string; highlightColor?: string }> = ({ label, value, highlightColor }) => (
+const DetailItem: React.FC<{ label: string; value: string; highlightColor?: string }> = ({ label, value, highlightColor }) => (
   <div>
     <p className="form-label">{label}</p>
     <p className={`font-medium text-black ${highlightColor}`}>{value}</p>

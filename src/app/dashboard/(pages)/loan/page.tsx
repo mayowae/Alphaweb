@@ -25,6 +25,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
     amount: '',
     interestRate: '',
     duration: '',
+    dueDate: '',
   });
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,9 +47,10 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
     try {
       await createLoan({
         customerName: formData.customerName,
-        amount: parseFloat(formData.amount),
+        loanAmount: parseFloat(formData.amount),
         interestRate: parseFloat(formData.interestRate),
-        duration: parseInt(formData.duration),
+        duration: parseInt(formData.duration, 10),
+        dueDate: formData.dueDate,
       });
 
       Swal.fire({
@@ -57,7 +59,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
         text: 'Loan has been created successfully.',
       });
 
-      setFormData({ customerName: '', amount: '', interestRate: '', duration: '' });
+      setFormData({ customerName: '', amount: '', interestRate: '', duration: '', dueDate: '' });
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -98,6 +100,16 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <input
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Loan Amount</label>
@@ -172,7 +184,7 @@ export default function LoanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response: any = await fetchLoans();
+      const response: any = await fetchLoans({});
       setLoans(response.loans || []);
     } catch (error: any) {
       Swal.fire({

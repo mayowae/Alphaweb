@@ -852,7 +852,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
       if (response.success) {
           setTransferStatus('Transfer completed successfully!');
           setTimeout(() => {
-            setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'transfer' });
+            setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Cash' });
         setIsSidebarOpen(false);
         // Refresh the page to show updated data
         window.location.reload();
@@ -887,7 +887,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
               if (retryResponse.success) {
                 setTransferStatus('Transfer completed successfully! Customer wallet was automatically created.');
                 setTimeout(() => {
-                  setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'transfer' });
+                  setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Cash' });
                   setIsSidebarOpen(false);
                   // Refresh the page to show updated data
                   window.location.reload();
