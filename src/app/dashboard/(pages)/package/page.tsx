@@ -52,8 +52,14 @@ const CreatePackageModal = ({ isOpen, onClose, onSuccess }: {
       
       await createPackage({
         name: formData.name,
+        // Minimal required fields for API contract
+        type: 'General',
         amount: parseFloat(formData.amount),
-        duration: parseInt(formData.duration),
+        seedAmount: 0,
+        seedType: 'fixed',
+        period: 1,
+        collectionDays: 'Mon,Tue,Wed,Thu,Fri',
+        duration: parseInt(formData.duration, 10),
         benefits: filteredBenefits,
       });
 
