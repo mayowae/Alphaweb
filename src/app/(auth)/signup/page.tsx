@@ -2,10 +2,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { registerUser } from "../../../../services/api";
 import '../../../../global.css';
 
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'loading' | 'success'>('idle');
 
   const [businessName, setBusinessName] = useState("");
   const [businessAlias, setBusinessAlias] = useState("");
@@ -16,16 +20,37 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const router = useRouter();
 
-  const signup = () => {
-    console.log("Business Name:", businessName);
-    console.log("Business Alias:", businessAlias);
-    console.log("Phone Number:", phoneNumber);
-    console.log("Email:", email);
-    console.log("Currency:", currency);
-    console.log("Password:", password);
-    console.log("Confirm Password:", confirmPassword);
-
-    router.push('/login');
+  const signup = async () => {
+    if (isLoading) return;
+    if (!businessName || !businessAlias || !phoneNumber || !email || !currency || !password || !confirmPassword) {
+      Swal.fire({ icon: "warning", title: "All fields are required", text: "Please fill in all fields." });
+      return;
+    }
+    if (password !== confirmPassword) {
+      Swal.fire({ icon: "warning", title: "Passwords do not match", text: "Please make sure both passwords are the same." });
+      return;
+    }
+    setIsLoading(true);
+    setButtonState('loading');
+    try {
+      const userData = { businessName, businessAlias, phoneNumber, email, currency, password, confirmPassword };
+      const result = await registerUser(userData);
+      localStorage.setItem('email', email);
+      setButtonState('success');
+      Swal.fire({
+        icon: "success",
+        title: "Registration Successful",
+        text: result.message || "Please check your email for OTP verification.",
+        showConfirmButton: false,
+        timer: 2000
+      });
+      setTimeout(() => { router.push('/verify-otp'); }, 2000);
+    } catch (error: any) {
+      setButtonState('idle');
+      Swal.fire({ icon: "error", title: "Registration Failed", text: error?.message || "An error occurred during registration." });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -150,7 +175,14 @@ export default function SignUp() {
                         </div> 
                     </div>
                     <div className="form-group mt-4">
-                        <button type="button" className="auth-btn" onClick={signup}>Continue</button>
+                        <button 
+                            type="button" 
+                            className={`auth-btn ${buttonState === 'loading' ? 'loading' : ''} ${buttonState === 'success' ? 'success' : ''}`}
+                            onClick={signup}
+                            disabled={isLoading}
+                        >
+                            {buttonState === 'loading' ? 'Creating Account...' : buttonState === 'success' ? 'Success!' : 'Continue'}
+                        </button>
                     </div>
                     <div className="form-group mt-3 text-center">
                         <span className="text-sm">Already have an account? </span>&nbsp;&nbsp;

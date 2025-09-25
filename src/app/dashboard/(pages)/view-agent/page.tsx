@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Filter, Search, MoreHorizontal, X } from 'lucide-react';
 import '../../../../../global.css';
+import { fetchAgentById } from '../../../../../services/api';
 
 // Define interfaces for data structures
 interface Customer {
@@ -294,18 +295,52 @@ const AgentProfile: React.FC<AgentProfileProps> = ({ isOpen, onClose, agentData,
     </>
   );
 };
-// AgentProfilePage Component
+// AgentProfilePage Component (legacy fallback, kept but not used for routing)
 const AgentProfilePage = () => {
-  // Mock Agent Data State
   const [agentData, setAgentData] = useState({
-    fullName: "Mayowa Daniel",
-    phoneNumber: "+2347056768578",
-    email: "jamesdoe.odunayo@alphakolect.com",
-    branch: "Tanke Branch",
-    password: "Password@123",
-    dateCreated: "23 Jan, 2025 -10:00",
+    fullName: "",
+    phoneNumber: "",
+    email: "",
+    branch: "",
+    password: "",
+    dateCreated: "",
     status: 'Active' as 'Active' | 'Inactive',
   });
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const paramsRef = (typeof window !== 'undefined') ? window.location.pathname.split('/') : [] as any;
+  const idFromPath = Array.isArray(paramsRef) ? paramsRef[paramsRef.length - 1] : undefined;
+  const agentId = idFromPath && !isNaN(Number(idFromPath)) ? Number(idFromPath) : undefined;
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        if (!agentId) throw new Error('Invalid agent id');
+        const data = await fetchAgentById(agentId);
+        const agent = (data as any)?.agent || data;
+        if (isMounted) {
+          setAgentData({
+            fullName: agent.fullName || '',
+            phoneNumber: agent.phoneNumber || '',
+            email: agent.email || '',
+            branch: agent.branch || '',
+            password: '',
+            dateCreated: agent.createdAt ? new Date(agent.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) + ' - ' + new Date(agent.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '',
+            status: (agent.status || 'Active') as 'Active' | 'Inactive',
+          });
+        }
+      } catch (e:any) {
+        if (isMounted) setError(e?.message || 'Failed to load agent');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { isMounted = false };
+  }, [agentId]);
 
   // Mock Wallet/Financial Data
   const walletData = {
@@ -482,8 +517,11 @@ const AgentProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-inter">
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">{error}</div>
+      )}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">{agentData.fullName}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">{loading ? 'Loading...' : agentData.fullName || 'Agent'}</h1>
         <div className="flex ml-auto space-x-3">
           <button type='button' onClick={() => setIsProfileSidebarOpen(true)} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-indigo-700 transition-colors">
             View profile
@@ -609,27 +647,27 @@ const AgentProfilePage = () => {
                       >
                         {label}
                         {/* Conditionally render the up/down arrows */}
-                        {sortConfig.key === key && (
+                        {/* {sortConfig.key === key && (
                           sortConfig.direction === 'ascending' ? (
                             <ChevronUp className="h-4 w-4" />
                           ) : (
                             <ChevronDown className="h-4 w-4" />
                           )
-                        )}
+                        )} */}
                         {/* Show both arrows if not currently sorted */}
-                        {sortConfig.key !== key && (
+                        {/* {sortConfig.key !== key && (
                           <div className="flex flex-col text-gray-300">
                             <ChevronUp className="h-4 w-4 mb-[-4px]" />
                             <ChevronDown className="h-4 w-4" />
                           </div>
-                        )}
+                        )} */}
                       </button>
                     </th>
                   ))}
                   {/* The Action column is not sortable, so it's handled separately */}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Action
-                  </th>
+                  </th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

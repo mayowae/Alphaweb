@@ -1,28 +1,15 @@
 "use client"
 import { LuChevronDown, LuChevronUp, LuX, LuPlus, LuArrowUpDown } from 'react-icons/lu';
 import React from 'react';
+import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-// Sample data for the table
-const customers: any = [
-    { id: 1, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Inactive' },
-    { id: 2, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 3, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 4, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 5, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 6, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 7, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 8, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 9, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    { id: 10, account: '9345645345', name: 'James Odunayo', branch: 'Tanke branch', agent: 'Modupe dotun', package: 'Alpha 1K', date: '23 Jan, 2025', time: '10:00', status: 'Active' },
-    // Adding more data for pagination to be useful
-    { id: 11, account: '9345645346', name: 'Ayo Adekunle', branch: 'Lagos Island Main Branch', agent: 'Femi Ade', package: 'Beta 2K', date: '24 Jan, 2025', time: '11:00', status: 'Active' },
-    { id: 12, account: '9345645347', name: 'Chidi Eke', branch: 'Abuja Central Business District', agent: 'Ngozi Okafor', package: 'Gamma 3K', date: '25 Jan, 2025', time: '12:00', status: 'Inactive' },
-    { id: 13, account: '9345645348', name: 'Fatima Bello', branch: 'Kano branch', agent: 'Sadiq Musa', package: 'Alpha 1K', date: '26 Jan, 2025', time: '13:00', status: 'Active' },
-    { id: 14, account: '9345645349', name: 'Babatunde Olawale', branch: 'Oyo branch', agent: 'Tunde Olawale', package: 'Beta 2K', date: '27 Jan, 2025', time: '14:00', status: 'Active' },
-    { id: 15, account: '9345645350', name: 'Grace Adebayo', branch: 'Delta branch', agent: 'Michael Obi', package: 'Gamma 3K', date: '28 Jan, 2025', time: '15:00', status: 'Inactive' },
-];
+
+
+import { useEffect } from 'react';
+import Swal from 'sweetalert2';
+import { fetchAgents, fetchBranches, addCustomer, fetchPackages } from '../../../../../services/api';
 
 const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
     const [formState, setFormState] = useState({
@@ -34,7 +21,31 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
         phoneNumber: '',
         address: '',
         email: '',
+        accountNumber: '',
     });
+    const [branches, setBranches] = useState<any[]>([]);
+    const [agents, setAgents] = useState<any[]>([]);
+    const [packages, setPackages] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        // Fetch branches, agents, and packages when sidebar opens
+        setLoading(true);
+        Promise.all([
+            fetchBranches().catch(() => []),
+            fetchAgents().catch(() => []),
+            fetchPackages().catch(() => [])
+        ]).then(([branchesRes, agentsRes, packagesRes]) => {
+            setBranches(branchesRes?.branches || branchesRes || []);
+            setAgents(agentsRes?.agents || agentsRes || []);
+            // Filter packages to only show investment packages
+            const investmentPackages = (packagesRes?.packages || packagesRes || []).filter((pkg: any) => 
+                pkg.packageCategory === 'Investment' || !pkg.packageCategory
+            );
+            setPackages(investmentPackages);
+        }).finally(() => setLoading(false));
+    }, [isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormState({
@@ -43,11 +54,35 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
         });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Customer data submitted:', formState);
-        // Add your form submission logic here
-        onClose();
+        // Find agent and branch IDs
+        const selectedAgent = agents.find(a => a.fullName === formState.agent || a.name === formState.agent);
+        const selectedBranch = branches.find(b => b.name === formState.branch);
+        if (!selectedAgent || !selectedBranch) {
+            Swal.fire({ icon: 'error', title: 'Please select valid agent and branch.' });
+            return;
+        }
+        try {
+            setLoading(true);
+            await addCustomer({
+                fullName: formState.fullName,
+                phoneNumber: formState.phoneNumber,
+                email: formState.email,
+                agentId: selectedAgent.id?.toString() || selectedAgent._id || '',
+                branchId: selectedBranch.id?.toString() || selectedBranch._id || '',
+                accountNumber: formState.accountNumber || undefined,
+                alias: formState.alias || undefined,
+                address: formState.address || undefined,
+            });
+            Swal.fire({ icon: 'success', title: 'Customer added successfully!' });
+            setFormState({ branch: '', agent: '', fullName: '', alias: '', package: '', phoneNumber: '', address: '', email: '', accountNumber: '' });
+            onClose();
+        } catch (err: any) {
+            Swal.fire({ icon: 'error', title: 'Failed to add customer', text: err?.message || 'An error occurred.' });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -91,11 +126,12 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
                                     value={formState.branch}
                                     onChange={handleChange}
                                     className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                                    disabled={loading}
                                 >
                                     <option value="">Select branch</option>
-                                    <option value="Tanke branch">Tanke branch</option>
-                                    <option value="Lagos Island Main Branch">Lagos Island Main Branch</option>
-                                    <option value="Abuja Central Business District">Abuja Central Business District</option>
+                                    {branches.map((b) => (
+                                        <option key={b.id || b._id} value={b.name}>{b.name}</option>
+                                    ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                     <LuChevronDown className="h-5 w-5" />
@@ -114,16 +150,32 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
                                     value={formState.agent}
                                     onChange={handleChange}
                                     className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                                    disabled={loading}
                                 >
                                     <option value="">Select Agent</option>
-                                    <option value="Modupe dotun">Modupe dotun</option>
-                                    <option value="Femi Ade">Femi Ade</option>
-                                    <option value="Ngozi Okafor">Ngozi Okafor</option>
+                                    {agents.map((a) => (
+                                        <option key={a.id || a._id} value={a.fullName || a.name}>{a.fullName || a.name}</option>
+                                    ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                     <LuChevronDown className="h-5 w-5" />
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Account Number (optional) */}
+                        <div>
+                            <label htmlFor="accountNumber" className="block text-sm font-semibold text-gray-700 mb-1">
+                                Account number (optional)
+                            </label>
+                            <input
+                                type="text"
+                                id="accountNumber"
+                                value={formState.accountNumber}
+                                onChange={handleChange}
+                                placeholder="Auto-generated if left blank"
+                                className="block w-full rounded-md border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            />
                         </div>
 
                         {/* Full name */}
@@ -169,9 +221,11 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
                                     className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
                                 >
                                     <option value="">Select package</option>
-                                    <option value="Alpha 1K">Alpha 1K</option>
-                                    <option value="Beta 2K">Beta 2K</option>
-                                    <option value="Gamma 3K">Gamma 3K</option>
+                                    {packages.map((pkg) => (
+                                        <option key={pkg.id} value={pkg.name}>
+                                            {pkg.name} - ₦{pkg.amount?.toLocaleString()}
+                                        </option>
+                                    ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                     <LuChevronDown className="h-5 w-5" />
@@ -232,8 +286,9 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
                         type="submit"
                         onClick={handleSubmit}
                         className="w-full px-4 py-3 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors"
+                        disabled={loading}
                     >
-                        Add customer
+                        {loading ? 'Adding...' : 'Add customer'}
                     </button>
                 </div>
             </div>
@@ -242,24 +297,34 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
 };
 
 
+import { fetchCustomers } from '../../../../../services/api';
+
 export default function CustomersPage() {
+    const [customers, setCustomers] = useState<any[]>([]);
     const [selectedCustomers, setSelectedCustomers] = useState<any>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
-    // State for sorting
     const [sortConfig, setSortConfig] = useState<any>({ key: null, direction: 'ascending' });
+    const [loading, setLoading] = useState(false);
 
-    // Sorting logic using useMemo to optimize performance
+    useEffect(() => {
+        setLoading(true);
+        fetchCustomers()
+            .then((res) => {
+                setCustomers(res.customers || res || []);
+            })
+            .catch(() => setCustomers([]))
+            .finally(() => setLoading(false));
+    }, []);
+
     const sortedCustomers = useMemo(() => {
         let sortableItems = [...customers];
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
-                // Handle sorting for 'date created'
                 if (sortConfig.key === 'date') {
-                    const dateA = new Date(a.date.replace(/,/, '') + ' ' + a.time);
-                    const dateB = new Date(b.date.replace(/,/, '') + ' ' + b.time);
+                    const dateA = new Date(a.date?.replace(/,/, '') + ' ' + a.time);
+                    const dateB = new Date(b.date?.replace(/,/, '') + ' ' + b.time);
                     if (dateA < dateB) {
                         return sortConfig.direction === 'ascending' ? -1 : 1;
                     }
@@ -268,8 +333,6 @@ export default function CustomersPage() {
                     }
                     return 0;
                 }
-                
-                // Handle sorting for other string properties
                 if (a[sortConfig.key] < b[sortConfig.key]) {
                     return sortConfig.direction === 'ascending' ? -1 : 1;
                 }
@@ -425,6 +488,12 @@ export default function CustomersPage() {
                                     {renderSortIcon('name')}
                                 </div>
                             </th>
+                            {/* <th className="px-4 py-2 text-left text-gray-500 uppercase cursor-pointer" onClick={() => handleSort('alias')}>
+                                <div className="flex items-center">
+                                    <span className="text-xs font-semibold">Alias</span>
+                                    {renderSortIcon('alias')}
+                                </div>
+                            </th> */}
                             <th className="px-4 py-2 text-left text-gray-500 uppercase cursor-pointer" onClick={() => handleSort('branch')}>
                                 <div className="flex items-center">
                                     <span className="text-xs font-semibold">Branch</span>
@@ -443,6 +512,12 @@ export default function CustomersPage() {
                                     {renderSortIcon('package')}
                                 </div>
                             </th>
+                            {/* <th className="px-4 py-2 text-left text-gray-500 uppercase cursor-pointer" onClick={() => handleSort('address')}>
+                                <div className="flex items-center">
+                                    <span className="text-xs font-semibold">Address</span>
+                                    {renderSortIcon('address')}
+                                </div>
+                            </th> */}
                             <th className="px-4 py-2 text-left text-gray-500 uppercase cursor-pointer" onClick={() => handleSort('date')}>
                                 <div className="flex items-center">
                                     <span className="text-xs font-semibold">Date created</span>
@@ -462,18 +537,24 @@ export default function CustomersPage() {
                         {currentCustomers.map((c: any) => (
                             <tr key={c.id} className={selectedCustomers.includes(c.id) ? 'bg-indigo-50' : ''}>
                                 <td className="p-4"><input type="checkbox" checked={selectedCustomers.includes(c.id)} onChange={() => handleSelectCustomer(c.id)} /></td>
-                                <td className="px-4 py-2 text-sm text-gray-900">{c.account}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.name}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.branch}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.agent}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700">{c.package}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700">{c.date}, {c.time}</td>
+                                <td className="px-4 py-2 text-sm text-gray-900">{c.account || c.accountNumber || ''}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.name || c.fullName || ''}</td>
+                                {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.alias || ''}</td> */}
+                                <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.branchName || c.branch?.name || ''}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.agentName || c.agent?.fullName || c.agent?.name || ''}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700">{c.packageName || c.package || ''}</td>
+                                {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[200px]">{c.address || ''}</td> */}
+                                <td className="px-4 py-2 text-sm text-gray-700">{c.date || c.createdAt ? new Date(c.date || c.createdAt).toLocaleDateString() : ''}{c.time ? `, ${c.time}` : ''}</td>
                                 <td className="px-4 py-2 text-sm">
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                         {c.status}
                                     </span>
                                 </td>
-                                <td className="px-4 py-2 text-right"><button className="px-4 py-2 rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium">View</button></td>
+                                <td className="px-4 py-2 text-right">
+                                    <Link href={`/dashboard/customer/${c.id}`} className="px-4 py-2 rounded-lg border border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium">
+                                        View
+                                    </Link>
+                                </td>
                             </tr>
                         ))}
                     </tbody>

@@ -2,18 +2,52 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { loginUserWithEmail } from "@/services/api";
 import '../../../../global.css';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [buttonState, setButtonState] = useState<'idle' | 'loading' | 'success'>('idle');
   const router = useRouter();
 
-  const login = () => {
-    console.log("Email:", email);
-    console.log("Password:", password);
-    router.push("/dashboard");
+  const login = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setButtonState('loading');
+    try {
+      const userData = { email, password };
+      const authenticated: any = await loginUserWithEmail(userData);
+      if (authenticated) {
+        window.localStorage.setItem("user", JSON.stringify({
+          ...authenticated.merchant,
+          token: authenticated.token
+        }));
+        setButtonState('success');
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
+      } else {
+        setButtonState('idle');
+        Swal.fire({
+          icon: "error",
+          title: "Invalid email or password",
+          text: "Please check your credentials and try again."
+        });
+      }
+    } catch (error: any) {
+      setButtonState('idle');
+      Swal.fire({
+        icon: "error",
+        title: "Login Error",
+        text: error?.message || "An error occurred during login."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -72,7 +106,14 @@ export default function Login() {
                             <Link href="/forgot-password" className="auth-link">Forgot password?</Link>
                         </div>
                         <div className="form-group mt-3">
-                            <button type="button" onClick={login} className="auth-btn">Login</button>
+                            <button 
+                                type="button" 
+                                onClick={login} 
+                                disabled={isLoading}
+                                className={`auth-btn ${buttonState === 'loading' ? 'loading' : ''} ${buttonState === 'success' ? 'success' : ''}`}
+                            >
+                                {buttonState === 'loading' ? 'Logging in...' : buttonState === 'success' ? 'Success!' : 'Login'}
+                            </button>
                         </div>
                         <div className="form-group mt-3 text-center">
                             <span className="text-sm">Don't have an account? </span>&nbsp;&nbsp;
