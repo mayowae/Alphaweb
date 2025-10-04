@@ -274,7 +274,7 @@ const { Customer, Agent, Branch, Merchant, Package } = require('../models');
 // Create customer
 const createCustomer = async (req, res) => {
   try {
-    const { fullName, phoneNumber, email, agentId, branchId, merchantId, packageId, accountNumber, alias, address } = req.body;
+    const { name, fullName, phoneNumber, email, agentId, branchId, merchantId, packageId, accountNumber, alias, address } = req.body;
 
     // Check if customer already exists
     const existingCustomer = await Customer.findOne({ where: { email } });
@@ -302,6 +302,7 @@ const createCustomer = async (req, res) => {
 
     // Create customer
     const customer = await Customer.create({
+      name,
       fullName,
       phoneNumber,
       email,

@@ -98,8 +98,9 @@ db.Customer.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
 db.Merchant.hasMany(db.Staff, { foreignKey: 'merchantId' });
 db.Staff.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
 
-db.Branch.hasMany(db.Agent, { foreignKey: 'branchId' });
-db.Agent.belongsTo(db.Branch, { foreignKey: 'branchId' });
+// Note: Agent model uses 'branch' as string field, not branchId foreign key
+// db.Branch.hasMany(db.Agent, { foreignKey: 'branchId' });
+// db.Agent.belongsTo(db.Branch, { foreignKey: 'branchId' });
 
 db.Branch.hasMany(db.Customer, { foreignKey: 'branchId' });
 db.Customer.belongsTo(db.Branch, { foreignKey: 'branchId', as: 'Branch' });

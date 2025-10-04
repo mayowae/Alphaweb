@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, ChevronDown, ChevronUp, Search, Filter, MoreHorizontal, Edit, PowerOff, X } from 'lucide-react';
 import LoadingButton from '../../../../../components/LoadingButton';
 import { useRouter } from 'next/navigation';
-import { fetchAgents, updateAgentStatus, addAgent, updateAgent, fetchCustomers } from '../../../../../services/api';
+import { fetchAgents, updateAgentStatus, addAgent, updateAgent, fetchCustomers, getBranches } from '../../../../../services/api';
 
 // Define the Agent interface
 interface Agent {
@@ -40,6 +40,8 @@ const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAd
   });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [branches, setBranches] = useState<Array<{id: number; name: string}>>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   // Effect to handle clicks outside the sidebar to close it
   useEffect(() => {
@@ -55,6 +57,26 @@ const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAd
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen, onClose]);
+
+  // Effect to fetch branches when sidebar opens
+  useEffect(() => {
+    const fetchBranches = async () => {
+      if (isOpen && branches.length === 0) {
+        try {
+          setLoadingBranches(true);
+          const response = await getBranches();
+          setBranches(response.branches || []);
+        } catch (error) {
+          console.error('Error fetching branches:', error);
+          setFormError('Failed to load branches');
+        } finally {
+          setLoadingBranches(false);
+        }
+      }
+    };
+
+    fetchBranches();
+  }, [isOpen, branches.length]);
 
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -125,15 +147,17 @@ const AddAgentSidebar: React.FC<AddAgentSidebarProps> = ({ isOpen, onClose, onAd
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
-                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer"
+                disabled={loadingBranches}
+                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer disabled:bg-gray-100"
               >
-                <option value="" disabled>Select branch</option>
-                <option value="Tanko Branch">Tanko Branch</option>
-                <option value="Iwo road branch">Iwo road branch</option>
-                <option value="Lagos Island">Lagos Island</option>
-                <option value="Abuja Central">Abuja Central</option>
-                <option value="Port Harcourt">Port Harcourt</option>
-                <option value="Kano North">Kano North</option>
+                <option value="" disabled>
+                  {loadingBranches ? 'Loading branches...' : 'Select branch'}
+                </option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.name}>
+                    {branch.name}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <ChevronDown className="h-5 w-5" />
@@ -216,6 +240,8 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
   const [editedAgentData, setEditedAgentData] = useState<Agent | any>(null);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [branches, setBranches] = useState<Array<{id: number; name: string}>>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   // Populate form data when agentToEdit changes
   useEffect(() => {
@@ -238,6 +264,26 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen, onClose]);
+
+  // Effect to fetch branches when sidebar opens
+  useEffect(() => {
+    const fetchBranches = async () => {
+      if (isOpen && branches.length === 0) {
+        try {
+          setLoadingBranches(true);
+          const response = await getBranches();
+          setBranches(response.branches || []);
+        } catch (error) {
+          console.error('Error fetching branches:', error);
+          setFormError('Failed to load branches');
+        } finally {
+          setLoadingBranches(false);
+        }
+      }
+    };
+
+    fetchBranches();
+  }, [isOpen, branches.length]);
 
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -308,15 +354,17 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
                 name="branch"
                 value={editedAgentData?.branch || ''}
                 onChange={handleChange}
-                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer"
+                disabled={loadingBranches}
+                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer disabled:bg-gray-100"
               >
-                <option value="" disabled>Select branch</option>
-                <option value="Tanko Branch">Tanko Branch</option>
-                <option value="Iwo road branch">Iwo road branch</option>
-                <option value="Lagos Island">Lagos Island</option>
-                <option value="Abuja Central">Abuja Central</option>
-                <option value="Port Harcourt">Port Harcourt</option>
-                <option value="Kano North">Kano North</option>
+                <option value="" disabled>
+                  {loadingBranches ? 'Loading branches...' : 'Select branch'}
+                </option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.name}>
+                    {branch.name}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <ChevronDown className="h-5 w-5" />
@@ -391,16 +439,7 @@ const EditAgentSidebar: React.FC<EditAgentSidebarProps> = ({ isOpen, onClose, ag
 
 // Main Page Component
 export default function Page() {
-  const [agents, setAgents] = useState<Agent[]>(new Array(23).fill(null).map((_, i) => ({
-    id: i + 1,
-    fullName: `Agent ${i + 1} Long Name Example`,
-    email: `agent${i + 1}@example.com`,
-    phoneNumber: '08034353536',
-    branch: 'Tanke branch',
-    customers: Math.floor(Math.random() * 50),
-    dateCreated: '23 Jan, 2025 - 10:00',
-    status: i % 2 === 0 ? 'Active' : 'Inactive',
-  })));
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);

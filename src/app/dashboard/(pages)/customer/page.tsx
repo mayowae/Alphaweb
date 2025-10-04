@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { fetchAgents, fetchBranches, addCustomer, fetchPackages } from '../../../../../services/api';
 
-const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCustomerAdded?: () => void }> = ({ isOpen, onClose, onCustomerAdded }) => {
     const [formState, setFormState] = useState({
         branch: '',
         agent: '',
@@ -78,6 +78,10 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = (
             Swal.fire({ icon: 'success', title: 'Customer added successfully!' });
             setFormState({ branch: '', agent: '', fullName: '', alias: '', package: '', phoneNumber: '', address: '', email: '', accountNumber: '' });
             onClose();
+            // Trigger refresh of customers list
+            if (onCustomerAdded) {
+                onCustomerAdded();
+            }
         } catch (err: any) {
             Swal.fire({ icon: 'error', title: 'Failed to add customer', text: err?.message || 'An error occurred.' });
         } finally {
@@ -308,7 +312,7 @@ export default function CustomersPage() {
     const [sortConfig, setSortConfig] = useState<any>({ key: null, direction: 'ascending' });
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
+    const refreshCustomers = () => {
         setLoading(true);
         fetchCustomers()
             .then((res) => {
@@ -316,6 +320,10 @@ export default function CustomersPage() {
             })
             .catch(() => setCustomers([]))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        refreshCustomers();
     }, []);
 
     const sortedCustomers = useMemo(() => {
@@ -597,7 +605,7 @@ export default function CustomersPage() {
             </div>
 
             {/* New Add Customer Sidebar */}
-            <AddCustomerSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+            <AddCustomerSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onCustomerAdded={refreshCustomers} />
         </div>
     );
 }

@@ -4,7 +4,7 @@ const { Agent, Branch, Merchant, Customer } = require('../models');
 // Register agent
 const registerAgent = async (req, res) => {
   try {
-    const { fullName, phoneNumber, email, password, branch, merchantId } = req.body;
+    const { name, fullName, phoneNumber, email, password, branch, merchantId } = req.body;
 
     // Check if agent already exists
     const existingAgent = await Agent.findOne({ where: { email } });
@@ -23,6 +23,7 @@ const registerAgent = async (req, res) => {
 
     // Create agent
     const agent = await Agent.create({
+      name,
       fullName,
       phoneNumber,
       email,

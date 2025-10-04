@@ -144,7 +144,7 @@ const getLoans = async (req, res) => {
       where: whereClause,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['date_issued', 'DESC']],
+      order: [['dateIssued', 'DESC']],
       include: [
         { model: Customer, as: 'customer', attributes: ['id', 'fullName', 'phoneNumber'] },
         { model: Agent, as: 'agent', attributes: ['id', 'fullName'] }

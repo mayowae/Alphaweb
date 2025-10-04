@@ -1,4 +1,5 @@
-export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export const BASE_URL = 'http://localhost:5000';
 
 function getAuthHeaders(): Record<string, string> {
   const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;
@@ -199,6 +200,7 @@ export async function addAgent(agentData: { fullName: string; phoneNumber: strin
   }
 
   const payload: any = {
+    name: agentData.fullName, // Database requires 'name' field
     fullName: agentData.fullName,
     phoneNumber: agentData.phoneNumber,
     email: agentData.email,
@@ -221,6 +223,21 @@ export async function addAgent(agentData: { fullName: string; phoneNumber: strin
   }
   return data;
 }
+export async function getBranches() {
+  const response = await fetch(BASE_URL + '/branches', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch branches');
+  }
+  return data;
+}
+
 export async function updateAgent(agentData: { id: number; fullName: string; phoneNumber: string; email: string; password: string; branch: string; status?: string; }) {
   const formData = new FormData();
   formData.append('id', String(agentData.id));
@@ -379,6 +396,7 @@ export async function addCustomer(customerData: { fullName: string; phoneNumber:
   }
 
   const formData = new FormData();
+  formData.append('name', customerData.fullName); // Database requires 'name' field
   formData.append('fullName', customerData.fullName);
   formData.append('phoneNumber', customerData.phoneNumber);
   formData.append('email', customerData.email);

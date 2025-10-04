@@ -10,7 +10,6 @@ module.exports = (sequelize) => {
     customerId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      field: 'customer_id',
       references: {
         model: 'customers',
         key: 'id'
@@ -18,8 +17,7 @@ module.exports = (sequelize) => {
     },
     customerName: {
       type: DataTypes.STRING,
-      allowNull: false,
-      field: 'customer_name'
+      allowNull: false
     },
     amount: {
       type: DataTypes.DECIMAL(15, 2),
@@ -38,7 +36,6 @@ module.exports = (sequelize) => {
     interestRate: {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: true,
-      field: 'interest_rate',
       comment: 'Annual interest rate percentage'
     },
     status: {
@@ -48,7 +45,6 @@ module.exports = (sequelize) => {
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      field: 'merchant_id',
       references: {
         model: 'merchants',
         key: 'id'
@@ -56,18 +52,15 @@ module.exports = (sequelize) => {
     },
     dateCreated: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      field: 'date_created'
+      defaultValue: DataTypes.NOW
     },
     maturityDate: {
       type: DataTypes.DATE,
-      allowNull: true,
-      field: 'maturity_date'
+      allowNull: true
     },
     expectedReturns: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
-      field: 'total_return',
       comment: 'Expected returns at maturity'
     },
     currentValue: {

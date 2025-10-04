@@ -86,18 +86,27 @@ export default function Wallet() {
       }
       
       if (transactionsResponse.success) {
+        console.log('Raw transaction data from API:', transactionsResponse.transactions);
         const formattedTransactions = transactionsResponse.transactions.map((tx: any) => {
-          const isDebit = tx.type === 'debit';
+          // Use transactionType (customer perspective) if available, otherwise fall back to type
+          // transactionType represents what the user selected (credit/debit from customer's perspective)
+          // type represents the merchant's perspective (opposite of what user selected)
+          const userSelectedType = tx.transactionType || tx.type;
+          const isDebit = userSelectedType === 'debit';
           const amountNum = parseFloat(tx.amount);
-          return {
+          
+          const formattedTx = {
             refId: tx.reference,
             type: isDebit ? 'Debit' : 'Credit',
             amount: `${isDebit ? '-' : ''}₦${Math.abs(amountNum).toLocaleString()}`,
             transactionType: isDebit ? 'Debit' : 'Credit',
             paymentMethod: tx.payment_method || tx.paymentMethod || '—',
-            date: new Date(tx.date).toLocaleDateString('en-GB'),
+            date: new Date(tx.date || tx.createdAt).toLocaleDateString('en-GB'),
             status: tx.status === 'Completed' ? 'Successful' : tx.status
           };
+          
+          console.log(`Transaction ${tx.reference}: userSelectedType=${userSelectedType}, isDebit=${isDebit}, display=${formattedTx.amount}`);
+          return formattedTx;
         });
         setWalletTransactions(formattedTransactions);
       }
@@ -820,6 +829,10 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
   // Handle transfer submission
   const handleTransferSubmit = async () => {
     try {
+      if (!transferForm.transactionType) {
+        alert('Please choose a transaction type');
+        return;
+      }
       if (!transferForm.customerId || !transferForm.amount) {
         alert('Please fill in all required fields');
         return;
@@ -851,6 +864,16 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
 
       if (response.success) {
           setTransferStatus('Transfer completed successfully!');
+          // Immediately refresh the balance data
+          try {
+            const balanceResponse = await getWalletBalance();
+            if (balanceResponse.success) {
+              setWalletBalance(balanceResponse.balance);
+            }
+          } catch (balanceError) {
+            console.error('Failed to refresh balance:', balanceError);
+          }
+          
           setTimeout(() => {
             setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Cash' });
         setIsSidebarOpen(false);
@@ -886,6 +909,16 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
 
               if (retryResponse.success) {
                 setTransferStatus('Transfer completed successfully! Customer wallet was automatically created.');
+                // Immediately refresh the balance data
+                try {
+                  const balanceResponse = await getWalletBalance();
+                  if (balanceResponse.success) {
+                    setWalletBalance(balanceResponse.balance);
+                  }
+                } catch (balanceError) {
+                  console.error('Failed to refresh balance:', balanceError);
+                }
+                
                 setTimeout(() => {
                   setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Cash' });
                   setIsSidebarOpen(false);
@@ -995,8 +1028,9 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
                 name="transaction-type"
                 className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
                 value={transferForm.transactionType}
-                onChange={(e) => setTransferForm({ ...transferForm, transactionType: e.target.value as 'credit' | 'debit' })}
+                onChange={(e) => setTransferForm({ ...transferForm, transactionType: e.target.value })}
               >
+                <option value="">Choose Transaction Type</option>
                 <option value="credit">Credit</option>
                 <option value="debit">Debit</option>
               </select>

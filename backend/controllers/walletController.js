@@ -9,7 +9,7 @@ const getWalletBalance = async (req, res) => {
     // Calculate balance from all transactions
     const transactions = await WalletTransaction.findAll({
       where: { merchantId },
-      attributes: ['type', 'amount', 'status']
+      attributes: ['type', 'transactionType', 'amount', 'status']
     });
 
     let totalBalance = 0;
@@ -18,12 +18,29 @@ const getWalletBalance = async (req, res) => {
 
     transactions.forEach(transaction => {
       if (transaction.status === 'Completed') {
-        if (transaction.type === 'credit') {
+        // Simplified balance calculation: Always deduct debit transactions
+        // Credit transactions increase balance, Debit transactions decrease balance
+        if (transaction.transactionType === 'credit') {
+          // Credit increases merchant's wallet balance
           totalBalance += parseFloat(transaction.amount);
           availableBalance += parseFloat(transaction.amount);
-        } else if (transaction.type === 'debit') {
+        } else if (transaction.transactionType === 'debit') {
+          // Debit decreases merchant's wallet balance
           totalBalance -= parseFloat(transaction.amount);
           availableBalance -= parseFloat(transaction.amount);
+        } else if (transaction.transactionType === 'initial_balance') {
+          // Initial balance increases merchant's wallet
+          totalBalance += parseFloat(transaction.amount);
+          availableBalance += parseFloat(transaction.amount);
+        } else {
+          // Fallback to old logic for transactions without transactionType
+          if (transaction.type === 'credit') {
+            totalBalance += parseFloat(transaction.amount);
+            availableBalance += parseFloat(transaction.amount);
+          } else if (transaction.type === 'debit') {
+            totalBalance -= parseFloat(transaction.amount);
+            availableBalance -= parseFloat(transaction.amount);
+          }
         }
       } else if (transaction.status === 'Pending') {
         pendingAmount += parseFloat(transaction.amount);
@@ -100,7 +117,7 @@ const getWalletTransactions = async (req, res) => {
 
     const { count, rows: transactions } = await WalletTransaction.findAndCountAll({
       where: whereClause,
-      order: [['created_at', 'DESC']],
+      order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
       offset: offset
     });
@@ -293,16 +310,30 @@ const transferToCustomer = async (req, res) => {
     if ((type === 'debit') || !type) {
       const merchantTransactions = await WalletTransaction.findAll({
         where: { merchantId },
-        attributes: ['type', 'amount', 'status']
+        attributes: ['type', 'transactionType', 'amount', 'status']
       });
 
       let merchantBalance = 0;
       merchantTransactions.forEach(transaction => {
         if (transaction.status === 'Completed') {
-          if (transaction.type === 'credit') {
+          // Use the same logic as getWalletBalance for consistency
+          // Always deduct debit transactions, add credit transactions
+          if (transaction.transactionType === 'credit') {
+            // Credit increases merchant's wallet balance
             merchantBalance += parseFloat(transaction.amount);
-          } else if (transaction.type === 'debit') {
+          } else if (transaction.transactionType === 'debit') {
+            // Debit decreases merchant's wallet balance
             merchantBalance -= parseFloat(transaction.amount);
+          } else if (transaction.transactionType === 'initial_balance') {
+            // Initial balance increases merchant's wallet
+            merchantBalance += parseFloat(transaction.amount);
+          } else {
+            // Fallback to old logic for transactions without transactionType
+            if (transaction.type === 'credit') {
+              merchantBalance += parseFloat(transaction.amount);
+            } else if (transaction.type === 'debit') {
+              merchantBalance -= parseFloat(transaction.amount);
+            }
           }
         }
       });

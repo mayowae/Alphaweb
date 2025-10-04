@@ -30,13 +30,6 @@ const createRepayment = async (req, res) => {
     // Normalize loanId
     const normalizedLoanId = Number.isFinite(Number(loanId)) ? Number(loanId) : undefined;
 
-    if (!loan) {
-      return res.status(404).json({
-        success: false,
-        message: 'Loan not found'
-      });
-    }
-
     // Find customer first
     const customer = await Customer.findOne({
       where: {
@@ -73,6 +66,13 @@ const createRepayment = async (req, res) => {
       loan = await Loan.findOne({
         where: { merchantId, [Op.or]: whereOr },
         order: [['dateIssued', 'DESC']]
+      });
+    }
+
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loan not found'
       });
     }
 

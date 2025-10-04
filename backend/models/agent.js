@@ -5,13 +5,22 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    fullName: {
+    name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    phoneNumber: {
+    fullName: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: 'Unknown',
+    },
+    phone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    phoneNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     branch: {
       type: DataTypes.STRING,
