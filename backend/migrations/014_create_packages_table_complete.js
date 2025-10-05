@@ -5,8 +5,13 @@ module.exports = {
     try {
       console.log('Creating packages table with all fields...');
       
-      // Create packages table with all columns
-      await queryInterface.createTable('packages', {
+      // Create packages table with all columns (idempotent)
+      const alreadyExists = await queryInterface.sequelize.query(
+        "SELECT to_regclass('public.packages') as exists;",
+        { type: Sequelize.QueryTypes.SELECT }
+      );
+      if (!alreadyExists[0] || !alreadyExists[0].exists) {
+        await queryInterface.createTable('packages', {
         id: {
           type: DataTypes.INTEGER,
           primaryKey: true,
@@ -164,36 +169,23 @@ module.exports = {
           type: DataTypes.DATE,
           defaultValue: DataTypes.NOW
         }
-      });
+        });
+      }
 
       // Add indexes for better performance
-      await queryInterface.addIndex('packages', ['merchantId'], {
-        name: 'idx_packages_merchant_id'
-      });
+      try { await queryInterface.addIndex('packages', ['merchantId'], { name: 'idx_packages_merchant_id' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
-      await queryInterface.addIndex('packages', ['status'], {
-        name: 'idx_packages_status'
-      });
+      try { await queryInterface.addIndex('packages', ['status'], { name: 'idx_packages_status' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
-      await queryInterface.addIndex('packages', ['type'], {
-        name: 'idx_packages_type'
-      });
+      try { await queryInterface.addIndex('packages', ['type'], { name: 'idx_packages_type' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
-      await queryInterface.addIndex('packages', ['amount'], {
-        name: 'idx_packages_amount'
-      });
+      try { await queryInterface.addIndex('packages', ['amount'], { name: 'idx_packages_amount' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
-      await queryInterface.addIndex('packages', ['packageCategory'], {
-        name: 'idx_packages_category'
-      });
+      try { await queryInterface.addIndex('packages', ['packageCategory'], { name: 'idx_packages_category' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
-      await queryInterface.addIndex('packages', ['loanAmount'], {
-        name: 'idx_packages_loan_amount'
-      });
+      try { await queryInterface.addIndex('packages', ['loanAmount'], { name: 'idx_packages_loan_amount' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
-      await queryInterface.addIndex('packages', ['loanPeriod'], {
-        name: 'idx_packages_loan_period'
-      });
+      try { await queryInterface.addIndex('packages', ['loanPeriod'], { name: 'idx_packages_loan_period' }); } catch (e) { if (!String(e.message).includes('already exists')) throw e; }
 
       console.log('Successfully created packages table with all fields');
     } catch (error) {

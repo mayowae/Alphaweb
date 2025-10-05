@@ -99,12 +99,25 @@ module.exports = {
         }
       });
 
-      // Add indexes for investment_applications
-      await queryInterface.addIndex('investment_applications', ['merchant_id']);
-      await queryInterface.addIndex('investment_applications', ['customer_id']);
-      await queryInterface.addIndex('investment_applications', ['agent_id']);
-      await queryInterface.addIndex('investment_applications', ['status']);
-      await queryInterface.addIndex('investment_applications', ['date_applied']);
+      // Add indexes for investment_applications (idempotent)
+      const indexes = [
+        { name: 'investment_applications_merchant_id', fields: ['merchant_id'] },
+        { name: 'investment_applications_customer_id', fields: ['customer_id'] },
+        { name: 'investment_applications_agent_id', fields: ['agent_id'] },
+        { name: 'investment_applications_status', fields: ['status'] },
+        { name: 'investment_applications_date_applied', fields: ['date_applied'] },
+      ];
+      for (const idx of indexes) {
+        try {
+          await queryInterface.addIndex('investment_applications', idx.fields, { name: idx.name });
+        } catch (e) {
+          if (String(e.message).includes('already exists')) {
+            console.log(`  ⚠️  Skipping existing index ${idx.name}`);
+          } else {
+            throw e;
+          }
+        }
+      }
 
       // 2. Add missing columns to loans table
       console.log('📦 Adding missing columns to loans table...');

@@ -4,9 +4,28 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     try {
       console.log('Creating roles and staff tables...');
+      const qi = queryInterface;
+
+      // Helpers
+      const tableExists = async (tableName) => {
+        const result = await qi.sequelize.query(
+          `SELECT to_regclass('public.${tableName}') AS exists;`
+        );
+        return result && result[0] && result[0][0] && result[0][0].exists !== null;
+      };
+
+      const indexExists = async (tableName, indexName) => {
+        try {
+          const indexes = await qi.showIndex(tableName);
+          return indexes.some((idx) => idx.name === indexName);
+        } catch (e) {
+          return false;
+        }
+      };
       
-      // Create roles table
-      await queryInterface.createTable('roles', {
+      // Create roles table (if not exists)
+      if (!(await tableExists('roles'))) {
+        await queryInterface.createTable('roles', {
         id: {
           type: DataTypes.INTEGER,
           primaryKey: true,
@@ -40,10 +59,12 @@ module.exports = {
           type: DataTypes.DATE,
           defaultValue: DataTypes.NOW
         }
-      });
+        });
+      }
 
-      // Create staff table
-      await queryInterface.createTable('staff', {
+      // Create staff table (if not exists)
+      if (!(await tableExists('staff'))) {
+        await queryInterface.createTable('staff', {
         id: {
           type: DataTypes.INTEGER,
           primaryKey: true,
@@ -98,12 +119,23 @@ module.exports = {
           type: DataTypes.DATE,
           defaultValue: DataTypes.NOW
         }
-      });
+        });
+      }
 
-      // Add indexes for better performance
-      await queryInterface.addIndex('staff', ['merchantId']);
-      await queryInterface.addIndex('staff', ['roleId']);
-      await queryInterface.addIndex('staff', ['email']);
+      // Add indexes for better performance (if not exists)
+      const merchantIdxName = 'staff_merchant_id';
+      const roleIdxName = 'staff_role_id';
+      const emailIdxName = 'staff_email';
+
+      if (!(await indexExists('staff', merchantIdxName))) {
+        await queryInterface.addIndex('staff', ['merchantId'], { name: merchantIdxName });
+      }
+      if (!(await indexExists('staff', roleIdxName))) {
+        await queryInterface.addIndex('staff', ['roleId'], { name: roleIdxName });
+      }
+      if (!(await indexExists('staff', emailIdxName))) {
+        await queryInterface.addIndex('staff', ['email'], { name: emailIdxName });
+      }
 
       console.log('Successfully created roles and staff tables');
     } catch (error) {

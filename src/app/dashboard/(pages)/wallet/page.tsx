@@ -358,7 +358,12 @@ export default function Wallet() {
         </div>
       </div>
       {/* The Sidebar Component */}
-      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} customers={customers} />
+      <Sidebar 
+        isSidebarOpen={isSidebarOpen} 
+        setIsSidebarOpen={setIsSidebarOpen} 
+        customers={customers} 
+        setWalletBalance={setWalletBalance}
+      />
       <div className="flex flex-col md:flex-row gap-4 mt-4">
         <div className="w-full">
           <div className="dashboard-card bg-white flex items-center gap-4 flex-col md:flex-row">
@@ -809,10 +814,16 @@ export default function Wallet() {
 interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  customers: any[]; // Add customerWallets to the props
+  customers: any[];
+  setWalletBalance: React.Dispatch<React.SetStateAction<{
+    total: number;
+    available: number;
+    pending: number;
+    currency: string;
+  }>>;
 }
 
-const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) => {
+const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance }: SidebarProps) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [transferring, setTransferring] = useState(false);
   const [transferStatus, setTransferStatus] = useState('');
@@ -1029,6 +1040,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers }: SidebarProps) =
                 className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
                 value={transferForm.transactionType}
                 onChange={(e) => setTransferForm({ ...transferForm, transactionType: e.target.value })}
+                required
               >
                 <option value="">Choose Transaction Type</option>
                 <option value="credit">Credit</option>
