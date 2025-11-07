@@ -1,0 +1,22 @@
+// utils/permissions.js
+
+module.exports = [
+  "CREATE_ADMIN",
+  "DELETE_ADMIN",
+  "UPDATE_ADMIN",
+
+  "VIEW_ALL_PLANS",
+  "CREATE_PLAN",
+  "UPDATE_PLAN",
+  "DELETE_PLAN",
+
+  "MANAGE_ROLES",
+  "ASSIGN_ROLE",
+
+  "VIEW_CUSTOMERS",
+  "ASSIST_CUSTOMERS",
+
+  "VIEW_PLANS",
+  "SUBSCRIBE_PLAN",
+  "MANAGE_SUBSCRIPTION",
+];

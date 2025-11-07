@@ -40,6 +40,13 @@ const requireCollaborator = (req, res, next) => {
   next();
 };
 
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Access denied. SuperAdmin role required.' });
+  }
+  next();
+};
+
 // Middleware to check if user is either merchant or collaborator
 const requireAuthenticated = (req, res, next) => {
   if (!req.user || (req.user.type !== 'merchant' && req.user.type !== 'collaborator')) {
@@ -53,4 +60,5 @@ module.exports = {
   requireMerchant,
   requireCollaborator,
   requireAuthenticated,
+  requireSuperAdmin
 };

@@ -69,6 +69,12 @@ db.LoanApplication = require('./loanApplication')(sequelize, Sequelize.DataTypes
 db.Repayment = require('./repayment')(sequelize, Sequelize.DataTypes);
 db.InvestmentTransaction = require('./investmentTransaction')(sequelize, Sequelize.DataTypes);
 db.Remittance = require('./remittance')(sequelize, Sequelize.DataTypes);
+db.SuperAdmin = require('./SuperAdmin')(sequelize, Sequelize.DataTypes);
+db.Activity = require('./activity')(sequelize, Sequelize.DataTypes);
+db.Plan = require('./plan')(sequelize, Sequelize.DataTypes);
+db.AdminRole = require('./adminRole')(sequelize, Sequelize.DataTypes);
+db.AdminStaff = require('./adminStaff')(sequelize, Sequelize.DataTypes);
+db.AdminLog = require('./adminLog')(sequelize, Sequelize.DataTypes);
 
 // Define associations
 db.Merchant.hasMany(db.Agent, { foreignKey: 'merchantId' });
@@ -201,6 +207,28 @@ db.Customer.hasMany(db.Remittance, { foreignKey: 'customerId' });
 db.Remittance.belongsTo(db.Customer, { foreignKey: 'customerId' });
 db.Agent.hasMany(db.Remittance, { foreignKey: 'agentId' });
 db.Remittance.belongsTo(db.Agent, { foreignKey: 'agentId' });
+
+
+
+// super admins relations
+db.Activity.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
+db.Merchant.hasMany(db.Activity, { foreignKey: 'merchantId' });
+
+db.Activity.belongsTo(db.Agent, { foreignKey: 'agentId' });
+db.Agent.hasMany(db.Activity, { foreignKey: 'agentId' });
+
+db.Activity.belongsTo(db.Staff, { foreignKey: 'staffId' });
+db.Staff.hasMany(db.Activity, { foreignKey: 'staffId' });
+
+db.Merchant.hasMany(db.Plan, { foreignKey: 'merchantId' });
+db.Plan.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
+
+db.AdminRole.hasMany(db.AdminStaff, { foreignKey: "roleId" });
+db.AdminStaff.belongsTo(db.AdminRole, { foreignKey: "roleId" });
+
+db.AdminStaff.hasMany(db.AdminLog, { foreignKey: 'staffId', as: 'logs' });
+db.AdminLog.belongsTo(db.AdminStaff, { foreignKey: 'staffId', as: 'staff' });
+
 
 // Call associate functions for all models
 Object.keys(db).forEach(modelName => {
