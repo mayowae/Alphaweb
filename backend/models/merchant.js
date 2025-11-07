@@ -42,6 +42,22 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+
+    // ✅ NEW FIELDS
+    status: {
+      type: DataTypes.ENUM('active', 'inactive'),
+      defaultValue: 'active',
+    },
+    lastLogin: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    inactiveDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
+
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
