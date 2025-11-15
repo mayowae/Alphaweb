@@ -14,25 +14,26 @@ const Addpackage = ({ packag, onClose }: pack) => {
 
 
   return (
-<>
-     {/* Overlay backdrop */}
-      {packag &&  (
+    <>
+      {/* Overlay backdrop */}
+      {packag && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/30  z-50 transition-opacity duration-300 ease-in-out "
+          className="fixed inset-0 bg-black/20  z-50 "
         />
       )}
 
       <div className={`fixed top-0 right-0 h-screen w-full max-w-full sm:w-[532px] bg-white shadow-xl
-          transition-transform duration-300 ease-in-out z-50 flex flex-col ${packag ? 'translate-x-0' : '-translate-x-full'} sm:translate-x-0`}>
+          transform transition-transform duration-300 ease-in-out z-50
+          flex flex-col ${packag ? 'translate-x-0' : 'translate-x-full'}`}>
 
-       
-          <div className="flex p-4 items-center justify-between">
-            <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Create package</h1>
-            <Image src="/icons/close.svg" alt="dashboard" width={14} height={14} className="cursor-pointer" onClick={onClose} />
-          </div>
-          <div className='border-t-[1px] w-full mb-1'></div>
-        
+
+        <div className="flex p-4 items-center justify-between">
+          <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Create package</h1>
+          <Image src="/icons/close.svg" alt="dashboard" width={14} height={14} className="cursor-pointer" onClick={onClose} />
+        </div>
+        <div className='border-t-[1px] w-full mb-1'></div>
+
 
         <div className="p-4 w-full overflow-y-auto hide-scrollbar">
           <div className="mb-4">

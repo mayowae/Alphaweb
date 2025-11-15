@@ -48,8 +48,8 @@ const Page = () => {
 
       </div>
 
-      {packag && <Addpackage packag={packag} onClose={() => setPackag(false)} />}
-      {edit && <Editpackage edit={edit} onClose={() => setEdit(false)} />}
+       <Addpackage packag={packag} onClose={() => setPackag(false)} />
+       <Editpackage edit={edit} onClose={() => setEdit(false)} />
 
       <div className='bg-white shadow-sm mt-[25px] w-full relative'>
 

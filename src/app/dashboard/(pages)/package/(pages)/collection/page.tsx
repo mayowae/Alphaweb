@@ -1,7 +1,6 @@
-"use client"
+ "use client"
 import React, { useState } from 'react'
-import { FaPlus } from 'react-icons/fa'
-import { FaAngleDown } from 'react-icons/fa';
+import { FaPlus, FaAngleDown } from 'react-icons/fa'
 import Image from 'next/image';
 import {
   Select,
@@ -21,7 +20,7 @@ const Page = () => {
 
   const [packag, setPackag] = useState<boolean>(false)
 
-  const [edit, setEdit] = useState(false)
+  const [edit, setEdit] = useState<boolean>(false)
 
   {/*const [rowsPerPage, setRowsPerPage] = useState('10');
   const handleRowsPerPageChange = (value: string) => {
@@ -46,8 +45,8 @@ const Page = () => {
 
       </div>
 
-      {packag && <Addpackage packag={packag} onClose={() => setPackag(false)} />}
-      {edit && <Editpackage edit={edit} onClose={() => setEdit(false)} />}
+       <Addpackage packag={packag} onClose={() => setPackag(false)} />
+       <Editpackage edit={edit} onClose={() => setEdit(false)} />
 
       <div className='bg-white shadow-sm mt-[25px] w-full relative'>
 

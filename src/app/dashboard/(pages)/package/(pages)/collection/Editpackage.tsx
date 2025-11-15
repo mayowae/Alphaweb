@@ -10,20 +10,20 @@ interface pack {
 }
 
 const Editpackage = ({ edit, onClose }: pack) => {
-
+  
   return (
     <>
       {/* Overlay backdrop */}
-      {edit && (
+     {edit&&  (
         <div
           onClick={onClose}
           className="fixed inset-0 bg-black/20  z-50 "
         />
       )}
-      <div className={`fixed top-0 right-0 h-screen w-full max-w-full sm:w-[532px] bg-white shadow-xl
-          transform transition-transform duration-300 ease-in-out z-50
-          flex flex-col  ${edit ? 'translate-x-0' : 'translate-x-full'}`}>
 
+      <div  className={`fixed top-0 right-0 h-screen w-full max-w-full sm:w-[532px] bg-white shadow-xl
+          transform transition-transform duration-300 ease-in-out z-50
+          flex flex-col ${edit ? 'translate-x-0' : 'translate-x-full'}`}>
 
         <div className="flex p-4 items-center justify-between">
           <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Edit package</h1>
@@ -50,7 +50,6 @@ const Editpackage = ({ edit, onClose }: pack) => {
             </div>
           </div>
 
-
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed type</p>
             <div className='relative w-full'>
@@ -64,18 +63,15 @@ const Editpackage = ({ edit, onClose }: pack) => {
             </div>
           </div>
 
-
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed amount/percentage</p>
             <input type="text" placeholder='10%' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
           </div>
 
-
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Period (days)</p>
             <input type="text" placeholder='4' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px]' />
           </div>
-
 
           <div className="mb-2">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Collection days</p>
