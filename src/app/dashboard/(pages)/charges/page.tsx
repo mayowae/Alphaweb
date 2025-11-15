@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Pencil, Ellipsis, ArrowRight, ArrowLeft, ChevronUp, ChevronDown, X } from 'lucide-react';
 
 // Interfaces for data and component props
@@ -120,15 +120,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, title, children }) =
 };
 
 // Create Charge Sidebar Content
-const CreateChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+const CreateChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => void }> = ({ isOpen, onClose, onSuccess }) => {
     const [chargeName, setChargeName] = useState('');
     const [chargeType, setChargeType] = useState('');
     const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleCreate = () => {
-        // Add logic to handle the form submission
-        console.log({ chargeName, chargeType, amount });
-        onClose(); // Close after submission
+    const handleCreate = async () => {
+        setLoading(true);
+        try {
+            await createCharge({
+                chargeName,
+                type: chargeType,
+                amount,
+            });
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Charge Created',
+                text: 'Charge has been created successfully.',
+            });
+            
+            setChargeName('');
+            setChargeType('');
+            setAmount('');
+            onSuccess();
+            onClose();
+        } catch (error: any) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Failed to create charge.',
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -180,9 +206,16 @@ const CreateChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = 
             <div className="mt-8">
                 <button
                     onClick={handleCreate}
-                    className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 hover:bg-indigo-700"
+                    disabled={loading}
+                    className={`w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-indigo-700 active:scale-[.98] ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
-                    Create charges
+                    {loading && (
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {loading ? 'Creating...' : 'Create charges'}
                 </button>
             </div>
         </Sidebar>
@@ -190,16 +223,45 @@ const CreateChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = 
 };
 
 // Assign Charge Sidebar Content
-const AssignChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-    const [chargeName, setChargeName] = useState('');
-    const [amount, setAmount] = useState('');
-    const [dueDate, setDueDate] = useState('');
-    const [customer, setCustomer] = useState('');
+const AssignChargeSidebar: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void;
+  onSuccess: () => void;
+  charges: Charge[];
+  customers: any[];
+  initial?: { chargeName?: string; amount?: string; dueDate?: string; customer?: string };
+}> = ({ isOpen, onClose, onSuccess, charges, customers, initial }) => {
+    const [chargeName, setChargeName] = useState(initial?.chargeName || '');
+    const [amount, setAmount] = useState(initial?.amount || '');
+    const [dueDate, setDueDate] = useState(initial?.dueDate || '');
+    const [customer, setCustomer] = useState(initial?.customer || '');
+    const [loading, setLoading] = useState(false);
 
-    const handleAssign = () => {
-        // Add logic to handle the form submission
-        console.log({ chargeName, amount, dueDate, customer });
-        onClose(); // Close after submission
+    useEffect(() => {
+      if (isOpen) {
+        setChargeName(initial?.chargeName || '');
+        setAmount(initial?.amount || '');
+        setDueDate(initial?.dueDate || '');
+        setCustomer(initial?.customer || '');
+      }
+    }, [isOpen, initial?.chargeName, initial?.amount, initial?.dueDate, initial?.customer]);
+
+    const handleAssign = async () => {
+        if (!chargeName || !amount || !dueDate || !customer) {
+          Swal.fire({ icon: 'error', title: 'All fields are required' });
+          return;
+        }
+        setLoading(true);
+        try {
+          await assignCharge({ chargeName, amount, dueDate, customer });
+          Swal.fire({ icon: 'success', title: 'Charge assigned' });
+          onSuccess();
+          onClose();
+        } catch (err:any) {
+          Swal.fire({ icon: 'error', title: 'Failed', text: err?.message || 'Failed to assign charge' });
+        } finally {
+          setLoading(false);
+        }
     };
 
     return (
@@ -216,9 +278,9 @@ const AssignChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                         style={{outline: 'none'}}
                     >
                         <option value="">Select charge</option>
-                        <option value="Processing fee">Processing fee</option>
-                        <option value="Late payment fee">Late payment fee</option>
-                        <option value="Service fee">Service fee</option>
+                        {charges.map((c) => (
+                          <option key={c.id} value={c.chargeName}>{c.chargeName}</option>
+                        ))}
                     </select>
                 </div>
                 <div>
@@ -257,18 +319,25 @@ const AssignChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                         style={{outline: 'none'}}
                     >
                         <option value="">Select customer</option>
-                        <option value="Adebayo Adeyemisi">Adebayo Adeyemisi</option>
-                        <option value="John Doe">John Doe</option>
-                        <option value="Jane Smith">Jane Smith</option>
+                        {customers.map((cust:any) => (
+                          <option key={cust.id} value={cust.fullName}>{cust.fullName}</option>
+                        ))}
                     </select>
                 </div>
             </div>
             <div className="mt-8">
                 <button
                     onClick={handleAssign}
-                    className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 hover:bg-indigo-700"
+                    disabled={loading}
+                    className={`w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-indigo-700 ${loading ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
-                    Assign charges
+                    {loading && (
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {loading ? 'Assigning...' : 'Assign charges'}
                 </button>
             </div>
         </Sidebar>
@@ -276,42 +345,9 @@ const AssignChargeSidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = 
 };
 
 
-// Dummy data for the "Charges" tab
-const initialChargesData: Charge[] = [
-  { id: 1, chargeName: 'Processing fee', type: 'Loan', amount: 'N1,000', activeCustomers: 2, lastUpdated: '23 Jan, 2025' },
-  { id: 2, chargeName: 'Late payment fee', type: 'Penalty', amount: 'N500', activeCustomers: 5, lastUpdated: '22 Jan, 2025' },
-  { id: 3, chargeName: 'Service fee', type: 'Service', amount: 'N2,500', activeCustomers: 1, lastUpdated: '21 Jan, 2025' },
-  { id: 4, chargeName: 'Consultation fee', type: 'Service', amount: 'N1,500', activeCustomers: 3, lastUpdated: '20 Jan, 2025' },
-  { id: 5, chargeName: 'Processing fee', type: 'Loan', amount: 'N1,000', activeCustomers: 2, lastUpdated: '19 Jan, 2025' },
-  { id: 6, chargeName: 'Late payment fee', type: 'Penalty', amount: 'N500', activeCustomers: 5, lastUpdated: '18 Jan, 2025' },
-  { id: 7, chargeName: 'Service fee', type: 'Service', amount: 'N2,500', activeCustomers: 1, lastUpdated: '17 Jan, 2025' },
-  { id: 8, chargeName: 'Consultation fee', type: 'Service', amount: 'N1,500', activeCustomers: 3, lastUpdated: '16 Jan, 2025' },
-  { id: 9, chargeName: 'Processing fee', type: 'Loan', amount: 'N1,000', activeCustomers: 2, lastUpdated: '15 Jan, 2025' },
-  { id: 10, chargeName: 'Late payment fee', type: 'Penalty', amount: 'N500', activeCustomers: 5, lastUpdated: '14 Jan, 2025' },
-  { id: 11, chargeName: 'Service fee', type: 'Service', amount: 'N2,500', activeCustomers: 1, lastUpdated: '13 Jan, 2025' },
-  { id: 12, chargeName: 'Consultation fee', type: 'Service', amount: 'N1,500', activeCustomers: 3, lastUpdated: '12 Jan, 2025' },
-  // Add more dummy data to fill out pages
-  { id: 13, chargeName: 'Processing fee', type: 'Loan', amount: 'N1,000', activeCustomers: 2, lastUpdated: '11 Jan, 2025' },
-  { id: 14, chargeName: 'Late payment fee', type: 'Penalty', amount: 'N500', activeCustomers: 5, lastUpdated: '10 Jan, 2025' },
-  { id: 15, chargeName: 'Service fee', type: 'Service', amount: 'N2,500', activeCustomers: 1, lastUpdated: '09 Jan, 2025' },
-  { id: 16, chargeName: 'Consultation fee', type: 'Service', amount: 'N1,500', activeCustomers: 3, lastUpdated: '08 Jan, 2025' },
-];
-
-// Dummy data for the "Charges history" tab
-const initialHistoryData: HistoryItem[] = [
-  { id: 1, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 2, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Paid' },
-  { id: 3, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 4, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 5, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 6, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 7, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Paid' },
-  { id: 8, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 9, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 10, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-  { id: 11, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Paid' },
-  { id: 12, customerName: 'Adebayo Adeyemisi', accountNumber: '9045675657', chargeName: 'Processing fee', amount: 'N2,000', dueDate: '24 Feb, 2025', dateApplied: '23 Jan, 2025', status: 'Pending' },
-];
+// Import API functions
+import { fetchCharges, fetchChargeHistory, createCharge, assignCharge, fetchCustomers, updateCharge } from '../../../../../services/api';
+import Swal from 'sweetalert2';
 
 const StatusPill: React.FC<{ status: string }> = ({ status }) => {
   const isPaid = status === 'Paid';
@@ -325,7 +361,7 @@ const StatusPill: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-const ChargesTable: React.FC<ChargesTableProps> = ({ data, sortConfig, onSort, rowsPerPage, searchTerm }) => {
+const ChargesTable: React.FC<ChargesTableProps & { onEdit: (row: Charge) => void }> = ({ data, sortConfig, onSort, rowsPerPage, searchTerm, onEdit }) => {
   const filteredData = data.filter(item =>
     Object.values(item).some(value =>
       String(value).toLowerCase().includes(searchTerm.toLowerCase())
@@ -381,8 +417,12 @@ const ChargesTable: React.FC<ChargesTableProps> = ({ data, sortConfig, onSort, r
                 <td className="p-4 text-sm text-gray-500">{row.lastUpdated}</td>
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2">
-                    <img src="/icons/lucide_edit.svg" alt="" />
-                    <img src="/icons/dots-bold.svg" alt="" />
+                    <button onClick={() => onEdit(row)} className="p-2 rounded hover:bg-gray-100 transition-colors duration-200" aria-label="Edit">
+                      <img src="/icons/lucide_edit.svg" alt="Edit" />
+                    </button>
+                    <button className="p-2 rounded hover:bg-gray-100 transition-colors duration-200" aria-label="More">
+                      <img src="/icons/dots-bold.svg" alt="More" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -470,10 +510,20 @@ const ChargesHistoryTable: React.FC<ChargesHistoryTableProps> = ({ data, sortCon
                 <td className="p-4 text-sm text-gray-500">{row.dueDate}</td>
                 <td className="p-4 text-sm text-gray-500">{row.dateApplied}</td>
                 <td className="p-4 text-sm text-gray-500">
-                  <img src="/icons/lucide_edit.svg" alt="" />
+                  <StatusPill status={row.status} />
                 </td>
                 <td className="p-4 text-right">
-                  <img src="/icons/dots-bold.svg" alt="" />
+                  <div className="relative inline-block text-left">
+                    <details>
+                      <summary className="list-none cursor-pointer inline-flex items-center justify-center p-2 rounded hover:bg-gray-100 transition-colors duration-200">
+                        <img src="/icons/dots-bold.svg" alt="Options" />
+                      </summary>
+                      <div className="absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Mark as Paid</button>
+                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Reassign</button>
+                      </div>
+                    </details>
+                  </div>
                 </td>
               </tr>
             ))
@@ -500,8 +550,44 @@ const App = () => {
   const [statusFilter, setStatusFilter] = useState('All status');
   const [isCreateChargeSidebarOpen, setIsCreateChargeSidebarOpen] = useState(false);
   const [isAssignChargeSidebarOpen, setIsAssignChargeSidebarOpen] = useState(false);
+  const [chargesData, setChargesData] = useState<Charge[]>([]);
+  const [historyData, setHistoryData] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [reassignInitial, setReassignInitial] = useState<{ chargeName?: string; amount?: string; dueDate?: string; customer?: string }|undefined>(undefined);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editState, setEditState] = useState<{ id: number; chargeName: string; type: string; amount: string }>({ id: 0, chargeName: '', type: '', amount: '' });
 
-  const data = activeTab === 'Charges' ? initialChargesData : initialHistoryData;
+  // Fetch data from API
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [chargesRes, historyRes, customersRes] = await Promise.all([
+        fetchCharges(),
+        fetchChargeHistory(),
+        fetchCustomers()
+      ]);
+      
+      setChargesData((chargesRes as any).charges || []);
+      setHistoryData((historyRes as any).history || []);
+      setCustomers((customersRes as any).customers || []);
+    } catch (error: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.message || 'Failed to fetch charges data.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on component mount
+  React.useEffect(() => {
+    fetchData();
+  }, []);
+
+  const data = activeTab === 'Charges' ? chargesData : historyData;
 
   const sortedData = useMemo(() => {
     let sortableData = [...data];
@@ -614,14 +700,14 @@ const App = () => {
           <div className="flex flex-col gap-4 mt-4 md:mt-0 md:flex-row">
             <button
               onClick={() => setIsCreateChargeSidebarOpen(true)}
-              className="bg-white text-indigo-600 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 hover:bg-gray-50"
+              className="bg-white text-indigo-600 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-gray-50 active:scale-[.98]"
             >
               <Plus size={18} />
               Create charges
             </button>
             <button
-              onClick={() => setIsAssignChargeSidebarOpen(true)}
-              className="bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-colors duration-200 hover:bg-indigo-700"
+              onClick={() => { setReassignInitial(undefined); setIsAssignChargeSidebarOpen(true); }}
+              className="bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-indigo-700 active:scale-[.98]"
             >
               <Plus size={18} />
               Assign charges
@@ -696,7 +782,7 @@ const App = () => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
-              <button className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium text-sm transition-colors duration-200 hover:bg-gray-50 w-full sm:w-auto">
+              <button onClick={() => setIsAssignChargeSidebarOpen(true)} className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium text-sm transition-all duration-200 hover:bg-gray-50 active:scale-[.98] w-full sm:w-auto">
                 Reassign
               </button>
               <div className="relative w-full sm:w-64">
@@ -723,6 +809,7 @@ const App = () => {
               onSort={requestSort as (key: keyof Charge) => void}
               rowsPerPage={rowsPerPage}
               searchTerm={searchTerm}
+              onEdit={(row) => { setEditState({ id: row.id, chargeName: row.chargeName, type: row.type, amount: row.amount.replace(/[^\d.-]/g,'') }); setIsEditOpen(true); }}
             />
           ) : (
             <ChargesHistoryTable
@@ -770,11 +857,55 @@ const App = () => {
       <CreateChargeSidebar
           isOpen={isCreateChargeSidebarOpen}
           onClose={() => setIsCreateChargeSidebarOpen(false)}
+          onSuccess={fetchData}
       />
       <AssignChargeSidebar
           isOpen={isAssignChargeSidebarOpen}
           onClose={() => setIsAssignChargeSidebarOpen(false)}
+          onSuccess={fetchData}
+          charges={chargesData}
+          customers={customers}
+          initial={reassignInitial}
       />
+
+      {/* Edit Charge Sidebar */}
+      <Sidebar isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit charge">
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Charge name</label>
+            <input value={editState.chargeName} onChange={(e)=>setEditState({...editState, chargeName: e.target.value})} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Type</label>
+            <select value={editState.type} onChange={(e)=>setEditState({...editState, type: e.target.value})} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              <option value="Loan">Loan</option>
+              <option value="Penalty">Penalty</option>
+              <option value="Service">Service</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Amount</label>
+            <input value={editState.amount} onChange={(e)=>setEditState({...editState, amount: e.target.value})} className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          </div>
+        </div>
+        <div className="mt-8">
+          <button
+            onClick={async ()=>{
+              try {
+                await updateCharge({ id: editState.id, chargeName: editState.chargeName, type: editState.type, amount: editState.amount });
+                Swal.fire({ icon:'success', title:'Charge updated'});
+                setIsEditOpen(false);
+                fetchData();
+              } catch(err:any){
+                Swal.fire({ icon:'error', title:'Failed', text: err?.message || 'Failed to update charge' });
+              }
+            }}
+            className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-indigo-700 active:scale-[.98]"
+          >
+            Update charge
+          </button>
+        </div>
+      </Sidebar>
     </div>
   );
 };
