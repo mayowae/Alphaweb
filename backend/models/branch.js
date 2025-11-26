@@ -20,14 +20,17 @@ module.exports = (sequelize, DataTypes) => {
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'merchant_id',
     },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'created_at',
     },
     updatedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'updated_at',
     },
   }, {
     tableName: 'branches',

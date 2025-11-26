@@ -1,6 +1,184 @@
 const { Investment, Customer } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Investments
+ *     description: Investment management
+ * /investments:
+ *   get:
+ *     summary: List investments
+ *     tags: [Investments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Investments list
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               investments:
+ *                 - id: 700
+ *                   customerId: 12
+ *                   customerName: "Jane Doe"
+ *                   accountNumber: "ACC123456"
+ *                   amount: 100000.00
+ *                   interestRate: 12.5
+ *                   plan: "Fixed"
+ *                   duration: 180
+ *                   agentId: 3
+ *                   agentName: "Agent Smith"
+ *                   branch: "Main Branch"
+ *                   status: "Active"
+ *                   merchantId: 1
+ *                   startDate: "2024-01-15T00:00:00.000Z"
+ *                   maturityDate: "2024-07-15T00:00:00.000Z"
+ *                   expectedReturns: 120000.00
+ *                   actualReturns: 0.00
+ *                   notes: "Long-term investment for retirement"
+ *                   approvedBy: 2
+ *                   approvedAt: "2024-01-15T14:30:00.000Z"
+ *                   totalReturn: 120000.00
+ *                   currentValue: 105000.00
+ *                   dateCreated: "2024-01-15T10:30:00.000Z"
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
+ *   post:
+ *     summary: Create investment
+ *     tags: [Investments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerName, amount, plan, duration]
+ *             properties:
+ *               customerName: { type: string }
+ *               amount: { type: number, format: float }
+ *               plan: { type: string }
+ *               duration: { type: integer }
+ *     responses:
+ *       201:
+ *         description: Investment created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Investment created successfully"
+ *               investment:
+ *                 id: 701
+ *                 customerId: 12
+ *                 customerName: "Jane Doe"
+ *                 accountNumber: "ACC123456"
+ *                 amount: 150000.00
+ *                 interestRate: 12.5
+ *                 plan: "Flexible"
+ *                 duration: 90
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 branch: "Main Branch"
+ *                 status: "Active"
+ *                 merchantId: 1
+ *                 startDate: "2024-01-15T00:00:00.000Z"
+ *                 maturityDate: "2024-04-15T00:00:00.000Z"
+ *                 expectedReturns: 120000.00
+ *                 actualReturns: 0.00
+ *                 notes: "Short-term flexible investment"
+ *                 approvedBy: 2
+ *                 approvedAt: "2024-01-15T14:30:00.000Z"
+ *                 totalReturn: 120000.00
+ *                 currentValue: 105000.00
+ *                 dateCreated: "2024-01-15T10:30:00.000Z"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ * /investments/{id}:
+ *   get:
+ *     summary: Get investment by ID
+ *     tags: [Investments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Investment retrieved
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               investment:
+ *                 id: 700
+ *                 customerId: 12
+ *                 customerName: "Jane Doe"
+ *                 accountNumber: "ACC123456"
+ *                 amount: 100000.00
+ *                 interestRate: 12.5
+ *                 plan: "Fixed"
+ *                 duration: 180
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 branch: "Main Branch"
+ *                 status: "Active"
+ *                 merchantId: 1
+ *                 startDate: "2024-01-15T00:00:00.000Z"
+ *                 maturityDate: "2024-07-15T00:00:00.000Z"
+ *                 expectedReturns: 120000.00
+ *                 actualReturns: 0.00
+ *                 notes: "Long-term investment for retirement"
+ *                 approvedBy: 2
+ *                 approvedAt: "2024-01-15T14:30:00.000Z"
+ *                 totalReturn: 120000.00
+ *                 currentValue: 105000.00
+ *                 dateCreated: "2024-01-15T10:30:00.000Z"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *   delete:
+ *     summary: Delete investment (soft)
+ *     tags: [Investments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Investment deleted
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Investment deleted successfully"
+ *   put:
+ *     summary: Update investment
+ *     tags: [Investments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: { type: integer }
+ *               customerName: { type: string }
+ *               amount: { type: number, format: float }
+ *               plan: { type: string }
+ *               duration: { type: integer }
+ *               status: { type: string }
+ */
+
 // Create a new investment
 const createInvestment = async (req, res) => {
   try {
@@ -206,3 +384,4 @@ module.exports = {
   updateInvestment,
   deleteInvestment
 };
+

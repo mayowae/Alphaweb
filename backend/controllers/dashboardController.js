@@ -7,9 +7,79 @@ const {
   InvestmentApplication, 
   LoanApplication,
   Merchant,
-  WalletTransaction
+  WalletTransaction,
+  Collection
 } = require('../models');
+const { Op, col, where } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Dashboard
+ *     description: Dashboard statistics
+ * /dashboard/stats:
+ *   get:
+ *     summary: Get aggregated dashboard statistics
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard stats
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 walletBalance: 150000
+ *                 allCollectionWallet: 95000
+ *                 totalDue: 120000
+ *                 smsBalance: 75
+ *                 totalCustomers: 420
+ *                 totalAgents: 35
+ *                 activeLoans: 55
+ *                 activeInvestments: 28
+ * /dashboard/transactions:
+ *   get:
+ *     summary: Get dashboard transactions timeseries
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: duration
+ *         schema: { type: string, enum: ["Last 3 months", "Last 6 months", "Last 12 months"], default: "Last 12 months" }
+ *     responses:
+ *       200:
+ *         description: Timeseries data
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 - name: "Jan"
+ *                   Collection: 120000
+ *                   Investment: 80000
+ *                   Loan: 40000
+ * /dashboard/agent-customer:
+ *   get:
+ *     summary: Get agent vs customer statistics
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pie chart data
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 - name: "Agents"
+ *                   value: 35
+ *                 - name: "Customers"
+ *                   value: 420
+ */
 // Get dashboard statistics
 const getDashboardStats = async (req, res) => {
   try {
@@ -215,11 +285,133 @@ const getAgentCustomerStats = async (req, res) => {
   }
 };
 
-module.exports = {
-  getDashboardStats,
-  getTransactionStats,
-  getAgentCustomerStats
+// exports moved to bottom after function definitions
+
+/**
+ * @swagger
+ * /dashboard/agent-summary:
+ *   get:
+ *     summary: Get summarized KPIs for the authenticated agent's merchant
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Summary KPIs
+ *       401:
+ *         description: Unauthorized
+ */
+const getAgentSummary = async (req, res) => {
+  try {
+    // Resolve merchant for both merchants and agents
+    const merchantId = req.user?.merchantId || req.user?.id;
+    if (!merchantId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
+    }
+
+    // Dates
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      totalCollectionsSum,
+      allTransactionsCount,
+      totalCollectionAmountSum,
+      totalCollectionTodaySum,
+      activeInvestmentsCount,
+      investmentApplicationsCount,
+      activeLoansCount,
+      loanApplicationsCount,
+      totalCollectionAmountTodaySum,
+      totalCollectionMonthSum,
+      merchant,
+      totalCustomersCount,
+      allCustomersAccumulatedBalanceSum
+    ] = await Promise.all([
+      // Interpret as count of completed collections (repayments) records
+      Repayment.count({ where: { merchantId, status: 'Completed' } }),
+      WalletTransaction.count({ where: { merchantId, status: 'Completed' } }),
+      // Total amount of all completed collections
+      Repayment.sum('amount', { where: { merchantId, status: 'Completed' } }),
+      // Collections completed today
+      Repayment.sum('amount', { where: { merchantId, status: 'Completed', date: { [Op.gte]: startOfToday } } }),
+      Investment.count({ where: { merchantId, status: 'Active' } }),
+      InvestmentApplication.count({ where: { merchantId } }),
+      Loan.count({ where: { merchantId, status: 'Active' } }),
+      // Explicitly reference DB column for LoanApplication to avoid camelCase mismatch
+      LoanApplication.count({ where: where(col('LoanApplication.merchant_id'), merchantId) }),
+      // Alias of totalCollectionToday but kept for explicit field mapping
+      Repayment.sum('amount', { where: { merchantId, status: 'Completed', date: { [Op.gte]: startOfToday } } }),
+      // Collections in current month
+      Repayment.sum('amount', { where: { merchantId, status: 'Completed', date: { [Op.gte]: startOfMonth } } }),
+      Merchant.findByPk(merchantId),
+      Customer.count({ where: { merchantId } }),
+      // Accumulated balance from customer wallets if available; fallback to 0
+      // Using WalletTransaction as proxy: sum of credits - debits
+      (async () => {
+        const txs = await WalletTransaction.findAll({ where: { merchantId, status: 'Completed' }, attributes: ['type','transactionType','amount'] });
+        let net = 0;
+        for (const t of txs) {
+          const amount = parseFloat(t.amount);
+          const tt = t.transactionType || t.type;
+          if (tt === 'credit') net += amount; else if (tt === 'debit') net -= amount; else if (tt === 'initial_balance') net += amount;
+        }
+        return net;
+      })()
+    ]);
+
+    // Currency symbol mapping
+    const getCurrencySymbol = (currency) => {
+      const symbolMap = {
+        'NGN': '₦',
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£',
+        'XOF': 'CFA',
+        'GHS': '₵',
+        'GMD': 'D',
+        'GNF': 'FG',
+        'LRD': 'L$',
+        'MRU': 'UM',
+        'SLL': 'Le',
+        'CVE': 'Esc'
+      };
+      return symbolMap[currency] || currency;
+    };
+
+    return res.json({
+      success: true,
+      data: {
+        numTotalCollections: Number(totalCollectionsSum || 0),
+        allTransactions: Number(allTransactionsCount || 0),
+        totalCollectionAmount: Number(totalCollectionAmountSum || 0),
+        totalCollectionToday: Number(totalCollectionTodaySum || 0),
+        activeInvestments: Number(activeInvestmentsCount || 0),
+        investmentApplications: Number(investmentApplicationsCount || 0),
+        activeLoans: Number(activeLoansCount || 0),
+        loanApplications: Number(loanApplicationsCount || 0),
+        totalCollectionAmountToday: Number(totalCollectionAmountTodaySum || 0),
+        totalCollectionMonth: Number(totalCollectionMonthSum || 0),
+        currency: merchant?.currency || 'NGN',
+        currencySymbol: getCurrencySymbol(merchant?.currency || 'NGN'),
+        totalCollectionAmountMonth: Number(totalCollectionMonthSum || 0),
+        totalCustomers: Number(totalCustomersCount || 0),
+        allCustomersAccumulatedBalance: Number(allCustomersAccumulatedBalanceSum || 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching agent summary:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch agent summary', error: error.message });
+  }
 };
 
 
 
+
+module.exports = {
+  getDashboardStats,
+  getTransactionStats,
+  getAgentCustomerStats,
+  getAgentSummary
+};

@@ -1,111 +1,121 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-const { User } = require('../models');
+const { Agent } = require('../models');
 
-// Configure nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+/**
+ * @swagger
+ * tags:
+ *   - name: Mobile Auth
+ *     description: Agent authentication for mobile
+ * /api/auth/login:
+ *   post:
+ *     summary: Agent login
+ *     tags: [Mobile Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: 
+ *                 type: string
+ *                 format: email
+ *                 description: Agent email address
+ *                 example: "agent@alphaweb.com"
+ *               password: 
+ *                 type: string
+ *                 format: password
+ *                 description: Agent password
+ *                 example: "password123"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 agent:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     fullName:
+ *                       type: string
+ *                       example: "John Agent"
+ *                     email:
+ *                       type: string
+ *                       example: "agent@alphaweb.com"
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid credentials"
+ *       500:
+ *         description: Login failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login failed"
+ *                 error:
+ *                   type: string
+ *                   example: "Error details"
+ */
 
-// Generate OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-// Send OTP email
-const sendOTPEmail = async (email, otp) => {
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'Your OTP for AlphaWeb Mobile',
-    text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
-  };
-
-  await transporter.sendMail(mailOptions);
-};
-
-// Register user
-const registerUser = async (req, res) => {
-  try {
-    const { fullName, email, phone, password } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Generate OTP
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Create user
-    const user = await User.create({
-      fullName,
-      email,
-      phone,
-      password: hashedPassword,
-      otp,
-      otpExpires,
-    });
-
-    // Send OTP email
-    await sendOTPEmail(email, otp);
-
-    res.status(201).json({
-      message: 'User registered successfully. Please verify your email with the OTP sent.',
-      userId: user.id,
-    });
-  } catch (error) {
-    console.error('User registration error:', error);
-    res.status(500).json({ message: 'Registration failed', error: error.message });
-  }
-};
-
-// Login user
+// Login agent
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
+    // Find agent
+    const agent = await Agent.findOne({ where: { email } });
+    if (!agent) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(password, agent.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Check if email is verified
-    if (!user.isVerified) {
-      return res.status(403).json({ message: 'Please verify your email first' });
-    }
-
-    // Generate JWT token
+    // Generate JWT token (include merchantId for scoping)
+    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    console.log('Creating token with JWT secret:', jwtSecret ? 'Environment variable' : 'Default');
+    
     const token = jwt.sign(
-      { id: user.id, email: user.email, type: 'user' },
-      process.env.JWT_SECRET || 'your-secret-key',
+      { id: agent.id, email: agent.email, type: 'agent', merchantId: agent.merchantId },
+      jwtSecret,
       { expiresIn: '24h' }
     );
-
+    
+    console.log('Token created successfully for agent:', agent.email);
     res.json({
       message: 'Login successful',
       token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
+      agent: {
+        id: agent.id,
+        fullName: agent.fullName,
+        email: agent.email,
+        merchantId: agent.merchantId,
       },
     });
   } catch (error) {
@@ -113,130 +123,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
-
-// Forgot password
-const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
-      return res.status(404).json({ message: 'Email not found' });
-    }
-
-    // Generate OTP
-    const otp = generateOTP();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-
-    // Update user with OTP
-    await user.update({ otp, otpExpires });
-
-    // Send OTP email
-    await sendOTPEmail(email, otp);
-
-    res.json({ message: 'OTP sent to your email' });
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ message: 'Failed to send OTP', error: error.message });
-  }
-};
-
-// Verify OTP
-const verifyOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
-      return res.status(404).json({ message: 'Email not found' });
-    }
-
-    // Check if OTP is valid and not expired
-    if (user.otp !== otp || new Date() > user.otpExpires) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
-    }
-
-    // Mark email as verified and clear OTP
-    await user.update({
-      isVerified: true,
-      otp: null,
-      otpExpires: null,
-    });
-
-    res.json({ message: 'Email verified successfully' });
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    res.status(500).json({ message: 'OTP verification failed', error: error.message });
-  }
-};
-
-// Change password
-const changePassword = async (req, res) => {
-  try {
-    const { email, newPassword } = req.body;
-
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
-      return res.status(404).json({ message: 'Email not found' });
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password
-    await user.update({ password: hashedPassword });
-
-    res.json({ message: 'Password changed successfully' });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({ message: 'Password change failed', error: error.message });
-  }
-};
-
-// Get user profile
-const getUserProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const user = await User.findByPk(userId, {
-      attributes: ['id', 'fullName', 'email', 'phone', 'isVerified', 'createdAt'],
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json({ user });
-  } catch (error) {
-    console.error('Get user profile error:', error);
-    res.status(500).json({ message: 'Failed to get user profile', error: error.message });
-  }
-};
-
-// Update device token for push notifications
-const updateDeviceToken = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { deviceToken } = req.body;
-
-    await User.update(
-      { deviceToken },
-      { where: { id: userId } }
-    );
-
-    res.json({ message: 'Device token updated successfully' });
-  } catch (error) {
-    console.error('Update device token error:', error);
-    res.status(500).json({ message: 'Failed to update device token', error: error.message });
-  }
-};
-
 module.exports = {
-  registerUser,
   loginUser,
-  forgotPassword,
-  verifyOTP,
-  changePassword,
-  getUserProfile,
-  updateDeviceToken,
 };
+

@@ -3,13 +3,333 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { Collaborator } = require('../models');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Collaborator Auth
+ *     description: Collaborator authentication and management
+ * /collaborator/signup:
+ *   post:
+ *     summary: Register a new collaborator
+ *     tags: [Collaborator Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fullName, email, phone, password, role]
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 description: Full name
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *                 example: "john@alphaweb.com"
+ *               phone:
+ *                 type: string
+ *                 description: Phone number
+ *                 example: "+2348012345678"
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Password
+ *                 example: "password123"
+ *               role:
+ *                 type: string
+ *                 description: Collaborator role
+ *                 example: "Manager"
+ *     responses:
+ *       201:
+ *         description: Collaborator registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Collaborator registered successfully. Please verify your email with the OTP sent."
+ *                 collaboratorId:
+ *                   type: integer
+ *                   example: 1
+ *       400:
+ *         description: Email already registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Email already registered"
+ *       500:
+ *         description: Registration failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Registration failed"
+ *                 error:
+ *                   type: string
+ *                   example: "Error details"
+ * /collaborator/login:
+ *   post:
+ *     summary: Login collaborator
+ *     tags: [Collaborator Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *                 example: "john@alphaweb.com"
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Password
+ *                 example: "password123"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 collaborator:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     fullName:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     email:
+ *                       type: string
+ *                       example: "john@alphaweb.com"
+ *                     role:
+ *                       type: string
+ *                       example: "Manager"
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid credentials"
+ *       403:
+ *         description: Email not verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Please verify your email first"
+ *       500:
+ *         description: Login failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Login failed"
+ *                 error:
+ *                   type: string
+ *                   example: "Error details"
+ * /collaborator/forgot-password:
+ *   post:
+ *     summary: Request password reset for collaborator
+ *     tags: [Collaborator Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *                 example: "john@alphaweb.com"
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent to your email"
+ *       404:
+ *         description: Collaborator not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Collaborator not found"
+ *       500:
+ *         description: Failed to send OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Failed to send OTP"
+ * /collaborator/verify-otp:
+ *   post:
+ *     summary: Verify OTP for collaborator
+ *     tags: [Collaborator Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, otp]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *                 example: "john@alphaweb.com"
+ *               otp:
+ *                 type: string
+ *                 description: OTP code
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP verified successfully"
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid or expired OTP"
+ *       500:
+ *         description: Verification failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Verification failed"
+ * /collaborator/change-password:
+ *   post:
+ *     summary: Change collaborator password
+ *     tags: [Collaborator Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, newPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *                 example: "john@alphaweb.com"
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 description: New password
+ *                 example: "newpassword123"
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Password changed successfully"
+ *       404:
+ *         description: Collaborator not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Collaborator not found"
+ *       500:
+ *         description: Password change failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Password change failed"
+ */
+
 // Configure nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'sandbox.smtp.mailtrap.io',
-  auth: {
+transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+  auth: process.env.EMAIL_USER && process.env.EMAIL_PASS ? {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
-  },
+  } : undefined,
+  tls: { rejectUnauthorized: false },
+  requireTLS: true,
+  debug: true,
 });
 
 // Generate OTP

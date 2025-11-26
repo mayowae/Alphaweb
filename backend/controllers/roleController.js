@@ -1,5 +1,113 @@
 const { Role } = require('../models');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Roles
+ *     description: Role management
+ * /roles:
+ *   get:
+ *     summary: List all roles
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Roles retrieved successfully"
+ *               roles:
+ *                 - id: 1
+ *                   roleName: "Admin"
+ *                 - id: 2
+ *                   roleName: "Manager"
+ *   post:
+ *     summary: Create role
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [roleName]
+ *             properties:
+ *               roleName: { type: string }
+ *               cantView: { type: array, items: { type: string } }
+ *               canViewOnly: { type: array, items: { type: string } }
+ *               canEdit: { type: array, items: { type: string } }
+ *               permissions: { type: object }
+ *     responses:
+ *       201:
+ *         description: Role created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Role created successfully"
+ *               role:
+ *                 id: 3
+ *                 roleName: "Auditor"
+ *       400:
+ *         description: Role name already exists
+ * /roles/{id}:
+ *   get:
+ *     summary: Get role by ID
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Role ID
+ *     responses:
+ *       200:
+ *         description: Role retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Role retrieved successfully"
+ *               role:
+ *                 id: 2
+ *                 roleName: "Manager"
+ *       404:
+ *         description: Role not found
+ *   put:
+ *     summary: Update role
+ *     tags: [Roles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: { type: integer }
+ *               roleName: { type: string }
+ *               cantView: { type: array, items: { type: string } }
+ *               canViewOnly: { type: array, items: { type: string } }
+ *               canEdit: { type: array, items: { type: string } }
+ *               permissions: { type: object }
+ *     responses:
+ *       200:
+ *         description: Role updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Role updated successfully"
+ *               role:
+ *                 id: 2
+ *                 roleName: "Manager"
+ */
+
 // Create role
 const createRole = async (req, res) => {
   try {

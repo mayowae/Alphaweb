@@ -1,6 +1,313 @@
 const { Collection, Customer, Agent } = require('../models');
 const { Op, Sequelize } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Collections
+ *     description: Collections management
+ * /collections:
+ *   get:
+ *     summary: List collections
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collections list
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collections:
+ *                 - id: 101
+ *                   customerId: 12
+ *                   customerName: "John Doe"
+ *                   accountNumber: "ACC123456"
+ *                   amount: 5000.00
+ *                   amountCollected: 5000.00
+ *                   dueDate: "2025-01-31T00:00:00.000Z"
+ *                   collectedDate: "2025-01-31T10:30:00.000Z"
+ *                   type: "Daily"
+ *                   description: "Daily savings collection"
+ *                   collectionNotes: "Customer requested early collection"
+ *                   priority: "Medium"
+ *                   reminderSent: false
+ *                   reminderDate: "2025-01-30T09:00:00.000Z"
+ *                   packageId: 801
+ *                   packageName: "Premium Package"
+ *                   packageAmount: 50000.00
+ *                   cycle: 30
+ *                   cycleCounter: 5
+ *                   isFirstCollection: false
+ *                   status: "Pending"
+ *                   merchantId: 1
+ *                   agentId: 3
+ *                   dateCreated: "2025-01-01T10:00:00.000Z"
+ *   post:
+ *     summary: Create single collection
+ *     tags: [Single Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerName, amount, dueDate, type]
+ *             properties:
+ *               customerName: { type: string }
+ *               amount: { type: number, format: float }
+ *               dueDate: { type: string, format: date }
+ *               type: { type: string }
+ *               description: { type: string }
+ *               packageName: { type: string }
+ *               packageAmount: { type: number, format: float }
+ *               cycle: { type: integer }
+ *               cycleCounter: { type: integer }
+ *               isFirstCollection: { type: boolean }
+ *     responses:
+ *       201:
+ *         description: Collection created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection created successfully"
+ *               collection:
+ *                 id: 102
+ *                 customerId: 12
+ *                 customerName: "John Doe"
+ *                 accountNumber: "ACC123456"
+ *                 amount: 5000.00
+ *                 amountCollected: 0.00
+ *                 dueDate: "2025-01-31T00:00:00.000Z"
+ *                 collectedDate: null
+ *                 type: "Daily"
+ *                 description: "Daily savings collection"
+ *                 collectionNotes: "Customer requested early collection"
+ *                 priority: "Medium"
+ *                 reminderSent: false
+ *                 reminderDate: "2025-01-30T09:00:00.000Z"
+ *                 packageId: 801
+ *                 packageName: "Premium Package"
+ *                 packageAmount: 50000.00
+ *                 cycle: 30
+ *                 cycleCounter: 5
+ *                 isFirstCollection: false
+ *                 status: "Pending"
+ *                 merchantId: 1
+ *                 agentId: 3
+ *                 dateCreated: "2025-01-01T10:00:00.000Z"
+ * /collections/bulk:
+ *   post:
+ *     summary: Create multiple collections in bulk
+ *     tags: [Bulk Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [collections]
+ *             properties:
+ *               collections:
+ *                 type: array
+ *                 description: List of collection payloads
+ *                 items:
+ *                   type: object
+ *                   required: [customerName, amount, dueDate, type]
+ *                   properties:
+ *                     customerName: { type: string }
+ *                     amount: { type: number, format: float }
+ *                     dueDate: { type: string, format: date }
+ *                     type: { type: string }
+ *                     description: { type: string }
+ *                     packageName: { type: string }
+ *                     packageAmount: { type: number, format: float }
+ *                     cycle: { type: integer }
+ *                     cycleCounter: { type: integer }
+ *                     isFirstCollection: { type: boolean }
+ *     responses:
+ *       201:
+ *         description: Bulk collections created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               results:
+ *                 - success: true
+ *                   id: 201
+ *                 - success: true
+ *                   id: 202
+ *       207:
+ *         description: Bulk processed with partial failures
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               results:
+ *                 - success: true
+ *                   id: 203
+ *                 - success: false
+ *                   error: "Customer not found"
+ *   put:
+ *     summary: Update collection
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: { type: integer }
+ *               customerName: { type: string }
+ *               amount: { type: number, format: float }
+ *               dueDate: { type: string, format: date }
+ *               type: { type: string }
+ *               status: { type: string }
+ *               description: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collection updated
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection updated successfully"
+ *               collection:
+ *                 id: 101
+ *                 status: "Collected"
+ * /collections/{id}:
+ *   get:
+ *     summary: Get collection by ID
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Collection retrieved
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collection:
+ *                 id: 101
+ *                 customerName: "John Doe"
+ *                 amount: 5000
+ *                 status: "Pending"
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Collection not found"
+ *   delete:
+ *     summary: Delete collection
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Collection deleted
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection deleted successfully"
+ * /collections/{id}/collect:
+ *   put:
+ *     summary: Mark collection as collected
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amountCollected: { type: number, format: float }
+ *               collectionNotes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collection marked as collected
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection marked as collected"
+ *               collection:
+ *                 id: 101
+ *                 status: "Collected"
+ * /collections/status/{status}:
+ *   get:
+ *     summary: Get collections by status
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: status
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collections by status
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collections:
+ *                 - id: 101
+ *                   status: "Pending"
+ * /collections/overdue:
+ *   get:
+ *     summary: Get overdue collections
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Overdue collections
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collections:
+ *                 - id: 99
+ *                   dueDate: "2024-12-15T00:00:00.000Z"
+ *                   status: "Pending"
+ */
+
 // Create a new collection
 const createCollection = async (req, res) => {
   try {
@@ -280,6 +587,56 @@ const deleteCollection = async (req, res) => {
   }
 };
 
+// Create multiple collections in bulk
+const createCollectionsBulk = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+    const payload = req.body && Array.isArray(req.body.collections) ? req.body.collections : [];
+    if (!Array.isArray(payload) || payload.length === 0) {
+      return res.status(400).json({ success: false, message: 'collections array is required' });
+    }
+
+    const results = [];
+    for (const item of payload) {
+      try {
+        const { customerName, amount, dueDate, type, description, packageName, packageAmount, cycle, cycleCounter, isFirstCollection } = item || {};
+        if (!customerName || amount === undefined || !dueDate || !type) {
+          throw new Error('Missing required fields');
+        }
+
+        const customer = await Customer.findOne({ where: { fullName: customerName, merchantId } });
+        if (!customer) throw new Error('Customer not found');
+
+        const created = await Collection.create({
+          customerId: customer.id,
+          customerName,
+          amount: parseFloat(amount),
+          dueDate: new Date(dueDate),
+          type,
+          description: description || '',
+          packageName: packageName || '',
+          packageAmount: packageAmount ? parseFloat(packageAmount) : null,
+          cycle: cycle ? parseInt(cycle) : 31,
+          cycleCounter: cycleCounter ? parseInt(cycleCounter) : 1,
+          isFirstCollection: isFirstCollection === 'true' || isFirstCollection === true,
+          status: 'Pending',
+          merchantId,
+          dateCreated: new Date()
+        });
+        results.push({ success: true, id: created.id });
+      } catch (err) {
+        results.push({ success: false, error: err.message || String(err) });
+      }
+    }
+
+    const hasFailures = results.some(r => !r.success);
+    return res.status(hasFailures ? 207 : 201).json({ success: !hasFailures, results });
+  } catch (error) {
+    console.error('Error creating bulk collections:', error);
+    res.status(500).json({ success: false, message: 'Failed to create bulk collections', error: error.message });
+  }
+};
+
 // Get collections by status
 const getCollectionsByStatus = async (req, res) => {
   try {
@@ -355,6 +712,8 @@ const getOverdueCollections = async (req, res) => {
 
 module.exports = {
   createCollection,
+  createCollectionsBulk,
+  // Note: bulk endpoint handled by createCollectionsBulk below
   getCollections,
   getCollectionById,
   updateCollection,
@@ -363,3 +722,4 @@ module.exports = {
   getCollectionsByStatus,
   getOverdueCollections
 };
+

@@ -39,11 +39,8 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
         ]).then(([branchesRes, agentsRes, packagesRes]) => {
             setBranches(branchesRes?.branches || branchesRes || []);
             setAgents(agentsRes?.agents || agentsRes || []);
-            // Filter packages to only show investment packages
-            const investmentPackages = (packagesRes?.packages || packagesRes || []).filter((pkg: any) => 
-                pkg.packageCategory === 'Investment' || !pkg.packageCategory
-            );
-            setPackages(investmentPackages);
+            // Show all packages (Investment, Loan, Collection, etc.)
+            setPackages(packagesRes?.packages || packagesRes || []);
         }).finally(() => setLoading(false));
     }, [isOpen]);
 
@@ -609,3 +606,4 @@ export default function CustomersPage() {
         </div>
     );
 }
+

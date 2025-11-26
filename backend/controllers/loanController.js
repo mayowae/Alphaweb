@@ -1,6 +1,378 @@
 const { Loan, Customer, Agent, Staff } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Loans
+ *     description: Loan management
+ * /loans:
+ *   get:
+ *     summary: Get all loans
+ *     tags: [Loans]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Active, Completed, Defaulted, All]
+ *         description: Filter by loan status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by customer name, account number, or agent name
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter from date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter to date
+ *       - in: query
+ *         name: agentId
+ *         schema:
+ *           type: integer
+ *         description: Filter by agent ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Loans retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 - id: 10
+ *                   customerId: 12
+ *                   customerName: "John Doe"
+ *                   accountNumber: "ACC123456"
+ *                   loanAmount: 50000.00
+ *                   interestRate: 15.5
+ *                   duration: 12
+ *                   agentId: 3
+ *                   agentName: "Agent Smith"
+ *                   branch: "Main Branch"
+ *                   totalAmount: 57500.00
+ *                   remainingAmount: 45000.00
+ *                   amountPaid: 12500.00
+ *                   status: "Active"
+ *                   merchantId: 1
+ *                   dateIssued: "2024-01-15T00:00:00.000Z"
+ *                   dueDate: "2025-01-15T00:00:00.000Z"
+ *                   notes: "Business expansion loan for equipment purchase"
+ *                   approvedBy: 2
+ *                   approvedAt: "2024-01-15T14:30:00.000Z"
+ *                   nextPaymentDate: "2024-02-15T00:00:00.000Z"
+ *                   loanType: "Business Loan"
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
+ *               pagination:
+ *                 currentPage: 1
+ *                 totalPages: 5
+ *                 totalItems: 45
+ *                 itemsPerPage: 10
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create a new loan
+ *     tags: [Loans]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [customerName, loanAmount, interestRate, duration, dueDate]
+ *             properties:
+ *               customerName:
+ *                 type: string
+ *                 description: Customer full name
+ *                 example: "John Doe"
+ *               accountNumber:
+ *                 type: string
+ *                 description: Customer account number
+ *                 example: "ACC123456"
+ *               loanAmount:
+ *                 type: number
+ *                 format: float
+ *                 description: Loan amount
+ *                 example: 50000
+ *               interestRate:
+ *                 type: number
+ *                 format: float
+ *                 description: Interest rate percentage
+ *                 example: 15.5
+ *               duration:
+ *                 type: integer
+ *                 description: Loan duration in days
+ *                 example: 90
+ *               agentId:
+ *                 type: integer
+ *                 description: Agent ID handling the loan
+ *                 example: 1
+ *               branch:
+ *                 type: string
+ *                 description: Branch name
+ *                 example: "Main Branch"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Customer has good credit history"
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Loan due date
+ *                 example: "2024-12-31"
+ *               loanForm:
+ *                 type: string
+ *                 format: binary
+ *                 description: Loan form file upload
+ *     responses:
+ *       201:
+ *         description: Loan created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Loan created successfully"
+ *               data:
+ *                 id: 10
+ *                 customerId: 12
+ *                 customerName: "John Doe"
+ *                 accountNumber: "ACC123456"
+ *                 loanAmount: 50000.00
+ *                 interestRate: 15.5
+ *                 duration: 12
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 branch: "Main Branch"
+ *                 totalAmount: 57500.00
+ *                 remainingAmount: 57500.00
+ *                 amountPaid: 0.00
+ *                 status: "Pending"
+ *                 merchantId: 1
+ *                 dateIssued: "2024-01-15T00:00:00.000Z"
+ *                 dueDate: "2025-01-15T00:00:00.000Z"
+ *                 notes: "Business expansion loan for equipment purchase"
+ *                 approvedBy: null
+ *                 approvedAt: null
+ *                 nextPaymentDate: "2024-02-15T00:00:00.000Z"
+ *                 loanType: "Business Loan"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       404:
+ *         description: Customer not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /loans/{id}:
+ *   get:
+ *     summary: Get loan by ID
+ *     tags: [Loans]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Loan ID
+ *     responses:
+ *       200:
+ *         description: Loan retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: 10
+ *                 customerId: 12
+ *                 customerName: "John Doe"
+ *                 accountNumber: "ACC123456"
+ *                 loanAmount: 50000.00
+ *                 interestRate: 15.5
+ *                 duration: 12
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 branch: "Main Branch"
+ *                 totalAmount: 57500.00
+ *                 remainingAmount: 45000.00
+ *                 amountPaid: 12500.00
+ *                 status: "Active"
+ *                 merchantId: 1
+ *                 dateIssued: "2024-01-15T00:00:00.000Z"
+ *                 dueDate: "2025-01-15T00:00:00.000Z"
+ *                 notes: "Business expansion loan for equipment purchase"
+ *                 approvedBy: 2
+ *                 approvedAt: "2024-01-15T14:30:00.000Z"
+ *                 nextPaymentDate: "2024-02-15T00:00:00.000Z"
+ *                 loanType: "Business Loan"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       404:
+ *         description: Loan not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Delete loan
+ *     tags: [Loans]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Loan ID
+ *     responses:
+ *       200:
+ *         description: Loan deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Loan deleted successfully"
+ *       404:
+ *         description: Loan not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /loans/{id}/status:
+ *   put:
+ *     summary: Update loan status
+ *     tags: [Loans]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Loan ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Active, Completed, Defaulted]
+ *                 description: New loan status
+ *                 example: "Active"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Loan activated after approval"
+ *     responses:
+ *       200:
+ *         description: Loan status updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Loan status updated successfully"
+ *               data:
+ *                 id: 10
+ *                 status: "Active"
+ *       404:
+ *         description: Loan not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /loans/stats/summary:
+ *   get:
+ *     summary: Get loan statistics summary
+ *     tags: [Loans]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Loan statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 totalLoans: 120
+ *                 activeLoans: 45
+ *                 completedLoans: 60
+ *                 defaultedLoans: 15
+ *                 totalAmount: 2500000
+ *                 totalCollection: 1750000
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Create a new loan
 const createLoan = async (req, res) => {
   try {
@@ -350,3 +722,4 @@ module.exports = {
   deleteLoan,
   getLoanStats
 };
+

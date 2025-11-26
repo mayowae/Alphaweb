@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     fullName: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'full_name',
       defaultValue: 'Unknown',
     },
     phone: {
@@ -21,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     phoneNumber: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'phone_number',
     },
     branch: {
       type: DataTypes.STRING,
@@ -38,16 +40,19 @@ module.exports = (sequelize, DataTypes) => {
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'merchant_id',
     },
     
     
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'created_at',
     },
     updatedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'updated_at',
     },
   }, {
     tableName: 'agents',

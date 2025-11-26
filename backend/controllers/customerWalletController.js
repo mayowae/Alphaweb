@@ -1,6 +1,151 @@
 const { CustomerWallet, Customer, Merchant } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Customer Wallets
+ *     description: Customer wallet management
+ * /customer-wallets:
+ *   get:
+ *     summary: List customer wallets
+ *     tags: [Customer Wallets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: accountLevel
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Wallets list
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               wallets:
+ *                 - id: 81
+ *                   customerId: 12
+ *                   accountNumber: "ACC123456"
+ *                   accountLevel: "Tier 1"
+ *                   balance: 2000
+ *               pagination:
+ *                 total: 25
+ *                 page: 1
+ *                 limit: 10
+ *                 totalPages: 3
+ *   post:
+ *     summary: Create customer wallet
+ *     tags: [Customer Wallets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerId, accountNumber]
+ *             properties:
+ *               customerId: { type: integer }
+ *               accountNumber: { type: string }
+ *               accountLevel: { type: string }
+ *               balance: { type: number, format: float }
+ *               notes: { type: string }
+ * /customer-wallets/{id}:
+ *   get:
+ *     summary: Get customer wallet by ID
+ *     tags: [Customer Wallets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Wallet retrieved
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               wallet:
+ *                 id: 81
+ *                 customerId: 12
+ *                 accountNumber: "ACC123456"
+ *                 balance: 2000
+ *   delete:
+ *     summary: Delete customer wallet
+ *     tags: [Customer Wallets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Wallet deleted
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Customer wallet deleted successfully"
+ *   put:
+ *     summary: Update customer wallet
+ *     tags: [Customer Wallets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               accountLevel: { type: string }
+ *               balance: { type: number, format: float }
+ *               status: { type: string }
+ *               notes: { type: string }
+ * /customer-wallets/stats:
+ *   get:
+ *     summary: Get customer wallet statistics
+ *     tags: [Customer Wallets]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Wallet statistics
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               stats:
+ *                 totalWallets: 100
+ *                 activeWallets: 80
+ *                 suspendedWallets: 20
+ *                 totalBalance: 550000
+ */
+
 // Get all customer wallets for a merchant
 const getCustomerWallets = async (req, res) => {
   try {

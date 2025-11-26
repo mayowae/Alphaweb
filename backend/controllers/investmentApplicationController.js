@@ -1,6 +1,406 @@
 const { InvestmentApplication, Customer, Agent, Staff } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Investment Applications
+ *     description: Investment application management
+ * /investment-applications:
+ *   get:
+ *     summary: Get all investment applications
+ *     tags: [Investment Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Pending, Approved, Rejected, Completed, all]
+ *         description: Filter by application status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by customer name, account number, or agent name
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter from date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter to date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Investment applications retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               applications:
+ *                 - id: 51
+ *                   customerName: "Jane Doe"
+ *                   accountNumber: "ACC123456"
+ *                   targetAmount: 150000.00
+ *                   duration: 180
+ *                   agentId: 3
+ *                   agentName: "Agent Smith"
+ *                   branch: "Main Branch"
+ *                   status: "Pending"
+ *                   notes: "Long-term investment for retirement planning"
+ *                   rejectionReason: null
+ *                   dateApplied: "2024-01-15T10:30:00.000Z"
+ *                   merchantId: 1
+ *                   packageId: 801
+ *                   approvedBy: null
+ *                   approvedAt: null
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
+ *               pagination:
+ *                 currentPage: 1
+ *                 totalPages: 4
+ *                 totalItems: 32
+ *                 itemsPerPage: 10
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create a new investment application
+ *     tags: [Investment Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerName, targetAmount, duration]
+ *             properties:
+ *               customerName:
+ *                 type: string
+ *                 description: Customer full name
+ *                 example: "John Doe"
+ *               accountNumber:
+ *                 type: string
+ *                 description: Customer account number
+ *                 example: "ACC123456"
+ *               targetAmount:
+ *                 type: number
+ *                 format: float
+ *                 description: Target investment amount
+ *                 example: 100000
+ *               duration:
+ *                 type: integer
+ *                 description: Investment duration in days
+ *                 example: 180
+ *               agentId:
+ *                 type: integer
+ *                 description: Agent ID handling the application
+ *                 example: 1
+ *               branch:
+ *                 type: string
+ *                 description: Branch name
+ *                 example: "Main Branch"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Customer interested in long-term investment"
+ *     responses:
+ *       201:
+ *         description: Investment application created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Investment application created successfully"
+ *               application:
+ *                 id: 52
+ *                 customerName: "Jane Doe"
+ *                 accountNumber: "ACC123456"
+ *                 targetAmount: 200000.00
+ *                 duration: 180
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 branch: "Main Branch"
+ *                 status: "Pending"
+ *                 notes: "Customer interested in long-term investment"
+ *                 rejectionReason: null
+ *                 dateApplied: "2024-01-15T10:30:00.000Z"
+ *                 merchantId: 1
+ *                 packageId: 801
+ *                 approvedBy: null
+ *                 approvedAt: null
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Customer not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /investment-applications/{id}:
+ *   get:
+ *     summary: Get investment application by ID
+ *     tags: [Investment Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Investment application ID
+ *     responses:
+ *       200:
+ *         description: Investment application retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               application:
+ *                 id: 51
+ *                 customerName: "Jane Doe"
+ *                 accountNumber: "ACC123456"
+ *                 targetAmount: 150000.00
+ *                 duration: 180
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 branch: "Main Branch"
+ *                 status: "Pending"
+ *                 notes: "Long-term investment for retirement planning"
+ *                 rejectionReason: null
+ *                 dateApplied: "2024-01-15T10:30:00.000Z"
+ *                 merchantId: 1
+ *                 packageId: 801
+ *                 approvedBy: null
+ *                 approvedAt: null
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       404:
+ *         description: Investment application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   put:
+ *     summary: Update investment application
+ *     tags: [Investment Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Investment application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetAmount:
+ *                 type: number
+ *                 format: float
+ *                 description: Target investment amount
+ *                 example: 100000
+ *               duration:
+ *                 type: integer
+ *                 description: Investment duration in days
+ *                 example: 180
+ *               agentId:
+ *                 type: integer
+ *                 description: Agent ID handling the application
+ *                 example: 1
+ *               branch:
+ *                 type: string
+ *                 description: Branch name
+ *                 example: "Main Branch"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Updated investment requirements"
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, Approved, Rejected, Completed]
+ *                 description: Application status
+ *                 example: "Approved"
+ *     responses:
+ *       200:
+ *         description: Investment application updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Investment application updated"
+ *               application:
+ *                 id: 51
+ *                 targetAmount: 160000
+ *                 status: "Approved"
+ *       404:
+ *         description: Investment application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Delete investment application
+ *     tags: [Investment Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Investment application ID
+ *     responses:
+ *       200:
+ *         description: Investment application deleted successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Investment application deleted successfully"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Investment application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /investment-applications/{id}/status:
+ *   put:
+ *     summary: Update investment application status
+ *     tags: [Investment Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Investment application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, Approved, Rejected, Completed]
+ *                 description: New application status
+ *                 example: "Approved"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Application approved after review"
+ *               rejectionReason:
+ *                 type: string
+ *                 description: Reason for rejection (if status is Rejected)
+ *                 example: "Insufficient documentation"
+ *     responses:
+ *       200:
+ *         description: Application status updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Application approved successfully"
+ *               application:
+ *                 id: 51
+ *                 status: "Approved"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Investment application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Update investment application (basic fields)
 const updateInvestmentApplication = async (req, res) => {
   try {
@@ -42,18 +442,28 @@ const createInvestmentApplication = async (req, res) => {
       branch, 
       notes 
     } = req.body;
-    // Use authenticated merchantId; allow explicit override only if provided
-    const merchantId = req.user?.id || req.body.merchantId;
+    // Resolve merchantId from authenticated context
+    let merchantId = req.body.merchantId;
+    if (!merchantId) {
+      if (req.user?.type === 'merchant') {
+        merchantId = req.user.id;
+      } else if (req.user?.type === 'agent') {
+        const agentOwner = await Agent.findByPk(req.user.id);
+        merchantId = agentOwner ? agentOwner.merchantId : undefined;
+      }
+    }
     if (!merchantId) {
       return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
     }
 
-    // Find customer by name (without merchantId filter for testing)
-    const customer = await Customer.findOne({
-      where: {
-        fullName: customerName
-      }
-    });
+    // Find customer by accountNumber (preferred) or name, scoped to merchant
+    const customerWhere = { merchantId };
+    if (accountNumber) {
+      customerWhere.accountNumber = accountNumber;
+    } else if (customerName) {
+      customerWhere.fullName = customerName;
+    }
+    const customer = await Customer.findOne({ where: customerWhere });
 
     if (!customer) {
       return res.status(404).json({
@@ -129,7 +539,14 @@ const createInvestmentApplication = async (req, res) => {
 const getInvestmentApplications = async (req, res) => {
   try {
     // Always scope to authenticated merchant
-    const merchantId = req.user?.id;
+    // Resolve merchantId for both merchants and agents
+    let merchantId;
+    if (req.user?.type === 'merchant') {
+      merchantId = req.user.id;
+    } else if (req.user?.type === 'agent') {
+      const agentOwner = await Agent.findByPk(req.user.id);
+      merchantId = agentOwner ? agentOwner.merchantId : undefined;
+    }
     if (!merchantId) {
       return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
     }
@@ -228,7 +645,14 @@ const getInvestmentApplications = async (req, res) => {
 const getInvestmentApplicationById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    // Resolve merchantId for both merchants and agents
+    let merchantId;
+    if (req.user?.type === 'merchant') {
+      merchantId = req.user.id;
+    } else if (req.user?.type === 'agent') {
+      const agentOwner = await Agent.findByPk(req.user.id);
+      merchantId = agentOwner ? agentOwner.merchantId : undefined;
+    }
 
     const application = await InvestmentApplication.findOne({
       where: { 
@@ -286,7 +710,14 @@ const updateApplicationStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes, rejectionReason } = req.body;
-    const merchantId = req.user?.id;
+    // Resolve merchantId for both merchants and agents
+    let merchantId;
+    if (req.user?.type === 'merchant') {
+      merchantId = req.user.id;
+    } else if (req.user?.type === 'agent') {
+      const agentOwner = await Agent.findByPk(req.user.id);
+      merchantId = agentOwner ? agentOwner.merchantId : undefined;
+    }
     if (!merchantId) {
       return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
     }
@@ -357,7 +788,14 @@ const updateApplicationStatus = async (req, res) => {
 const deleteInvestmentApplication = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user?.id;
+    // Resolve merchantId for both merchants and agents
+    let merchantId;
+    if (req.user?.type === 'merchant') {
+      merchantId = req.user.id;
+    } else if (req.user?.type === 'agent') {
+      const agentOwner = await Agent.findByPk(req.user.id);
+      merchantId = agentOwner ? agentOwner.merchantId : undefined;
+    }
     if (!merchantId) {
       return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
     }
@@ -404,3 +842,4 @@ module.exports = {
   deleteInvestmentApplication,
   updateInvestmentApplication
 };
+

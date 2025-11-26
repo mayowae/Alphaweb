@@ -122,10 +122,10 @@ module.exports = {
       // 2. Add missing columns to loans table
       console.log('📦 Adding missing columns to loans table...');
       
-      // Check if customerId column exists, if not add it
+      // Check if customer_id column exists, if not add it
       const loansTableInfo = await queryInterface.describeTable('loans');
-      if (!loansTableInfo.customerId) {
-        await queryInterface.addColumn('loans', 'customerId', {
+      if (!loansTableInfo.customer_id) {
+        await queryInterface.addColumn('loans', 'customer_id', {
           type: DataTypes.INTEGER,
           allowNull: false,
           references: {
@@ -135,9 +135,9 @@ module.exports = {
         });
       }
 
-      // Check if amountPaid column exists, if not add it
-      if (!loansTableInfo.amountPaid) {
-        await queryInterface.addColumn('loans', 'amountPaid', {
+      // Check if amount_paid column exists, if not add it
+      if (!loansTableInfo.amount_paid) {
+        await queryInterface.addColumn('loans', 'amount_paid', {
           type: DataTypes.DECIMAL(15, 2),
           defaultValue: 0,
           allowNull: false
@@ -147,10 +147,10 @@ module.exports = {
       // 3. Add missing columns to repayments table
       console.log('📦 Adding missing columns to repayments table...');
       
-      // Check if customerId column exists, if not add it
+      // Check if customer_id column exists, if not add it
       const repaymentsTableInfo = await queryInterface.describeTable('repayments');
-      if (!repaymentsTableInfo.customerId) {
-        await queryInterface.addColumn('repayments', 'customerId', {
+      if (!repaymentsTableInfo.customer_id) {
+        await queryInterface.addColumn('repayments', 'customer_id', {
           type: DataTypes.INTEGER,
           allowNull: false,
           references: {
@@ -175,11 +175,11 @@ module.exports = {
       await queryInterface.dropTable('investment_applications');
       
       // Remove added columns from loans table
-      await queryInterface.removeColumn('loans', 'customerId');
-      await queryInterface.removeColumn('loans', 'amountPaid');
+      await queryInterface.removeColumn('loans', 'customer_id');
+      await queryInterface.removeColumn('loans', 'amount_paid');
       
       // Remove added columns from repayments table
-      await queryInterface.removeColumn('repayments', 'customerId');
+      await queryInterface.removeColumn('repayments', 'customer_id');
       
       console.log('✅ Successfully rolled back changes');
     } catch (error) {

@@ -1,6 +1,379 @@
 const { WalletTransaction, Merchant } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Wallet
+ *     description: Merchant wallet operations
+ * /wallet/balance:
+ *   get:
+ *     summary: Get merchant wallet balance
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Wallet balance retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               balance: 50000.00
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /wallet/transactions:
+ *   get:
+ *     summary: List wallet transactions
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: 
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema: 
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: type
+ *         schema: 
+ *           type: string
+ *           enum: [credit, debit]
+ *         description: Transaction type
+ *       - in: query
+ *         name: status
+ *         schema: 
+ *           type: string
+ *         description: Transaction status
+ *     responses:
+ *       200:
+ *         description: Transactions list retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               transactions:
+ *                 - id: 9001
+ *                   type: "credit"
+ *                   transactionType: "credit"
+ *                   amount: 2000.00
+ *                   status: "Completed"
+ *                   reference: "TXN123456"
+ *                   description: "Payment received from customer"
+ *                   merchantId: 1
+ *                   paymentMethod: "Bank Transfer"
+ *                   relatedId: 123
+ *                   relatedType: "customer_wallet"
+ *                   notes: "Transaction processed successfully"
+ *                   balanceBefore: 5000.00
+ *                   balanceAfter: 7000.00
+ *                   category: "Collection"
+ *                   processedBy: 2
+ *                   date: "2024-01-15T10:30:00.000Z"
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
+ *               pagination:
+ *                 currentPage: 1
+ *                 totalPages: 2
+ *                 totalItems: 12
+ *                 itemsPerPage: 10
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create wallet transaction
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [type, amount]
+ *             properties:
+ *               type: 
+ *                 type: string
+ *                 enum: [credit, debit]
+ *                 description: Transaction type
+ *                 example: "credit"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Transaction amount
+ *                 example: 1000.00
+ *               description: 
+ *                 type: string
+ *                 description: Transaction description
+ *                 example: "Payment received"
+ *               reference: 
+ *                 type: string
+ *                 description: Transaction reference
+ *                 example: "TXN123456"
+ *     responses:
+ *       201:
+ *         description: Transaction created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Transaction created successfully"
+ *               transaction:
+ *                 id: 9002
+ *                 type: "debit"
+ *                 transactionType: "debit"
+ *                 amount: 1500.00
+ *                 status: "Pending"
+ *                 reference: "TXN123457"
+ *                 description: "Payment made to supplier"
+ *                 merchantId: 1
+ *                 paymentMethod: "Bank Transfer"
+ *                 relatedId: 124
+ *                 relatedType: "supplier_payment"
+ *                 notes: "Monthly supplier payment"
+ *                 balanceBefore: 7000.00
+ *                 balanceAfter: 5500.00
+ *                 category: "Payment"
+ *                 processedBy: 2
+ *                 date: "2024-01-15T10:30:00.000Z"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /wallet/transactions/{id}:
+ *   get:
+ *     summary: Get wallet transaction by ID
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: 
+ *           type: integer
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               transaction:
+ *                 id: 9001
+ *                 type: "credit"
+ *                 transactionType: "credit"
+ *                 amount: 2000.00
+ *                 status: "Completed"
+ *                 reference: "TXN123456"
+ *                 description: "Payment received from customer"
+ *                 merchantId: 1
+ *                 paymentMethod: "Bank Transfer"
+ *                 relatedId: 123
+ *                 relatedType: "customer_wallet"
+ *                 notes: "Transaction processed successfully"
+ *                 balanceBefore: 5000.00
+ *                 balanceAfter: 7000.00
+ *                 category: "Collection"
+ *                 processedBy: 2
+ *                 date: "2024-01-15T10:30:00.000Z"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       404:
+ *         description: Transaction not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /wallet/transactions/{id}/status:
+ *   put:
+ *     summary: Update wallet transaction status
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: 
+ *           type: integer
+ *         description: Transaction ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: 
+ *                 type: string
+ *                 description: New transaction status
+ *                 example: "completed"
+ *               notes: 
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Transaction processed successfully"
+ *     responses:
+ *       200:
+ *         description: Transaction status updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Transaction status updated successfully"
+ *               transaction:
+ *                 id: 9001
+ *                 status: "completed"
+ *       404:
+ *         description: Transaction not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /wallet/stats:
+ *   get:
+ *     summary: Get wallet statistics
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema: 
+ *           type: integer
+ *           default: 30
+ *         description: Period in days
+ *     responses:
+ *       200:
+ *         description: Wallet statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               stats:
+ *                 totalBalance: 50000.00
+ *                 totalCredits: 75000.00
+ *                 totalDebits: 25000.00
+ *                 transactionCount: 150
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /wallet/transfer:
+ *   post:
+ *     summary: Transfer funds to customer wallet
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerId, amount]
+ *             properties:
+ *               customerId: 
+ *                 type: integer
+ *                 description: Customer ID
+ *                 example: 1
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Transfer amount
+ *                 example: 1000.00
+ *               description: 
+ *                 type: string
+ *                 description: Transfer description
+ *                 example: "Fund transfer to customer"
+ *               transactionType: 
+ *                 type: string
+ *                 enum: [credit, debit]
+ *                 description: Transaction type
+ *                 example: "debit"
+ *               type: 
+ *                 type: string
+ *                 enum: [credit, debit]
+ *                 description: Transaction type
+ *                 example: "debit"
+ *               paymentMethod: 
+ *                 type: string
+ *                 description: Payment method
+ *                 example: "Bank Transfer"
+ *     responses:
+ *       200:
+ *         description: Transfer completed successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Transfer completed successfully"
+ *               transaction:
+ *                 id: 9010
+ *                 type: "debit"
+ *                 amount: 1000
+ *                 status: "completed"
+ *       400:
+ *         description: Invalid input or insufficient funds
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Customer not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Get wallet balance for a merchant
 const getWalletBalance = async (req, res) => {
   try {
@@ -400,3 +773,4 @@ module.exports = {
   getWalletStats,
   transferToCustomer
 };
+

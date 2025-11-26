@@ -1,9 +1,9 @@
-// export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-export const BASE_URL = 'http://localhost:5000';
+// Prefer environment variable; fallback to same-origin in browser; fallback to localhost in SSR/dev
+export const BASE_URL = 'https://alphakolect.com/api';
 
 function getAuthHeaders(): Record<string, string> {
   const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;
-
+  
   if (user) {
     try {
       const parsedUser = JSON.parse(user);
@@ -760,9 +760,11 @@ export async function createPackage(packageData: {
   extraCharges?: number;
   defaultPenalty?: number;
   defaultDays?: number;
+  defaultPercentageRate?: number;
   // Loan-specific fields
   loanAmount?: number;
   loanInterestRate?: number;
+  interestAmount?: number;
   loanPeriod?: number;
   defaultAmount?: number;
   gracePeriod?: number;
@@ -807,12 +809,18 @@ export async function createPackage(packageData: {
   if (packageData.defaultDays) {
     formData.append('defaultDays', String(packageData.defaultDays));
   }
+  if (packageData.defaultPercentageRate !== undefined) {
+    formData.append('defaultPercentageRate', String(packageData.defaultPercentageRate));
+  }
   // Loan-specific fields
   if (packageData.loanAmount) {
     formData.append('loanAmount', String(packageData.loanAmount));
   }
   if (packageData.loanInterestRate) {
     formData.append('loanInterestRate', String(packageData.loanInterestRate));
+  }
+  if (packageData.interestAmount) {
+    formData.append('interestAmount', String(packageData.interestAmount));
   }
   if (packageData.loanPeriod) {
     formData.append('loanPeriod', String(packageData.loanPeriod));
@@ -871,9 +879,11 @@ export async function updatePackage(packageData: {
   extraCharges?: number;
   defaultPenalty?: number;
   defaultDays?: number;
+  defaultPercentageRate?: number;
   // Loan-specific fields
   loanAmount?: number;
   loanInterestRate?: number;
+  interestAmount?: number;
   loanPeriod?: number;
   defaultAmount?: number;
   gracePeriod?: number;
@@ -909,12 +919,18 @@ export async function updatePackage(packageData: {
   if (packageData.defaultDays) {
     formData.append('defaultDays', String(packageData.defaultDays));
   }
+  if (packageData.defaultPercentageRate !== undefined) {
+    formData.append('defaultPercentageRate', String(packageData.defaultPercentageRate));
+  }
   // Loan-specific fields
   if (packageData.loanAmount) {
     formData.append('loanAmount', String(packageData.loanAmount));
   }
   if (packageData.loanInterestRate) {
     formData.append('loanInterestRate', String(packageData.loanInterestRate));
+  }
+  if (packageData.interestAmount) {
+    formData.append('interestAmount', String(packageData.interestAmount));
   }
   if (packageData.loanPeriod) {
     formData.append('loanPeriod', String(packageData.loanPeriod));

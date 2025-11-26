@@ -10,11 +10,13 @@ module.exports = (sequelize) => {
     transactionType: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'transaction_type',
       comment: 'Business transaction type (e.g., payment, refund, loan, investment)'
     },
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'merchant_id',
       references: {
         model: 'merchants',
         key: 'id'
@@ -53,11 +55,13 @@ module.exports = (sequelize) => {
     balanceBefore: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
+      field: 'balance_before',
       comment: 'Wallet balance before transaction'
     },
     balanceAfter: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
+      field: 'balance_after',
       comment: 'Wallet balance after transaction'
     },
     category: {
@@ -68,16 +72,19 @@ module.exports = (sequelize) => {
     relatedId: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'related_id',
       comment: 'ID of related record (loan, collection, etc.)'
     },
     relatedType: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'related_type',
       comment: 'Type of related record (loan, collection, etc.)'
     },
     paymentMethod: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'payment_method',
       comment: 'Payment method used'
     },
     notes: {
@@ -88,6 +95,7 @@ module.exports = (sequelize) => {
     processedBy: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'processed_by',
       references: {
         model: 'users',
         key: 'id'
@@ -96,9 +104,7 @@ module.exports = (sequelize) => {
     }
   }, {
     tableName: 'wallet_transactions',
-    timestamps: true,
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt',
+    timestamps: false,
     hooks: {
       beforeCreate: (transaction) => {
         // Generate reference if not provided

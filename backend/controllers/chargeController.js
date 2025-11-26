@@ -1,6 +1,342 @@
 const db = require('../models');
 const { Charge, ChargeAssignment, Customer, Merchant } = db;
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Charges
+ *     description: Charge management
+ * /charges:
+ *   get:
+ *     summary: List charges
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Charges list retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               charges:
+ *                 - id: 1
+ *                   chargeName: "Processing Fee"
+ *                   type: "Service"
+ *                   amount: "N1,000"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create charge
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [chargeName, type, amount]
+ *             properties:
+ *               chargeName: 
+ *                 type: string
+ *                 description: Name of the charge
+ *                 example: "Processing Fee"
+ *               type: 
+ *                 type: string
+ *                 enum: [Loan, Penalty, Service]
+ *                 description: Type of charge
+ *                 example: "Service"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Charge amount
+ *                 example: 100.50
+ *     responses:
+ *       201:
+ *         description: Charge created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge created successfully"
+ *               charge:
+ *                 id: 2
+ *                 chargeName: "Late Fee"
+ *                 type: "Penalty"
+ *                 amount: "N500"
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   put:
+ *     summary: Update charge
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: 
+ *                 type: integer
+ *                 description: Charge ID
+ *                 example: 1
+ *               chargeName: 
+ *                 type: string
+ *                 description: Name of the charge
+ *                 example: "Updated Processing Fee"
+ *               type: 
+ *                 type: string
+ *                 enum: [Loan, Penalty, Service]
+ *                 description: Type of charge
+ *                 example: "Service"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Charge amount
+ *                 example: 150.75
+ *     responses:
+ *       200:
+ *         description: Charge updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge updated successfully"
+ *               charge:
+ *                 id: 1
+ *                 chargeName: "Processing Fee"
+ *                 type: "Service"
+ *                 amount: "N1,500"
+ *       404:
+ *         description: Charge not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/{id}:
+ *   delete:
+ *     summary: Delete charge
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: 
+ *           type: integer
+ *         description: Charge ID
+ *     responses:
+ *       200:
+ *         description: Charge deleted successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge deleted successfully"
+ *       404:
+ *         description: Charge not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/assign:
+ *   post:
+ *     summary: Assign charge to customer
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [chargeName, amount, dueDate, customer]
+ *             properties:
+ *               chargeName: 
+ *                 type: string
+ *                 description: Name of the charge
+ *                 example: "Processing Fee"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Charge amount
+ *                 example: 100.50
+ *               dueDate: 
+ *                 type: string
+ *                 format: date
+ *                 description: Due date for the charge
+ *                 example: "2024-12-31"
+ *               customer: 
+ *                 type: string
+ *                 description: Customer name
+ *                 example: "John Doe"
+ *     responses:
+ *       201:
+ *         description: Charge assigned successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge assigned successfully"
+ *               assignment:
+ *                 id: 11
+ *                 chargeName: "Processing Fee"
+ *                 customer: "John Doe"
+ *                 amount: "N1,000"
+ *                 dueDate: "31 Dec 2025"
+ *       404:
+ *         description: Customer not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/history:
+ *   get:
+ *     summary: Get charge history
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Charge assignments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 assignments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       chargeName:
+ *                         type: string
+ *                         example: "Processing Fee"
+ *                       amount:
+ *                         type: number
+ *                         format: float
+ *                         example: 100.50
+ *                       dueDate:
+ *                         type: string
+ *                         format: date
+ *                         example: "2024-12-31"
+ *                       customer:
+ *                         type: string
+ *                         example: "John Doe"
+ *                       status:
+ *                         type: string
+ *                         example: "Pending"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/assignments/status:
+ *   put:
+ *     summary: Update assignment status
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id, status]
+ *             properties:
+ *               id: 
+ *                 type: integer
+ *                 description: Assignment ID
+ *                 example: 1
+ *               status: 
+ *                 type: string
+ *                 enum: [Pending, Paid]
+ *                 description: New status
+ *                 example: "Paid"
+ *     responses:
+ *       200:
+ *         description: Assignment status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Assignment status updated successfully"
+ *                 assignment:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     status:
+ *                       type: string
+ *                       example: "Paid"
+ *       404:
+ *         description: Assignment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Create a new charge
 exports.createCharge = async (req, res) => {
   try {

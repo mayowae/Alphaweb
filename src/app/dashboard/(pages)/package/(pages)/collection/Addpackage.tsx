@@ -21,13 +21,34 @@ const Addpackage = ({ packag, onClose }: pack) => {
     collectionDays: 'Daily',
     amount: '',
     duration: '',
+    dailyAmount: '',
   })
   const [loading, setLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { value, tagName } = e.target as any
     const id = (e.target as any).id
-    setForm(prev => ({ ...prev, [id]: value }))
+    
+    // If type changes, automatically set seedType and reset related fields
+    if (id === 'type') {
+      if (value === 'Fixed') {
+        setForm(prev => ({ 
+          ...prev, 
+          [id]: value, 
+          seedType: 'First Saving',
+          seedAmount: '' // Clear seed percentage for Fixed type
+        }))
+      } else if (value === 'Flexible') {
+        setForm(prev => ({ 
+          ...prev, 
+          [id]: value, 
+          seedType: 'Percentage',
+          dailyAmount: '' // Clear daily amount for Flexible type
+        }))
+      }
+    } else {
+      setForm(prev => ({ ...prev, [id]: value }))
+    }
   }
 
   const handleSubmit = async () => {
@@ -36,8 +57,8 @@ const Addpackage = ({ packag, onClose }: pack) => {
       await createPackage({
         name: form.name,
         type: form.type,
-        amount: Number(form.amount || 0),
-        seedAmount: Number(form.seedAmount || 0),
+        amount: form.type === 'Fixed' ? Number(form.dailyAmount || 0) : Number(form.amount || 0),
+        seedAmount: form.type === 'Flexible' ? Number(form.seedAmount || 0) : Number(form.dailyAmount || 0),
         seedType: form.seedType,
         period: Number(form.period || 0),
         collectionDays: form.collectionDays,
@@ -97,7 +118,7 @@ const Addpackage = ({ packag, onClose }: pack) => {
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed type</p>
             <div className='relative w-full'>
-              <select id="seedType" value={form.seedType} onChange={handleChange} className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'>
+              <select id="seedType" value={form.seedType} onChange={handleChange} className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]' disabled>
                 <option value="Percentage">Percentage</option>
                 <option value="First Saving">First Saving</option>
               </select>
@@ -105,13 +126,24 @@ const Addpackage = ({ packag, onClose }: pack) => {
                 <FaAngleDown className="w-[16px] h-[16px] text-[#8E8E93]" />
               </div>
             </div>
+            <p className='text-xs text-gray-500 mt-1'>Automatically set based on type</p>
           </div>
 
+          {/* Show Seed Percentage only for Flexible type */}
+          {form.type === 'Flexible' && (
+            <div className="mb-4">
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed Percentage</p>
+              <input id="seedAmount" value={form.seedAmount} onChange={handleChange} type="text" placeholder='10%' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
+            </div>
+          )}
 
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Seed Percentage</p>
-            <input id="seedAmount" value={form.seedAmount} onChange={handleChange} type="text" placeholder='10%' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
-          </div>
+          {/* Show Daily Amount only for Fixed type */}
+          {form.type === 'Fixed' && (
+            <div className="mb-4">
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Daily Amount</p>
+              <input id="dailyAmount" value={form.dailyAmount} onChange={handleChange} type="text" placeholder='1000' className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' />
+            </div>
+          )}
 
 
           <div className="mb-4">

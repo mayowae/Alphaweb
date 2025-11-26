@@ -4,8 +4,11 @@ const nodemailer = require('nodemailer');
 const { Op } = require('sequelize');
 const { Merchant } = require('../models');
 
+/* Swagger documentation for Merchant Auth intentionally removed from Swagger UI */
+
 // Configure nodemailer (env-driven; safe fallback)
 let transporter;
+// const encodedPass = encodeURIComponent(process.env.EMAIL_PASS);
 try {
   if (String(process.env.EMAIL_DISABLED || '').toLowerCase() === 'true') {
     transporter = null;
@@ -18,6 +21,9 @@ try {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       } : undefined,
+      tls: { rejectUnauthorized: false },
+      requireTLS: true,
+      debug: true,
     });
   } else {
     // Default to Gmail if specified; otherwise mock
@@ -127,10 +133,10 @@ const loginMerchant = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Check if email is verified (skip for development/testing)
-    // if (!merchant.isVerified) {
-    //   return res.status(403).json({ message: 'Please verify your email first' });
-    // }
+    // Enforce email verification before login
+    if (!merchant.isVerified) {
+      return res.status(403).json({ message: 'Please verify your email first' });
+    }
 
     // Generate JWT token
     const token = jwt.sign(

@@ -34,16 +34,23 @@ const { Customer, Agent, Branch, Merchant, Package } = require('../models');
  *         description: List of customers retrieved successfully
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Customers retrieved successfully"
- *                 customers:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Customer'
+ *             example:
+ *               message: "Customers retrieved successfully"
+ *               customers:
+ *                 - id: 1
+ *                   fullName: "John Doe"
+ *                   email: "john.doe@example.com"
+ *                   phoneNumber: "+2348012345678"
+ *                   accountNumber: "ACC123456"
+ *                   alias: "Johnny"
+ *                   address: "123 Main Street, Lagos, Nigeria"
+ *                   agentId: 1
+ *                   branchId: 1
+ *                   merchantId: 1
+ *                   packageId: 801
+ *                   status: "active"
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
  *       401:
  *         description: Unauthorized - invalid or missing token
  *         content:
@@ -111,14 +118,23 @@ const { Customer, Agent, Branch, Merchant, Package } = require('../models');
  *         description: Customer created successfully
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Customer created successfully"
- *                 customer:
- *                   $ref: '#/components/schemas/Customer'
+ *             example:
+ *               message: "Customer created successfully"
+ *               customer:
+ *                 id: 21
+ *                 accountNumber: "ACC998877"
+ *                 fullName: "Jane Doe"
+ *                 email: "jane.doe@example.com"
+ *                 phoneNumber: "+2348090000000"
+ *                 alias: "Jane"
+ *                 address: "456 Oak Avenue, Abuja, Nigeria"
+ *                 agentId: 3
+ *                 branchId: 2
+ *                 merchantId: 1
+ *                 packageId: 801
+ *                 status: "active"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
  *       400:
  *         description: Bad request - email already exists or validation error
  *         content:
@@ -161,14 +177,23 @@ const { Customer, Agent, Branch, Merchant, Package } = require('../models');
  *         description: Customer retrieved successfully
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Customer retrieved successfully"
- *                 customer:
- *                   $ref: '#/components/schemas/Customer'
+ *             example:
+ *               message: "Customer retrieved successfully"
+ *               customer:
+ *                 id: 1
+ *                 fullName: "John Doe"
+ *                 email: "john.doe@example.com"
+ *                 phoneNumber: "+2348012345678"
+ *                 accountNumber: "ACC123456"
+ *                 alias: "Johnny"
+ *                 address: "123 Main Street, Lagos, Nigeria"
+ *                 agentId: 1
+ *                 branchId: 1
+ *                 merchantId: 1
+ *                 packageId: 801
+ *                 status: "active"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
  *       404:
  *         description: Customer not found
  *         content:
@@ -237,14 +262,23 @@ const { Customer, Agent, Branch, Merchant, Package } = require('../models');
  *         description: Customer updated successfully
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Customer updated successfully"
- *                 customer:
- *                   $ref: '#/components/schemas/Customer'
+ *             example:
+ *               message: "Customer updated successfully"
+ *               customer:
+ *                 id: 1
+ *                 fullName: "John Doe Updated"
+ *                 email: "john.doe.updated@example.com"
+ *                 phoneNumber: "+2348012345678"
+ *                 accountNumber: "ACC123456"
+ *                 alias: "Johnny Updated"
+ *                 address: "456 New Street, Lagos, Nigeria"
+ *                 agentId: 1
+ *                 branchId: 1
+ *                 merchantId: 1
+ *                 packageId: 801
+ *                 status: "active"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
  *       400:
  *         description: Bad request - email already taken or validation error
  *         content:
@@ -336,7 +370,22 @@ const createCustomer = async (req, res) => {
 // List all customers
 const listCustomers = async (req, res) => {
   try {
+    // Resolve merchantId for both merchants and agents
+    let merchantId = req.user?.merchantId;
+    if (!merchantId) {
+      if (req.user?.type === 'merchant') {
+        merchantId = req.user.id;
+      } else if (req.user?.type === 'agent') {
+        const agentOwner = await Agent.findByPk(req.user.id);
+        merchantId = agentOwner ? agentOwner.merchantId : undefined;
+      }
+    }
+    if (!merchantId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
+    }
+
     const customers = await Customer.findAll({
+      where: { merchantId },
       attributes: ['id', 'fullName', 'phoneNumber', 'email', 'alias', 'address', 'accountNumber', 'createdAt', 'agentId', 'branchId', 'packageId'],
       include: [
         {
@@ -490,3 +539,4 @@ module.exports = {
   getCustomerById,
   updateCustomer,
 };
+

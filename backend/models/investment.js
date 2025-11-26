@@ -10,6 +10,7 @@ module.exports = (sequelize) => {
     customerId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'customer_id',
       references: {
         model: 'customers',
         key: 'id'
@@ -17,7 +18,13 @@ module.exports = (sequelize) => {
     },
     customerName: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      field: 'customer_name'
+    },
+    accountNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'account_number'
     },
     amount: {
       type: DataTypes.DECIMAL(15, 2),
@@ -36,15 +43,17 @@ module.exports = (sequelize) => {
     interestRate: {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: true,
+      field: 'interest_rate',
       comment: 'Annual interest rate percentage'
     },
     status: {
-      type: DataTypes.ENUM('Active', 'Matured', 'Withdrawn', 'Deleted'),
+      type: DataTypes.STRING,
       defaultValue: 'Active'
     },
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'merchant_id',
       references: {
         model: 'merchants',
         key: 'id'
@@ -52,25 +61,31 @@ module.exports = (sequelize) => {
     },
     dateCreated: {
       type: DataTypes.DATE,
+      field: 'date_created',
       defaultValue: DataTypes.NOW
     },
     maturityDate: {
       type: DataTypes.DATE,
-      allowNull: true
+      allowNull: true,
+      field: 'maturity_date'
     },
     expectedReturns: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
+      field: 'expected_returns',
       comment: 'Expected returns at maturity'
     },
     currentValue: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
+      field: 'current_value',
       comment: 'Current investment value'
     }
   }, {
     tableName: 'investments',
     timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
     hooks: {
       beforeCreate: (investment) => {
         // Set default interest rate based on plan
