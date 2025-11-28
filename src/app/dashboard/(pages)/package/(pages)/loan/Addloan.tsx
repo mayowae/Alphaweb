@@ -22,8 +22,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
     defaultAmount: '500',
     gracePeriod: '0',
     loanCharges: '0.00',
-    period: '360',
-    duration: '360',
     benefits: ['Loan facility', 'Flexible repayment'],
     description: '',
     packageCategory: 'Loan'
@@ -63,9 +61,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
       newErrors.defaultAmount = 'Default amount must be at least 500';
     }
     
-    if (!formData.period || parseInt(formData.period) <= 0) newErrors.period = 'Valid period is required';
-    if (!formData.duration || parseInt(formData.duration) <= 0) newErrors.duration = 'Valid duration is required';
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -83,9 +78,9 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
         amount: parseFloat(formData.loanAmount), // Use loan amount as the main amount
         seedAmount: parseFloat(formData.loanAmount),
         seedType: 'Loan amount',
-        period: parseInt(formData.period),
+        period: parseInt(formData.loanPeriod),
         collectionDays: 'Daily',
-        duration: parseInt(formData.duration),
+        duration: parseInt(formData.loanPeriod),
         benefits: formData.benefits,
         description: formData.description,
         packageCategory: 'Loan',
@@ -110,8 +105,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
         defaultAmount: '500',
         gracePeriod: '0',
         loanCharges: '0.00',
-        period: '360',
-        duration: '360',
         benefits: ['Loan facility', 'Flexible repayment'],
         description: '',
         packageCategory: 'Loan'
@@ -233,30 +226,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
               className={`w-full h-[45px] border ${errors.loanPeriod ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
             />
             {errors.loanPeriod && <p className="text-red-500 text-xs mt-1">{errors.loanPeriod}</p>}
-          </div>
-
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>General period (days)</p>
-            <input 
-              type="number" 
-              placeholder='360' 
-              value={formData.period}
-              onChange={(e) => handleInputChange('period', e.target.value)}
-              className={`w-full h-[45px] border ${errors.period ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.period && <p className="text-red-500 text-xs mt-1">{errors.period}</p>}
-          </div>
-
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Duration (days)</p>
-            <input 
-              type="number" 
-              placeholder='360' 
-              value={formData.duration}
-              onChange={(e) => handleInputChange('duration', e.target.value)}
-              className={`w-full h-[45px] border ${errors.duration ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
           </div>
 
           <div className="mb-4">

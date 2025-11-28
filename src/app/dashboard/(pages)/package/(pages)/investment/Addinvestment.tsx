@@ -18,11 +18,9 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
     targetAmount: '',
     period: '',
     interestRate: '',
-    defaultPercentageRate: '',
     extraCharges: '0.00',
     defaultPenalty: '0.00',
     defaultDays: '0',
-    duration: '',
     benefits: ['Daily savings', 'Low interest loans'],
     description: ''
   });
@@ -56,11 +54,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
     
     if (!formData.period || parseInt(formData.period) <= 0) newErrors.period = 'Valid period is required';
     if (!formData.interestRate || parseFloat(formData.interestRate) < 0) newErrors.interestRate = 'Valid interest rate is required';
-    if (!formData.defaultPercentageRate || parseFloat(formData.defaultPercentageRate) < 0) {
-      newErrors.defaultPercentageRate = 'Valid default percentage rate is required';
-    }
-    if (!formData.duration || parseInt(formData.duration) <= 0) newErrors.duration = 'Valid duration is required';
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -72,19 +65,20 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
 
     setLoading(true);
     try {
+      const periodValue = parseInt(formData.period);
+
       await createPackage({
         name: formData.name,
         type: formData.type,
         amount: formData.type === 'Fixed Deposit' ? parseFloat(formData.fixedAmount) : parseFloat(formData.targetAmount),
         seedAmount: formData.type === 'Fixed Deposit' ? parseFloat(formData.fixedAmount) : parseFloat(formData.targetAmount),
         seedType: 'First saving',
-        period: parseInt(formData.period),
+        period: periodValue,
         collectionDays: 'Daily',
-        duration: parseInt(formData.duration),
+        duration: periodValue,
         benefits: formData.benefits,
         description: formData.description,
         interestRate: parseFloat(formData.interestRate),
-        defaultPercentageRate: parseFloat(formData.defaultPercentageRate),
         extraCharges: parseFloat(formData.extraCharges),
         defaultPenalty: parseFloat(formData.defaultPenalty),
         defaultDays: parseInt(formData.defaultDays),
@@ -99,11 +93,9 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
         targetAmount: '',
         period: '',
         interestRate: '',
-        defaultPercentageRate: '',
         extraCharges: '0.00',
         defaultPenalty: '0.00',
         defaultDays: '0',
-        duration: '',
         benefits: ['Daily savings', 'Low interest loans'],
         description: ''
       });
@@ -212,18 +204,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
           </div>
 
           <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Duration (days)</p>
-            <input 
-              type="number" 
-              placeholder='360' 
-              value={formData.duration}
-              onChange={(e) => handleInputChange('duration', e.target.value)}
-              className={`w-full h-[45px] border ${errors.duration ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
-          </div>
-
-          <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Percentage interest</p>
             <input 
               type="number" 
@@ -234,20 +214,6 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
               className={`w-full h-[45px] border ${errors.interestRate ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
             />
             {errors.interestRate && <p className="text-red-500 text-xs mt-1">{errors.interestRate}</p>}
-          </div>
-
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Default Percentage Rate</p>
-            <input 
-              type="number" 
-              step="0.01"
-              placeholder='5.00' 
-              value={formData.defaultPercentageRate}
-              onChange={(e) => handleInputChange('defaultPercentageRate', e.target.value)}
-              className={`w-full h-[45px] border ${errors.defaultPercentageRate ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.defaultPercentageRate && <p className="text-red-500 text-xs mt-1">{errors.defaultPercentageRate}</p>}
-            <p className='text-xs text-gray-500 mt-1'>Used for missed day penalty calculation</p>
           </div>
 
           <div className="mb-4">
