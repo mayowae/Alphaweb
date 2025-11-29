@@ -80,7 +80,7 @@ export default function SignUp() {
         </div>
       </div>
       
-      <div className="w-full md:w-6/12 flex flex-col min-h-screen px-4 overflow-y-auto">
+      <div className="w-full md:w-6/12 flex flex-col min-h-screen px-4 overflow-y-auto hide-scrollbar">
         <div className="flex flex-col flex-grow justify-center py-10">
           <div className="item-card">
             <div className="flex justify-center">

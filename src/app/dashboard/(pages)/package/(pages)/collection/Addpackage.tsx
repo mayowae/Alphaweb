@@ -3,7 +3,6 @@ import React, { useState } from 'react'
 import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa'
 
-
 interface pack {
   packag: boolean,
   onClose: () => void;

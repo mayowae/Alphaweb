@@ -73,7 +73,11 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		}
+  		},
+		 backgroundImage: {
+        'custom-143': 'linear-gradient(143.66deg, #150E46 16.69%, #3322AC 137.55%)',
+      },
+	  
   	}
   },
   plugins: [require("tailwindcss-animate")],

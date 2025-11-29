@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter, Poppins, Lato  } from "next/font/google";
 import "./globals.css";
+import HeaderWrapper from "components/Headerwrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,6 +61,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${poppins.variable} ${lato.variable} antialiased`}
       >
+     <HeaderWrapper />
         {children}
       </body>
     </html>
