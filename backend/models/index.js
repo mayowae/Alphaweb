@@ -1,4 +1,19 @@
 const { Sequelize } = require('sequelize');
+const path = require('path');
+const fs = require('fs');
+
+// Ensure environment variables are loaded for Sequelize as well
+try {
+  const backendEnvPath = path.join(__dirname, '..', '.env');
+  const rootEnvPath = path.join(__dirname, '..', '..', '.env');
+  if (fs.existsSync(backendEnvPath)) {
+    require('dotenv').config({ path: backendEnvPath });
+  } else if (fs.existsSync(rootEnvPath)) {
+    require('dotenv').config({ path: rootEnvPath });
+  } else {
+    require('dotenv').config();
+  }
+} catch (_) {}
 
 const databaseUrl = process.env.DATABASE_URL;
 const useSsl = String(process.env.DB_SSL || '').toLowerCase() === 'true';
@@ -83,8 +98,9 @@ db.Customer.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
 db.Merchant.hasMany(db.Staff, { foreignKey: 'merchantId' });
 db.Staff.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
 
-db.Branch.hasMany(db.Agent, { foreignKey: 'branchId' });
-db.Agent.belongsTo(db.Branch, { foreignKey: 'branchId' });
+// Note: Agent model uses 'branch' as string field, not branchId foreign key
+// db.Branch.hasMany(db.Agent, { foreignKey: 'branchId' });
+// db.Agent.belongsTo(db.Branch, { foreignKey: 'branchId' });
 
 db.Branch.hasMany(db.Customer, { foreignKey: 'branchId' });
 db.Customer.belongsTo(db.Branch, { foreignKey: 'branchId', as: 'Branch' });

@@ -1,20 +1,10 @@
 const { Sequelize } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
+const db = require('../models');
 
-// Database configuration
-const sequelize = new Sequelize('alphacollect_db', 'root', 'UJYmFcc5WNXZRmfApWfswlVUmtWYFnfW', {
-  host: 'dpg-d2phh3mr433s73dakm90-a.oregon-postgres.render.com',
-  port: 5432,
-  dialect: 'postgres',
-  logging: console.log, // Enable logging to see SQL queries
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false
-    }
-  }
-});
+// Use shared Sequelize instance configured via .env
+const sequelize = db.sequelize;
 
 async function runAllMigrations() {
   try {
@@ -26,28 +16,32 @@ async function runAllMigrations() {
 
     const migrationsDir = path.join(__dirname);
     
-    // Run JavaScript migrations first
-    console.log('\n📦 Running JavaScript migrations...');
-    const jsMigrationFiles = fs.readdirSync(migrationsDir)
+    // Phase 1: run core base JS migrations first (ensure dependencies exist before SQL FKs)
+    // Includes basic tables and roles/staff (referenced by early SQL migrations)
+    const coreJsFirstList = [
+      // Ensure base tables exist first
+      '016_create_basic_tables.js',
+      // Normalize/ensure snake_case columns used by SQL migrations
+      '015_ensure_sql_prereqs.js',
+      // Ensure roles/staff exist for FKs in SQL migrations
+      '023_create_roles_and_staff_tables.js',
+    ];
+    const jsAll = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.js') && file !== 'migrate.js' && file !== 'run-all-migrations.js')
       .sort();
 
-    console.log(`Found ${jsMigrationFiles.length} JavaScript migration files`);
-
-    for (const file of jsMigrationFiles) {
-      console.log(`\n🔄 Running JavaScript migration: ${file}`);
-      const migration = require(path.join(migrationsDir, file));
-
-      if (migration.up) {
+    for (const coreJsFirst of coreJsFirstList) {
+      if (jsAll.includes(coreJsFirst)) {
+        console.log(`\n📦 Running core JavaScript migration first: ${coreJsFirst}`);
         try {
-          await migration.up(sequelize.getQueryInterface(), Sequelize);
-          console.log(`✅ JavaScript migration ${file} completed successfully`);
+          const coreMigration = require(path.join(migrationsDir, coreJsFirst));
+          if (coreMigration.up) {
+            await coreMigration.up(sequelize.getQueryInterface(), Sequelize);
+            console.log(`✅ JavaScript migration ${coreJsFirst} completed successfully`);
+          }
         } catch (error) {
-          // Handle common migration errors gracefully
-          if (error.message.includes('already exists') || 
-              error.message.includes('duplicate key') ||
-              error.message.includes('column') && error.message.includes('already exists')) {
-            console.log(`⚠️  JavaScript migration ${file} skipped (already exists): ${error.message}`);
+          if (String(error.message).includes('already exists')) {
+            console.log(`⚠️  Core migration ${coreJsFirst} skipped (already exists): ${error.message}`);
           } else {
             throw error;
           }
@@ -55,8 +49,38 @@ async function runAllMigrations() {
       }
     }
 
-    // Run SQL migrations
+    // Phase 2: run SQL migrations next
     console.log('\n📄 Running SQL migrations...');
+    // Extra guard: ensure agents has required snake_case columns before SQL scripts
+    try {
+      console.log('\n🛡️  Ensuring agents has required columns before SQL migrations...');
+      await sequelize.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'agents'
+          ) THEN
+            -- merchant_id
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'agents' AND column_name = 'merchant_id'
+            ) THEN
+              EXECUTE 'ALTER TABLE agents ADD COLUMN merchant_id INTEGER';
+            END IF;
+            -- branch
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'agents' AND column_name = 'branch'
+            ) THEN
+              EXECUTE 'ALTER TABLE agents ADD COLUMN branch VARCHAR(100)';
+            END IF;
+          END IF;
+        END$$;
+      `);
+    } catch (guardErr) {
+      console.log('⚠️  Pre-SQL agents guard skipped:', guardErr.message);
+    }
     const sqlMigrationFiles = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
       .sort();
@@ -66,24 +90,43 @@ async function runAllMigrations() {
     for (const file of sqlMigrationFiles) {
       console.log(`\n🔄 Running SQL migration: ${file}`);
       const sqlContent = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-      
-      // Execute the entire SQL file as one transaction
       try {
         await sequelize.query(sqlContent);
         console.log(`  ✅ Executed SQL migration: ${file}`);
       } catch (error) {
-        // Some statements might fail if tables already exist, which is okay
-        if (error.message.includes('already exists') || 
-            error.message.includes('duplicate key') ||
-            error.message.includes('relation') && error.message.includes('already exists')) {
+        if (String(error.message).includes('already exists') ||
+            String(error.message).includes('duplicate key') ||
+            (String(error.message).includes('relation') && String(error.message).includes('already exists'))) {
           console.log(`  ⚠️  Skipped (already exists): ${file}`);
         } else {
           throw error;
         }
       }
-      
       console.log(`✅ SQL migration ${file} completed successfully`);
     }
+
+    // Phase 3: run remaining JS migrations (excluding core already run)
+    console.log('\n📦 Running remaining JavaScript migrations...');
+    const jsRemainder = jsAll.filter(f => !coreJsFirstList.includes(f));
+    for (const file of jsRemainder) {
+      console.log(`\n🔄 Running JavaScript migration: ${file}`);
+      const migration = require(path.join(migrationsDir, file));
+      if (migration.up) {
+        try {
+          await migration.up(sequelize.getQueryInterface(), Sequelize);
+          console.log(`✅ JavaScript migration ${file} completed successfully`);
+        } catch (error) {
+          if (String(error.message).includes('already exists') || 
+              String(error.message).includes('duplicate key') ||
+              (String(error.message).includes('column') && String(error.message).includes('already exists'))) {
+            console.log(`⚠️  JavaScript migration ${file} skipped (already exists): ${error.message}`);
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
+
 
     console.log('\n🎉 All migrations completed successfully!');
     console.log('\n📊 Database tables created:');

@@ -1,5 +1,112 @@
 const { Branch, Merchant } = require('../models');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Branches
+ *     description: Branch management
+ * /branches:
+ *   get:
+ *     summary: List all branches
+ *     tags: [Branches]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Branches retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Branches retrieved successfully"
+ *               branches:
+ *                 - id: 1
+ *                   name: "Main Branch"
+ *                   state: "Lagos"
+ *                   location: "Ikeja"
+ *                 - id: 2
+ *                   name: "Abuja Branch"
+ *                   state: "FCT"
+ *                   location: "Central Area"
+ *   post:
+ *     summary: Create branch
+ *     tags: [Branches]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, state, location, merchantId]
+ *             properties:
+ *               name: { type: string }
+ *               state: { type: string }
+ *               location: { type: string }
+ *               merchantId: { type: integer }
+ *     responses:
+ *       201:
+ *         description: Branch created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Branch created successfully"
+ *               branch:
+ *                 id: 10
+ *                 name: "Yaba Branch"
+ *                 state: "Lagos"
+ *                 location: "Yaba"
+ *       400:
+ *         description: Branch name already exists
+ *       404:
+ *         description: Merchant not found
+ * /branches/{id}:
+ *   get:
+ *     summary: Get branch by ID
+ *     tags: [Branches]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Branch ID
+ *     responses:
+ *       200:
+ *         description: Branch retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Branch retrieved successfully"
+ *               branch:
+ *                 id: 1
+ *                 name: "Main Branch"
+ *                 state: "Lagos"
+ *                 location: "Ikeja"
+ *       404:
+ *         description: Branch not found
+ *   delete:
+ *     summary: Delete branch
+ *     tags: [Branches]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Branch ID
+ *     responses:
+ *       200:
+ *         description: Branch deleted successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Branch deleted successfully"
+ *
+ */
+
 // Create branch
 const createBranch = async (req, res) => {
   try {
@@ -83,7 +190,23 @@ const updateBranch = async (req, res) => {
 // List all branches
 const listBranches = async (req, res) => {
   try {
+    // Resolve merchantId for both merchants and agents
+    let merchantId = req.user?.merchantId;
+    if (!merchantId) {
+      if (req.user?.type === 'merchant') {
+        merchantId = req.user.id;
+      } else if (req.user?.type === 'agent') {
+        const { Agent } = require('../models');
+        const agentOwner = await Agent.findByPk(req.user.id);
+        merchantId = agentOwner ? agentOwner.merchantId : undefined;
+      }
+    }
+    if (!merchantId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
+    }
+
     const branches = await Branch.findAll({
+      where: { merchantId },
       attributes: ['id', 'name', 'state', 'location', 'createdAt'],
       include: [
         {

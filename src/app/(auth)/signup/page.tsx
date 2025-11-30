@@ -6,6 +6,25 @@ import Swal from "sweetalert2";
 import { registerUser } from "../../../../services/api";
 import '../../../../global.css';
 
+const westAfricanCurrencies = [
+  "XOF", // Benin
+  "XOF", // Burkina Faso
+  "CVE", // Cabo Verde
+  "XOF", // Côte d'Ivoire
+  "GMD", // The Gambia
+  "GHS", // Ghana
+  "GNF", // Guinea
+  "XOF", // Guinea-Bissau
+  "LRD", // Liberia
+  "XOF", // Mali
+  "MRU", // Mauritania
+  "XOF", // Niger
+  "NGN", // Nigeria
+  "XOF", // Senegal
+  "SLL", // Sierra Leone
+  "XOF"  // Togo
+];
+
 export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,7 +99,7 @@ export default function SignUp() {
         </div>
       </div>
       
-      <div className="w-full md:w-6/12 flex flex-col min-h-screen px-4 overflow-y-auto hide-scrollbar">
+      <div className="w-full md:w-6/12 flex flex-col min-h-screen px-4 overflow-y-auto">
         <div className="flex flex-col flex-grow justify-center py-10">
           <div className="item-card">
             <div className="flex justify-center">
@@ -142,7 +161,10 @@ export default function SignUp() {
                         value={currency}
                         onChange={(e) => setCurrency(e.target.value)}
                         >
-                        <option value="N (NGN)">N (NGN)</option>
+                        <option value="">Select Currency</option>
+                        {westAfricanCurrencies.map((code, idx) => (
+                          <option key={`${code}-${idx}`} value={code}>{code}</option>
+                        ))}
                         </select>
                         <div className="pointer-events-none absolute right-3 top-9 flex items-center">
                         <img src="/icons/arrow-down.png" className="w-4 h-4" />

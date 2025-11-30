@@ -66,6 +66,10 @@ const EditStaffModal = ({ isOpen, onClose, staffData, onSave }: { isOpen: boolea
       });
       onSave(formData);
       onClose();
+      // Refresh staff data after successful update
+      try {
+        document.dispatchEvent(new CustomEvent('staff-created'));
+      } catch {}
     } catch (err: any) {
       Swal.fire({
         icon: 'error',
@@ -219,6 +223,7 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
       onClose();
       try {
         document.dispatchEvent(new CustomEvent('staff-created'));
+        document.dispatchEvent(new CustomEvent('role-created')); // Also refresh roles in case staff creation affects role data
       } catch {}
     } catch (err: any) {
       setStaffError(err.message || 'Failed to create staff');
@@ -281,6 +286,10 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
           title: 'Role created',
           text: 'The role was created successfully.'
         });
+        // Dispatch event to refresh roles data
+        try {
+          document.dispatchEvent(new CustomEvent('role-created'));
+        } catch {}
       })
       .catch((err) => {
         setRoleError(err.message || 'Failed to create role');
@@ -320,17 +329,27 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
 
   // Fetch roles for dynamic dropdown in staff form
   const [roleOptions, setRoleOptions] = useState<{ value: string; label: string }[]>([]);
+  const fetchRoleOptions = async () => {
+    try {
+      const data = await fetchRoles();
+      const roles = (Array.isArray(data) ? data : (data?.roles || [])) as any[];
+      setRoleOptions(roles.map((r:any) => ({ value: String(r.id), label: r.roleName })));
+    } catch {
+      setRoleOptions([]);
+    }
+  };
+  
   useEffect(() => {
     if (!isOpen || type !== 'staff') return;
-    (async () => {
-      try {
-        const data = await fetchRoles();
-        const roles = (Array.isArray(data) ? data : (data?.roles || [])) as any[];
-        setRoleOptions(roles.map((r:any) => ({ value: String(r.id), label: r.roleName })));
-      } catch {
-        setRoleOptions([]);
-      }
-    })();
+    fetchRoleOptions();
+  }, [isOpen, type]);
+
+  // Listen for role creation events to refresh role options
+  useEffect(() => {
+    if (!isOpen || type !== 'staff') return;
+    const handleRoleCreated = () => fetchRoleOptions();
+    document.addEventListener('role-created', handleRoleCreated);
+    return () => document.removeEventListener('role-created', handleRoleCreated);
   }, [isOpen, type]);
 
   // Reusable select component for the form.
@@ -728,10 +747,21 @@ export default function StaffPage() {
   const handleSaveRole = async (updatedRole: any) => {
     try {
       await updateRole(updatedRole);
-      // Optionally show SweetAlert here for success
-      // Optionally refresh roles list here
+      // Refresh roles data after successful update
+      try {
+        document.dispatchEvent(new CustomEvent('role-created'));
+      } catch {}
+      Swal.fire({
+        icon: 'success',
+        title: 'Role updated',
+        text: 'The role was updated successfully.'
+      });
     } catch (err: any) {
-      // Optionally show SweetAlert here for error
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.message || 'Failed to update role.'
+      });
     }
   };
   const [tab, setTab] = useState("members");
@@ -785,7 +815,10 @@ export default function StaffPage() {
     const onRoleCreated = () => fetchStaff();
     document.addEventListener('staff-created', onCreated as any);
     document.addEventListener('role-created', onRoleCreated as any);
-    return () => document.removeEventListener('staff-created', onCreated as any);
+    return () => {
+      document.removeEventListener('staff-created', onCreated as any);
+      document.removeEventListener('role-created', onRoleCreated as any);
+    };
   }, []);
 
   

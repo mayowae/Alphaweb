@@ -1,5 +1,122 @@
 const { Staff, Role, Branch, Merchant } = require('../models');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Staff
+ *     description: Staff management
+ * /staff:
+ *   get:
+ *     summary: List all staff
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Staff retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Staff retrieved successfully"
+ *               staff:
+ *                 - id: 5
+ *                   fullName: "Alice Smith"
+ *                   email: "alice@example.com"
+ *                   phoneNumber: "+2348011111111"
+ *   post:
+ *     summary: Create staff
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fullName, email, phoneNumber, roleId, merchantId]
+ *             properties:
+ *               fullName: { type: string }
+ *               email: { type: string, format: email }
+ *               phoneNumber: { type: string }
+ *               branch: { type: string }
+ *               role: { type: string }
+ *               merchantId: { type: integer }
+ *               roleId: { type: integer }
+ *     responses:
+ *       201:
+ *         description: Staff created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Staff created successfully"
+ *               staff:
+ *                 id: 6
+ *                 fullName: "Bob Jones"
+ *                 email: "bob@example.com"
+ *                 phoneNumber: "+2348022222222"
+ *       400:
+ *         description: Email already registered
+ *       404:
+ *         description: Role or Merchant not found
+ * /staff/{id}:
+ *   get:
+ *     summary: Get staff by ID
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Staff ID
+ *     responses:
+ *       200:
+ *         description: Staff retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Staff retrieved successfully"
+ *               staff:
+ *                 id: 5
+ *                 fullName: "Alice Smith"
+ *                 email: "alice@example.com"
+ *       404:
+ *         description: Staff not found
+ *   put:
+ *     summary: Update staff
+ *     tags: [Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: { type: integer }
+ *               fullName: { type: string }
+ *               email: { type: string, format: email }
+ *               phoneNumber: { type: string }
+ *               branch: { type: string }
+ *               role: { type: string }
+ *               roleId: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Staff updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Staff updated successfully"
+ *               staff:
+ *                 id: 5
+ *                 fullName: "Alice Smith"
+ *                 email: "alice@example.com"
+ */
+
 // Create staff
 const createStaff = async (req, res) => {
   try {
@@ -107,7 +224,23 @@ const updateStaff = async (req, res) => {
 // List all staff
 const listStaff = async (req, res) => {
   try {
+    // Resolve merchantId for both merchants and agents
+    let merchantId = req.user?.merchantId;
+    if (!merchantId) {
+      if (req.user?.type === 'merchant') {
+        merchantId = req.user.id;
+      } else if (req.user?.type === 'agent') {
+        const { Agent } = require('../models');
+        const agentOwner = await Agent.findByPk(req.user.id);
+        merchantId = agentOwner ? agentOwner.merchantId : undefined;
+      }
+    }
+    if (!merchantId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
+    }
+
     const staff = await Staff.findAll({
+      where: { merchantId },
       attributes: ['id', 'fullName', 'email', 'phoneNumber', 'branch', 'role', 'status', 'createdAt'],
       include: [
         {

@@ -9,11 +9,12 @@ import '../../../../global.css';
 export default function VerifyOtp() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const inputRefs:any = useRef([]);
 
   const handleVerify = async () => {
-    const fullOtp = otp.join("");
+    const fullOtp = otp.join("").trim();
     if (fullOtp.length !== 6) {
       Swal.fire({ icon: "warning", title: "Invalid OTP", text: "Please enter the 6-digit OTP." });
       return;
@@ -23,11 +24,14 @@ export default function VerifyOtp() {
       return;
     }
     try {
-      await verifyOtp(email, fullOtp);
+      setIsLoading(true);
+      await verifyOtp(String(email).trim(), fullOtp);
       Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
       router.push('/login');
     } catch (err:any) {
       Swal.fire({ icon: "error", title: "Verification failed", text: err?.message || 'Unable to verify OTP' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -115,8 +119,19 @@ export default function VerifyOtp() {
                 </div>
 
                 <div className="mt-8">
-                  <button type="submit" className="w-full py-3 px-4 bg-[#4E37FB] text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
-                    Verify
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className={`w-full py-3 px-4 bg-[#4E37FB] text-white font-bold rounded-lg transition duration-200 shadow-md ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        Verifying...
+                      </span>
+                    ) : (
+                      'Verify'
+                    )}
                   </button>
                 </div>
                 

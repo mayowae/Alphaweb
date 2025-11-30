@@ -1,5 +1,140 @@
 const { Remittance, Customer, Agent } = require('../models');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Remittances
+ *     description: Remittances management
+ * /remittances:
+ *   get:
+ *     summary: List remittances
+ *     tags: [Remittances]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Remittances list
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               remittances:
+ *                 - id: 41
+ *                   customerName: "John Doe"
+ *                   amount: 25000
+ *                   status: "Pending"
+ *   post:
+ *     summary: Create remittance
+ *     responses:
+ *       201:
+ *         description: Remittance created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Remittance created"
+ *               remittance:
+ *                 id: 42
+ *                 customerName: "Jane Doe"
+ *                 amount: 30000
+ *                 status: "Pending"
+ *     tags: [Remittances]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerId, amount]
+ *             properties:
+ *               collectionId: { type: integer }
+ *               customerId: { type: integer }
+ *               amount: { type: number, format: float }
+ *               notes: { type: string }
+ *   put:
+ *     summary: Update remittance
+ *     tags: [Remittances]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: { type: integer }
+ *               amount: { type: number, format: float }
+ *               notes: { type: string }
+ * /remittances/{id}:
+ *   get:
+ *     summary: Get remittance by ID
+ *     tags: [Remittances]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Remittance retrieved
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               remittance:
+ *                 id: 41
+ *                 customerName: "John Doe"
+ *                 amount: 25000
+ *                 status: "Pending"
+ *   delete:
+ *     summary: Delete remittance
+ *     tags: [Remittances]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Remittance deleted
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Remittance deleted"
+ * /remittances/{id}/approve:
+ *   patch:
+ *     summary: Approve remittance
+ *     tags: [Remittances]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Remittance approved
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Remittance approved"
+ *               remittance:
+ *                 id: 41
+ *                 status: "Approved"
+ *
+ */
+
 const createRemittance = async (req, res) => {
   try {
     const merchantId = req.user.id;

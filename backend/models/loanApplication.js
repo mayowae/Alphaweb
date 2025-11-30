@@ -64,6 +64,7 @@ module.exports = (sequelize) => {
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'merchant_id',
       references: {
         model: 'merchants',
         key: 'id'

@@ -5,8 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { Sequelize } = require('sequelize');
-const swaggerJsdoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
+const { swaggerUi, swaggerSpec } = require('./swagger');
 require('dotenv').config();
 
 // Configure multer for form-data (including file uploads)
@@ -32,10 +31,9 @@ const db = require('./models');
 // Import controllers
 const authController = require('./controllers/authController');
 const collaboratorController = require('./controllers/collaboratorController');
-const userController = require('./controllers/userController');
-const transactionController = require('./controllers/transactionController');
-const summaryController = require('./controllers/summaryController');
+// Mobile controllers removed
 const agentController = require('./controllers/agentController');
+const userController = require('./controllers/userController');
 const branchController = require('./controllers/branchController');
 const customerController = require('./controllers/customerController');
 const roleController = require('./controllers/roleController');
@@ -57,238 +55,45 @@ const dashboardController = require('./controllers/dashboardController');
 // Import middleware
 const { verifyToken, requireMerchant, requireCollaborator, requireAuthenticated } = require('./middleware/auth');
 
-// Swagger configuration
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'AlphaWeb API',
-      version: '1.0.0',
-      description: 'API documentation for AlphaWeb investment management system',
-      contact: {
-        name: 'AlphaWeb Team',
-        email: 'support@alphaweb.com'
-      }
-    },
-    servers: [
-      {
-        url: 'http://localhost:3000',
-        description: 'Development server'
-      }
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
-      },
-      schemas: {
-        InvestmentApplication: {
-          type: 'object',
-          required: ['customerName', 'targetAmount', 'duration'],
-          properties: {
-            id: {
-              type: 'integer',
-              description: 'Application ID'
-            },
-            customerName: {
-              type: 'string',
-              description: 'Customer full name'
-            },
-            accountNumber: {
-              type: 'string',
-              description: 'Customer account number'
-            },
-            targetAmount: {
-              type: 'number',
-              format: 'float',
-              description: 'Target investment amount'
-            },
-            duration: {
-              type: 'integer',
-              description: 'Investment duration in days'
-            },
-            agentId: {
-              type: 'integer',
-              description: 'Agent ID handling the application'
-            },
-            agentName: {
-              type: 'string',
-              description: 'Agent name'
-            },
-            branch: {
-              type: 'string',
-              description: 'Branch name'
-            },
-            status: {
-              type: 'string',
-              enum: ['Pending', 'Approved', 'Rejected', 'Completed'],
-              description: 'Application status'
-            },
-            notes: {
-              type: 'string',
-              description: 'Additional notes'
-            },
-            rejectionReason: {
-              type: 'string',
-              description: 'Reason for rejection'
-            },
-            dateApplied: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Date when application was submitted'
-            },
-            merchantId: {
-              type: 'integer',
-              description: 'Merchant ID'
-            }
-          }
-        },
-        Error: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false
-            },
-            message: {
-              type: 'string',
-              example: 'Error message'
-            },
-            error: {
-              type: 'string',
-              example: 'Detailed error information'
-            }
-          }
-        },
-        Success: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: true
-            },
-            message: {
-              type: 'string',
-              example: 'Operation successful'
-            },
-            application: {
-              $ref: '#/components/schemas/InvestmentApplication'
-            }
-          }
-        },
-        Customer: {
-          type: 'object',
-          required: ['fullName', 'phoneNumber', 'email', 'agentId', 'branchId', 'merchantId'],
-          properties: {
-            id: {
-              type: 'integer',
-              description: 'Customer ID'
-            },
-            fullName: {
-              type: 'string',
-              description: 'Customer full name',
-              example: 'John Doe'
-            },
-            phoneNumber: {
-              type: 'string',
-              description: 'Customer phone number',
-              example: '+2348012345678'
-            },
-            email: {
-              type: 'string',
-              format: 'email',
-              description: 'Customer email address',
-              example: 'john.doe@example.com'
-            },
-            alias: {
-              type: 'string',
-              description: 'Customer alias or nickname',
-              example: 'Johnny'
-            },
-            address: {
-              type: 'string',
-              description: 'Customer address',
-              example: '123 Main Street, Lagos, Nigeria'
-            },
-            accountNumber: {
-              type: 'string',
-              description: 'Customer account number',
-              example: 'ACC123456'
-            },
-            agentId: {
-              type: 'integer',
-              description: 'Agent ID assigned to customer'
-            },
-            branchId: {
-              type: 'integer',
-              description: 'Branch ID where customer is registered'
-            },
-            merchantId: {
-              type: 'integer',
-              description: 'Merchant ID'
-            },
-            packageId: {
-              type: 'integer',
-              description: 'Package ID assigned to customer'
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Customer creation date'
-            },
-            agentName: {
-              type: 'string',
-              description: 'Agent name (populated in responses)',
-              example: 'Agent Smith'
-            },
-            branchName: {
-              type: 'string',
-              description: 'Branch name (populated in responses)',
-              example: 'Main Branch'
-            },
-            packageName: {
-              type: 'string',
-              description: 'Package name (populated in responses)',
-              example: 'Premium Package'
-            },
-            status: {
-              type: 'string',
-              description: 'Customer status',
-              example: 'Active'
-            }
-          }
-        }
-      }
-    },
-    security: [
-      {
-        bearerAuth: []
-      }
-    ]
-  },
-  apis: ['./server.js', './controllers/*.js']
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// Swagger configuration moved to ./swagger.js
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: "*", // or "https://alphakolect.com"
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
+  allowedHeaders: "Content-Type,Authorization"
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+// Prevent caching of the Swagger UI/spec in browsers and proxies
+app.use('/api-docs', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+}, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'AlphaWeb API Documentation'
 }));
+// Raw JSON spec endpoint
+app.get('/api-docs/swagger.json', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
@@ -312,212 +117,13 @@ db.sequelize.authenticate()
 //   });
 
 // Routes
+// Mobile/Agent authentication
+app.post('/api/auth/login', userController.loginUser);
 
-/**
- * @swagger
- * /health:
- *   get:
- *     summary: Health check endpoint
- *     tags: [System]
- *     responses:
- *       200:
- *         description: Server is running
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "OK"
- *                 message:
- *                   type: string
- *                   example: "Server is running"
- */
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-/**
- * @swagger
- * /merchant/signup:
- *   post:
- *     summary: Register a new merchant
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - businessName
- *               - businessAlias
- *               - phone
- *               - email
- *               - currency
- *               - password
- *             properties:
- *               businessName:
- *                 type: string
- *                 example: "Alpha Investment Ltd"
- *               businessAlias:
- *                 type: string
- *                 example: "AlphaInv"
- *               phone:
- *                 type: string
- *                 example: "+2348012345678"
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "admin@alphainv.com"
- *               currency:
- *                 type: string
- *                 example: "NGN"
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "securePassword123"
- *     responses:
- *       201:
- *         description: Merchant registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Merchant registered successfully. Please verify your email with the OTP sent."
- *                 merchantId:
- *                   type: integer
- *                   example: 1
- *                 otp:
- *                   type: string
- *                   example: "123456"
- *       400:
- *         description: Bad request - email already exists or validation error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- * /merchant/login:
- *   post:
- *     summary: Login merchant
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "admin@alphainv.com"
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "securePassword123"
- *     responses:
- *       200:
- *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Login successful"
- *                 token:
- *                   type: string
- *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                 merchant:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     businessName:
- *                       type: string
- *                       example: "Alpha Investment Ltd"
- *                     email:
- *                       type: string
- *                       example: "admin@alphainv.com"
- *       401:
- *         description: Invalid credentials
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- * /merchant/verify-otp:
- *   post:
- *     summary: Verify OTP for merchant email verification
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - otp
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "admin@alphainv.com"
- *               otp:
- *                 type: string
- *                 example: "123456"
- *     responses:
- *       200:
- *         description: Email verified successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Email verified successfully"
- *       400:
- *         description: Invalid or expired OTP
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Email not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 app.post('/merchant/signup', authController.registerMerchant);
 app.post('/merchant/login', authController.loginMerchant);
 app.post('/merchant/forgot-password', authController.forgotPassword);
@@ -533,25 +139,7 @@ app.post('/collaborator/resend-otp', collaboratorController.collaboratorResendOT
 app.post('/collaborator/verify-otp', collaboratorController.collaboratorVerifyOTP);
 app.post('/collaborator/change-password', collaboratorController.collaboratorChangePassword);
 
-// User authentication routes (for mobile app)
-app.post('/api/auth/register', userController.registerUser);
-app.post('/api/auth/login', userController.loginUser);
-app.post('/api/auth/forgot-password', userController.forgotPassword);
-app.post('/api/auth/verify-otp', userController.verifyOTP);
-app.post('/api/auth/change-password', userController.changePassword);
-
-// Protected user routes
-app.get('/api/user/profile', verifyToken, userController.getUserProfile);
-app.put('/api/user/device-token', verifyToken, userController.updateDeviceToken);
-
-// Transaction routes
-app.get('/api/transactions', verifyToken, transactionController.getUserTransactions);
-app.get('/api/transactions/:id', verifyToken, transactionController.getTransactionById);
-app.post('/api/transactions', verifyToken, transactionController.createTransaction);
-
-// Summary routes
-app.get('/api/summary', verifyToken, summaryController.getUserSummary);
-app.get('/api/user/stats', verifyToken, summaryController.getUserStats);
+// Mobile endpoints removed
 
 // Protected routes (require authentication)
 
@@ -561,6 +149,7 @@ app.put('/agents', upload.none(), verifyToken, requireAuthenticated, agentContro
 app.get('/agents', verifyToken, requireAuthenticated, agentController.listAgents);
 app.get('/agents/:id', verifyToken, requireAuthenticated, agentController.getAgentById);
 app.patch('/agents/:id/status', upload.none(), verifyToken, requireAuthenticated, agentController.updateAgentStatus);
+
 
 // Branch routes
 app.post('/branches', upload.none(), verifyToken, requireAuthenticated, branchController.createBranch);
@@ -610,312 +199,12 @@ app.get('/investment-transactions/:id', verifyToken, requireAuthenticated, inves
 app.put('/investment-transactions/:id', upload.none(), verifyToken, requireAuthenticated, investmentTransactionController.updateInvestmentTransaction);
 app.delete('/investment-transactions/:id', verifyToken, requireAuthenticated, investmentTransactionController.deleteInvestmentTransaction);
 
-/**
- * @swagger
- * /investment-applications:
- *   post:
- *     summary: Create a new investment application
- *     tags: [Investment Applications]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - customerName
- *               - targetAmount
- *               - duration
- *             properties:
- *               customerName:
- *                 type: string
- *                 example: "John Doe"
- *               accountNumber:
- *                 type: string
- *                 example: "ACC123456"
- *               targetAmount:
- *                 type: number
- *                 format: float
- *                 example: 50000.00
- *               duration:
- *                 type: integer
- *                 example: 365
- *               agentId:
- *                 type: integer
- *                 example: 1
- *               branch:
- *                 type: string
- *                 example: "Main Branch"
- *               notes:
- *                 type: string
- *                 example: "Customer interested in long-term investment"
- *     responses:
- *       201:
- *         description: Investment application created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Success'
- *       400:
- *         description: Bad request - missing required fields
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *   get:
- *     summary: Get all investment applications with filtering and pagination
- *     tags: [Investment Applications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [Pending, Approved, Rejected, Completed]
- *         description: Filter by application status
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search by customer name, account number, or agent name
- *       - in: query
- *         name: fromDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter applications from this date
- *       - in: query
- *         name: toDate
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter applications to this date
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of items per page
- *     responses:
- *       200:
- *         description: List of investment applications retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 applications:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/InvestmentApplication'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     currentPage:
- *                       type: integer
- *                       example: 1
- *                     totalPages:
- *                       type: integer
- *                       example: 5
- *                     totalItems:
- *                       type: integer
- *                       example: 50
- *                     itemsPerPage:
- *                       type: integer
- *                       example: 10
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 app.post('/investment-applications', upload.none(), verifyToken, requireAuthenticated, investmentApplicationController.createInvestmentApplication);
 app.get('/investment-applications', verifyToken, requireAuthenticated, investmentApplicationController.getInvestmentApplications);
 
-/**
- * @swagger
- * /investment-applications/{id}:
- *   get:
- *     summary: Get investment application by ID
- *     tags: [Investment Applications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Investment application ID
- *     responses:
- *       200:
- *         description: Investment application retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 application:
- *                   $ref: '#/components/schemas/InvestmentApplication'
- *       404:
- *         description: Investment application not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *   delete:
- *     summary: Delete investment application
- *     tags: [Investment Applications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Investment application ID
- *     responses:
- *       200:
- *         description: Investment application deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Success'
- *       404:
- *         description: Investment application not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 app.get('/investment-applications/:id', verifyToken, requireAuthenticated, investmentApplicationController.getInvestmentApplicationById);
 app.delete('/investment-applications/:id', verifyToken, requireAuthenticated, investmentApplicationController.deleteInvestmentApplication);
 
-/**
- * @swagger
- * /investment-applications/{id}/status:
- *   put:
- *     summary: Update investment application status
- *     tags: [Investment Applications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Investment application ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [Pending, Approved, Rejected, Completed]
- *                 example: "Approved"
- *               notes:
- *                 type: string
- *                 example: "Application approved after review"
- *               rejectionReason:
- *                 type: string
- *                 example: "Insufficient documentation"
- *     responses:
- *       200:
- *         description: Application status updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Success'
- *       400:
- *         description: Bad request - invalid status or missing required fields
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Investment application not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: Unauthorized - invalid or missing token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 app.put('/investment-applications/:id/status', upload.none(), verifyToken, requireAuthenticated, investmentApplicationController.updateApplicationStatus);
 app.put('/investment-applications/:id', upload.none(), verifyToken, requireAuthenticated, investmentApplicationController.updateInvestmentApplication);
 
@@ -952,6 +241,7 @@ app.delete('/packages/:id', verifyToken, requireAuthenticated, packageController
 
 // Collection routes
 app.post('/collections', upload.none(), verifyToken, requireAuthenticated, collectionController.createCollection);
+app.post('/collections/bulk', upload.none(), verifyToken, requireAuthenticated, collectionController.createCollectionsBulk);
 app.get('/collections', verifyToken, requireAuthenticated, collectionController.getCollections);
 app.get('/collections/:id', verifyToken, requireAuthenticated, collectionController.getCollectionById);
 app.put('/collections', upload.none(), verifyToken, requireAuthenticated, collectionController.updateCollection);
@@ -989,6 +279,7 @@ app.get('/customer-wallets/stats/summary', verifyToken, requireAuthenticated, cu
 app.get('/dashboard/stats', verifyToken, requireAuthenticated, dashboardController.getDashboardStats);
 app.get('/dashboard/transaction-stats', verifyToken, requireAuthenticated, dashboardController.getTransactionStats);
 app.get('/dashboard/agent-customer-stats', verifyToken, requireAuthenticated, dashboardController.getAgentCustomerStats);
+app.get('/dashboard/agent-summary', verifyToken, requireAuthenticated, dashboardController.getAgentSummary);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -1012,3 +303,5 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+

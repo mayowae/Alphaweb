@@ -5,52 +5,67 @@ module.exports = {
     try {
       console.log('Adding loan-specific columns to packages table...');
       
-      // Add loan-specific columns to packages table
-      await queryInterface.addColumn('packages', 'loan_amount', {
+      // Add loan-specific columns to packages table (idempotent)
+      const packagesInfo = await queryInterface.describeTable('packages');
+      if (!packagesInfo.loan_amount) {
+        await queryInterface.addColumn('packages', 'loan_amount', {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: true,
         comment: 'Loan amount for loan packages'
-      });
+        });
+      }
 
-      await queryInterface.addColumn('packages', 'loan_interest_rate', {
+      if (!packagesInfo.loan_interest_rate) {
+        await queryInterface.addColumn('packages', 'loan_interest_rate', {
         type: DataTypes.DECIMAL(5, 2),
         allowNull: true,
         comment: 'Interest rate for loan packages'
-      });
+        });
+      }
 
-      await queryInterface.addColumn('packages', 'loan_period', {
+      if (!packagesInfo.loan_period) {
+        await queryInterface.addColumn('packages', 'loan_period', {
         type: DataTypes.INTEGER,
         allowNull: true,
         comment: 'Loan period in days'
-      });
+        });
+      }
 
-      await queryInterface.addColumn('packages', 'default_amount', {
+      if (!packagesInfo.default_amount) {
+        await queryInterface.addColumn('packages', 'default_amount', {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: true,
         defaultValue: 0.00,
         comment: 'Default amount for loan packages'
-      });
+        });
+      }
 
-      await queryInterface.addColumn('packages', 'grace_period', {
+      if (!packagesInfo.grace_period) {
+        await queryInterface.addColumn('packages', 'grace_period', {
         type: DataTypes.INTEGER,
         allowNull: true,
         defaultValue: 0,
         comment: 'Grace period in days for loan packages'
-      });
+        });
+      }
 
-      await queryInterface.addColumn('packages', 'loan_charges', {
+      if (!packagesInfo.loan_charges) {
+        await queryInterface.addColumn('packages', 'loan_charges', {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: true,
         defaultValue: 0.00,
         comment: 'Additional charges for loan packages'
-      });
+        });
+      }
 
-      await queryInterface.addColumn('packages', 'package_category', {
+      if (!packagesInfo.package_category) {
+        await queryInterface.addColumn('packages', 'package_category', {
         type: DataTypes.ENUM('Investment', 'Loan', 'Collection'),
         allowNull: true,
         defaultValue: 'Investment',
         comment: 'Package category: Investment, Loan, or Collection'
-      });
+        });
+      }
 
       // Update existing records to set package_category
       await queryInterface.sequelize.query(`
@@ -60,17 +75,23 @@ module.exports = {
       `);
 
       // Add indexes for better performance
-      await queryInterface.addIndex('packages', ['package_category'], {
-        name: 'idx_packages_category'
-      });
+      try {
+        await queryInterface.addIndex('packages', ['package_category'], { name: 'idx_packages_category' });
+      } catch (e) {
+        if (!String(e.message).includes('already exists')) throw e;
+      }
 
-      await queryInterface.addIndex('packages', ['loan_amount'], {
-        name: 'idx_packages_loan_amount'
-      });
+      try {
+        await queryInterface.addIndex('packages', ['loan_amount'], { name: 'idx_packages_loan_amount' });
+      } catch (e) {
+        if (!String(e.message).includes('already exists')) throw e;
+      }
 
-      await queryInterface.addIndex('packages', ['loan_period'], {
-        name: 'idx_packages_loan_period'
-      });
+      try {
+        await queryInterface.addIndex('packages', ['loan_period'], { name: 'idx_packages_loan_period' });
+      } catch (e) {
+        if (!String(e.message).includes('already exists')) throw e;
+      }
 
       console.log('Successfully added loan-specific columns to packages table');
     } catch (error) {

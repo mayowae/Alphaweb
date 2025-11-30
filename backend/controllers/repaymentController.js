@@ -1,6 +1,350 @@
 const { Repayment, Loan, Customer, Agent } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Repayments
+ *     description: Loan repayment management
+ * /repayments:
+ *   get:
+ *     summary: Get all repayments
+ *     tags: [Repayments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Pending, Completed, Failed, All]
+ *         description: Filter by repayment status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by customer name, account number, transaction ID, or agent name
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter from date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter to date
+ *       - in: query
+ *         name: agentId
+ *         schema:
+ *           type: integer
+ *         description: Filter by agent ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: date
+ *         description: Sort field
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Repayments retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 - id: 301
+ *                   transactionId: "REP-12345"
+ *                   loanId: 601
+ *                   customerId: 12
+ *                   customerName: "John Doe"
+ *                   accountNumber: "ACC123456"
+ *                   package: "Premium Loan Package"
+ *                   amount: 5000.00
+ *                   branch: "Main Branch"
+ *                   agentId: 3
+ *                   agentName: "Agent Smith"
+ *                   paymentMethod: "Cash"
+ *                   reference: "REP-REF-2024-001"
+ *                   notes: "Monthly loan repayment"
+ *                   status: "Completed"
+ *                   paymentDate: "2024-01-15T10:30:00.000Z"
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
+ *               pagination:
+ *                 currentPage: 1
+ *                 totalPages: 3
+ *                 totalItems: 25
+ *                 itemsPerPage: 10
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create a new repayment
+ *     tags: [Repayments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerName, amount]
+ *             properties:
+ *               loanId:
+ *                 type: integer
+ *                 description: Loan ID
+ *                 example: 1
+ *               customerName:
+ *                 type: string
+ *                 description: Customer full name
+ *                 example: "John Doe"
+ *               accountNumber:
+ *                 type: string
+ *                 description: Customer account number
+ *                 example: "ACC123456"
+ *               package:
+ *                 type: string
+ *                 description: Package name
+ *                 example: "Premium Package"
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 description: Repayment amount
+ *                 example: 5000
+ *               branch:
+ *                 type: string
+ *                 description: Branch name
+ *                 example: "Main Branch"
+ *               agentId:
+ *                 type: integer
+ *                 description: Agent ID handling the repayment
+ *                 example: 1
+ *               paymentMethod:
+ *                 type: string
+ *                 description: Payment method
+ *                 example: "Cash"
+ *               reference:
+ *                 type: string
+ *                 description: Payment reference
+ *                 example: "REF123456"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Partial payment received"
+ *     responses:
+ *       201:
+ *         description: Repayment created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Repayment created successfully"
+ *               data:
+ *                 id: 302
+ *                 transactionId: "REP-67890"
+ *                 loanId: 601
+ *                 customerId: 12
+ *                 customerName: "John Doe"
+ *                 accountNumber: "ACC123456"
+ *                 package: "Premium Loan Package"
+ *                 amount: 7000.00
+ *                 branch: "Main Branch"
+ *                 agentId: 3
+ *                 agentName: "Agent Smith"
+ *                 paymentMethod: "Cash"
+ *                 reference: "REP-REF-2024-002"
+ *                 notes: "Partial payment received"
+ *                 status: "Pending"
+ *                 paymentDate: "2024-01-15T10:30:00.000Z"
+ *                 createdAt: "2024-01-15T10:30:00.000Z"
+ *                 updatedAt: "2024-01-15T10:30:00.000Z"
+ *       404:
+ *         description: Customer or loan not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /repayments/{id}:
+ *   get:
+ *     summary: Get repayment by ID
+ *     tags: [Repayments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Repayment ID
+ *     responses:
+ *       200:
+ *         description: Repayment retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: 301
+ *                 transactionId: "REP-12345"
+ *                 amount: 5000
+ *                 status: "Completed"
+ *       404:
+ *         description: Repayment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Delete repayment
+ *     tags: [Repayments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Repayment ID
+ *     responses:
+ *       200:
+ *         description: Repayment deleted successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Repayment deleted successfully"
+ *       404:
+ *         description: Repayment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /repayments/{id}/status:
+ *   put:
+ *     summary: Update repayment status
+ *     tags: [Repayments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Repayment ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, Completed, Failed]
+ *                 description: New repayment status
+ *                 example: "Completed"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Payment verified and processed"
+ *     responses:
+ *       200:
+ *         description: Repayment status updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Repayment status updated successfully"
+ *               data:
+ *                 id: 301
+ *                 status: "Completed"
+ *       404:
+ *         description: Repayment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /repayments/stats/summary:
+ *   get:
+ *     summary: Get repayment statistics summary
+ *     tags: [Repayments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Repayment statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 totalRepayments: 80
+ *                 completedRepayments: 50
+ *                 pendingRepayments: 30
+ *                 totalAmount: 450000
+ *                 totalCollection: 300000
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Create a new repayment
 const createRepayment = async (req, res) => {
   try {
@@ -29,13 +373,6 @@ const createRepayment = async (req, res) => {
 
     // Normalize loanId
     const normalizedLoanId = Number.isFinite(Number(loanId)) ? Number(loanId) : undefined;
-
-    if (!loan) {
-      return res.status(404).json({
-        success: false,
-        message: 'Loan not found'
-      });
-    }
 
     // Find customer first
     const customer = await Customer.findOne({
@@ -73,6 +410,13 @@ const createRepayment = async (req, res) => {
       loan = await Loan.findOne({
         where: { merchantId, [Op.or]: whereOr },
         order: [['dateIssued', 'DESC']]
+      });
+    }
+
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Loan not found'
       });
     }
 
@@ -381,6 +725,7 @@ module.exports = {
   deleteRepayment,
   getRepaymentStats
 };
+
 
 
 

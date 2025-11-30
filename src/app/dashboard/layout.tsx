@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   return (
-    <div className="flex flex-col  h-screen w-full">
+    <div className="flex flex-col h-screen w-full">
       {/* header  */}
       <DashboardHeader setIsOpen={setIsOpen} isOpen={isOpen} />
     

@@ -14,15 +14,16 @@ module.exports = (sequelize) => {
     agentId: { type: DataTypes.INTEGER, allowNull: true, field: 'agent_id', references: { model: 'agents', key: 'id' } },
     agentName: { type: DataTypes.STRING, allowNull: true, field: 'agent_name', comment: 'Agent who processed the repayment' },
     merchantId: { type: DataTypes.INTEGER, allowNull: false, field: 'merchant_id', references: { model: 'merchants', key: 'id' } },
-    date: { type: DataTypes.DATE, defaultValue: DataTypes.NOW, comment: 'Date of repayment' },
-    status: { type: DataTypes.ENUM('Pending', 'Completed', 'Failed'), defaultValue: 'Pending' },
+    date: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+    status: { type: DataTypes.STRING, defaultValue: 'Pending' },
     paymentMethod: { type: DataTypes.STRING, allowNull: true, field: 'payment_method', comment: 'Method of payment' },
     reference: { type: DataTypes.STRING, allowNull: true, comment: 'Payment reference number' },
     notes: { type: DataTypes.TEXT, allowNull: true, comment: 'Additional notes' }
   }, {
     tableName: 'repayments',
     timestamps: true,
-    underscored: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
     indexes: [
       { fields: ['merchant_id'] },
       { fields: ['loan_id'] },

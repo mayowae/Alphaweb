@@ -104,10 +104,7 @@ module.exports = (sequelize) => {
     }
   }, {
     tableName: 'wallet_transactions',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    underscored: true,
+    timestamps: false,
     hooks: {
       beforeCreate: (transaction) => {
         // Generate reference if not provided

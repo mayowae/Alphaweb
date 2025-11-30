@@ -13,16 +13,15 @@ interface pack {
 const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
   const [formData, setFormData] = useState({
     name: '',
-    type: 'Fixed',
+    type: 'Flat Rate',
     amount: '',
     loanAmount: '',
     loanInterestRate: '',
+    interestAmount: '',
     loanPeriod: '',
-    defaultAmount: '0.00',
+    defaultAmount: '500',
     gracePeriod: '0',
     loanCharges: '0.00',
-    period: '360',
-    duration: '360',
     benefits: ['Loan facility', 'Flexible repayment'],
     description: '',
     packageCategory: 'Loan'
@@ -45,10 +44,23 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
     if (!formData.name.trim()) newErrors.name = 'Package name is required';
     if (!formData.loanAmount || parseFloat(formData.loanAmount) <= 0) newErrors.loanAmount = 'Valid loan amount is required';
     if (!formData.loanPeriod || parseInt(formData.loanPeriod) <= 0) newErrors.loanPeriod = 'Valid loan period is required';
-    if (!formData.loanInterestRate || parseFloat(formData.loanInterestRate) < 0) newErrors.loanInterestRate = 'Valid interest rate is required';
-    if (!formData.period || parseInt(formData.period) <= 0) newErrors.period = 'Valid period is required';
-    if (!formData.duration || parseInt(formData.duration) <= 0) newErrors.duration = 'Valid duration is required';
-
+    
+    // Validate based on loan type
+    if (formData.type === 'Flat Rate') {
+      if (!formData.interestAmount || parseFloat(formData.interestAmount) < 0) {
+        newErrors.interestAmount = 'Valid interest amount is required';
+      }
+    } else if (formData.type === 'Percentage Rate') {
+      if (!formData.loanInterestRate || parseFloat(formData.loanInterestRate) < 0) {
+        newErrors.loanInterestRate = 'Valid interest rate is required';
+      }
+    }
+    
+    // Validate default amount minimum
+    if (!formData.defaultAmount || parseFloat(formData.defaultAmount) < 500) {
+      newErrors.defaultAmount = 'Default amount must be at least 500';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -66,14 +78,15 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
         amount: parseFloat(formData.loanAmount), // Use loan amount as the main amount
         seedAmount: parseFloat(formData.loanAmount),
         seedType: 'Loan amount',
-        period: parseInt(formData.period),
+        period: parseInt(formData.loanPeriod),
         collectionDays: 'Daily',
-        duration: parseInt(formData.duration),
+        duration: parseInt(formData.loanPeriod),
         benefits: formData.benefits,
         description: formData.description,
         packageCategory: 'Loan',
         loanAmount: parseFloat(formData.loanAmount),
-        loanInterestRate: parseFloat(formData.loanInterestRate),
+        loanInterestRate: formData.type === 'Percentage Rate' ? parseFloat(formData.loanInterestRate) : 0,
+        interestAmount: formData.type === 'Flat Rate' ? parseFloat(formData.interestAmount) : 0,
         loanPeriod: parseInt(formData.loanPeriod),
         defaultAmount: parseFloat(formData.defaultAmount),
         gracePeriod: parseInt(formData.gracePeriod),
@@ -83,16 +96,15 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
       // Reset form and close modal
       setFormData({
         name: '',
-        type: 'Fixed',
+        type: 'Flat Rate',
         amount: '',
         loanAmount: '',
         loanInterestRate: '',
+        interestAmount: '',
         loanPeriod: '',
-        defaultAmount: '0.00',
+        defaultAmount: '500',
         gracePeriod: '0',
         loanCharges: '0.00',
-        period: '360',
-        duration: '360',
         benefits: ['Loan facility', 'Flexible repayment'],
         description: '',
         packageCategory: 'Loan'
@@ -163,9 +175,8 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
                 value={formData.type}
                 onChange={(e) => handleInputChange('type', e.target.value)}
               >
-                <option value="Fixed">Fixed rate</option>
-                <option value="Flexible">Flexible rate</option>
-                <option value="Variable">Variable rate</option>
+                <option value="Flat Rate">Flat Rate</option>
+                <option value="Percentage Rate">Percentage Rate</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
                 <FaAngleDown className="w-[16px] h-[16px] text-[#8E8E93]" />
@@ -173,18 +184,37 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
             </div>
           </div>
 
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Loan interest rate (%)</p>
-            <input 
-              type="number" 
-              step="0.01"
-              placeholder='20.00' 
-              value={formData.loanInterestRate}
-              onChange={(e) => handleInputChange('loanInterestRate', e.target.value)}
-              className={`w-full h-[45px] border ${errors.loanInterestRate ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.loanInterestRate && <p className="text-red-500 text-xs mt-1">{errors.loanInterestRate}</p>}
-          </div>
+          {/* Show Interest Amount field for Flat Rate */}
+          {formData.type === 'Flat Rate' && (
+            <div className="mb-4">
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Interest Amount (Naira)</p>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder='5000.00' 
+                value={formData.interestAmount}
+                onChange={(e) => handleInputChange('interestAmount', e.target.value)}
+                className={`w-full h-[45px] border ${errors.interestAmount ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
+              />
+              {errors.interestAmount && <p className="text-red-500 text-xs mt-1">{errors.interestAmount}</p>}
+            </div>
+          )}
+
+          {/* Show Loan Interest Rate field for Percentage Rate */}
+          {formData.type === 'Percentage Rate' && (
+            <div className="mb-4">
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Loan Interest Rate (%)</p>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder='20.00' 
+                value={formData.loanInterestRate}
+                onChange={(e) => handleInputChange('loanInterestRate', e.target.value)}
+                className={`w-full h-[45px] border ${errors.loanInterestRate ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
+              />
+              {errors.loanInterestRate && <p className="text-red-500 text-xs mt-1">{errors.loanInterestRate}</p>}
+            </div>
+          )}
 
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Loan period (days)</p>
@@ -199,39 +229,18 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
           </div>
 
           <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>General period (days)</p>
-            <input 
-              type="number" 
-              placeholder='360' 
-              value={formData.period}
-              onChange={(e) => handleInputChange('period', e.target.value)}
-              className={`w-full h-[45px] border ${errors.period ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.period && <p className="text-red-500 text-xs mt-1">{errors.period}</p>}
-          </div>
-
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Duration (days)</p>
-            <input 
-              type="number" 
-              placeholder='360' 
-              value={formData.duration}
-              onChange={(e) => handleInputChange('duration', e.target.value)}
-              className={`w-full h-[45px] border ${errors.duration ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
-          </div>
-
-          <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Default amount</p>
             <input 
               type="number" 
               step="0.01"
-              placeholder='1000.00' 
+              placeholder='500.00' 
+              min="500"
               value={formData.defaultAmount}
               onChange={(e) => handleInputChange('defaultAmount', e.target.value)}
-              className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' 
+              className={`w-full h-[45px] border ${errors.defaultAmount ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
             />
+            {errors.defaultAmount && <p className="text-red-500 text-xs mt-1">{errors.defaultAmount}</p>}
+            <p className='text-xs text-gray-500 mt-1'>Minimum: 500 Naira</p>
           </div>
 
           <div className="mb-4">
@@ -255,6 +264,7 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
               onChange={(e) => handleInputChange('loanCharges', e.target.value)}
               className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' 
             />
+            <p className='text-xs text-gray-500 mt-1'>Note: Charges will be deducted from the customer's first approved loan</p>
           </div>
 
           <div className="mb-4">

@@ -116,6 +116,11 @@ module.exports = (sequelize) => {
       defaultValue: 0,
       comment: 'Default number of days for penalties'
     },
+    defaultPercentageRate: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      comment: 'Default percentage rate for missed day penalty calculation'
+    },
     // Loan-specific fields
     loanAmount: {
       type: DataTypes.DECIMAL(15, 2),
@@ -126,6 +131,11 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: true,
       comment: 'Interest rate for loan packages'
+    },
+    interestAmount: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      comment: 'Fixed interest amount in Naira for flat rate loan packages'
     },
     loanPeriod: {
       type: DataTypes.INTEGER,

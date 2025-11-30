@@ -5,13 +5,19 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     fullName: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'full_name',
     },
     phoneNumber: {
       type: DataTypes.STRING,
       allowNull: false,
+      field: 'phone_number',
     },
     email: {
       type: DataTypes.STRING,
@@ -22,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
       unique: true,
+      field: 'account_number',
     },
     alias: {
       type: DataTypes.STRING,
@@ -34,26 +41,32 @@ module.exports = (sequelize, DataTypes) => {
     agentId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'agent_id',
     },
     branchId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'branch_id',
     },
     merchantId: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'merchant_id',
     },
     packageId: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      field: 'package_id',
     },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'created_at',
     },
     updatedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'updated_at',
     },
   }, {
     tableName: 'customers',

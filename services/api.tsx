@@ -1,8 +1,17 @@
+<<<<<<< HEAD
 export const BASE_URL = 'http://localhost:3000';
 
 function getAuthHeaders(): Record<string, string> {
   const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;
 
+=======
+// Prefer environment variable; fallback to same-origin in browser; fallback to localhost in SSR/dev
+export const BASE_URL = 'https://alphakolect.com/api';
+
+function getAuthHeaders(): Record<string, string> {
+  const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;
+  
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   if (user) {
     try {
       const parsedUser = JSON.parse(user);
@@ -92,12 +101,20 @@ export async function resendOtp(email: string) {
   return data;
 }
 export async function verifyOtp(email: string, otp: string) {
+<<<<<<< HEAD
+=======
+  const payload = { email: String(email || '').trim(), otp: String(otp || '').trim() } as { email: string; otp: string };
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   const response = await fetch(BASE_URL + '/merchant/verify-otp', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+<<<<<<< HEAD
     body: JSON.stringify({ email, otp }),
+=======
+    body: JSON.stringify(payload),
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   });
   const data = await response.json();
   if (!response.ok) {
@@ -198,6 +215,10 @@ export async function addAgent(agentData: { fullName: string; phoneNumber: strin
   }
 
   const payload: any = {
+<<<<<<< HEAD
+=======
+    name: agentData.fullName, // Database requires 'name' field
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
     fullName: agentData.fullName,
     phoneNumber: agentData.phoneNumber,
     email: agentData.email,
@@ -220,6 +241,24 @@ export async function addAgent(agentData: { fullName: string; phoneNumber: strin
   }
   return data;
 }
+<<<<<<< HEAD
+=======
+export async function getBranches() {
+  const response = await fetch(BASE_URL + '/branches', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch branches');
+  }
+  return data;
+}
+
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
 export async function updateAgent(agentData: { id: number; fullName: string; phoneNumber: string; email: string; password: string; branch: string; status?: string; }) {
   const formData = new FormData();
   formData.append('id', String(agentData.id));
@@ -378,6 +417,10 @@ export async function addCustomer(customerData: { fullName: string; phoneNumber:
   }
 
   const formData = new FormData();
+<<<<<<< HEAD
+=======
+  formData.append('name', customerData.fullName); // Database requires 'name' field
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   formData.append('fullName', customerData.fullName);
   formData.append('phoneNumber', customerData.phoneNumber);
   formData.append('email', customerData.email);
@@ -741,9 +784,17 @@ export async function createPackage(packageData: {
   extraCharges?: number;
   defaultPenalty?: number;
   defaultDays?: number;
+<<<<<<< HEAD
   // Loan-specific fields
   loanAmount?: number;
   loanInterestRate?: number;
+=======
+  defaultPercentageRate?: number;
+  // Loan-specific fields
+  loanAmount?: number;
+  loanInterestRate?: number;
+  interestAmount?: number;
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   loanPeriod?: number;
   defaultAmount?: number;
   gracePeriod?: number;
@@ -788,6 +839,12 @@ export async function createPackage(packageData: {
   if (packageData.defaultDays) {
     formData.append('defaultDays', String(packageData.defaultDays));
   }
+<<<<<<< HEAD
+=======
+  if (packageData.defaultPercentageRate !== undefined) {
+    formData.append('defaultPercentageRate', String(packageData.defaultPercentageRate));
+  }
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   // Loan-specific fields
   if (packageData.loanAmount) {
     formData.append('loanAmount', String(packageData.loanAmount));
@@ -795,6 +852,12 @@ export async function createPackage(packageData: {
   if (packageData.loanInterestRate) {
     formData.append('loanInterestRate', String(packageData.loanInterestRate));
   }
+<<<<<<< HEAD
+=======
+  if (packageData.interestAmount) {
+    formData.append('interestAmount', String(packageData.interestAmount));
+  }
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   if (packageData.loanPeriod) {
     formData.append('loanPeriod', String(packageData.loanPeriod));
   }
@@ -852,9 +915,17 @@ export async function updatePackage(packageData: {
   extraCharges?: number;
   defaultPenalty?: number;
   defaultDays?: number;
+<<<<<<< HEAD
   // Loan-specific fields
   loanAmount?: number;
   loanInterestRate?: number;
+=======
+  defaultPercentageRate?: number;
+  // Loan-specific fields
+  loanAmount?: number;
+  loanInterestRate?: number;
+  interestAmount?: number;
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   loanPeriod?: number;
   defaultAmount?: number;
   gracePeriod?: number;
@@ -890,6 +961,12 @@ export async function updatePackage(packageData: {
   if (packageData.defaultDays) {
     formData.append('defaultDays', String(packageData.defaultDays));
   }
+<<<<<<< HEAD
+=======
+  if (packageData.defaultPercentageRate !== undefined) {
+    formData.append('defaultPercentageRate', String(packageData.defaultPercentageRate));
+  }
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   // Loan-specific fields
   if (packageData.loanAmount) {
     formData.append('loanAmount', String(packageData.loanAmount));
@@ -897,6 +974,12 @@ export async function updatePackage(packageData: {
   if (packageData.loanInterestRate) {
     formData.append('loanInterestRate', String(packageData.loanInterestRate));
   }
+<<<<<<< HEAD
+=======
+  if (packageData.interestAmount) {
+    formData.append('interestAmount', String(packageData.interestAmount));
+  }
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222
   if (packageData.loanPeriod) {
     formData.append('loanPeriod', String(packageData.loanPeriod));
   }
@@ -1904,4 +1987,8 @@ export async function fetchInvestmentTransactionById(id: string) {
     throw new Error(data.message || 'Failed to fetch investment transaction');
   }
   return data;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 313938a6f305a4a7286c9c090199991b055ad222

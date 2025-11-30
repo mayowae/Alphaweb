@@ -1,6 +1,308 @@
 const { LoanApplication, Customer, Agent, Staff } = require('../models');
 const { Op } = require('sequelize');
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Loan Applications
+ *     description: Loan application management
+ * /loan-applications:
+ *   get:
+ *     summary: Get all loan applications
+ *     tags: [Loan Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Pending, Approved, Rejected, Completed]
+ *         description: Filter by application status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by customer name, account number, or agent name
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter from date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter to date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Loan applications retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 applications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/LoanApplication'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     totalItems:
+ *                       type: integer
+ *                     itemsPerPage:
+ *                       type: integer
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create a new loan application
+ *     tags: [Loan Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerName, requestedAmount, interestRate, duration]
+ *             properties:
+ *               customerName:
+ *                 type: string
+ *                 description: Customer full name
+ *                 example: "John Doe"
+ *               accountNumber:
+ *                 type: string
+ *                 description: Customer account number
+ *                 example: "ACC123456"
+ *               requestedAmount:
+ *                 type: number
+ *                 format: float
+ *                 description: Requested loan amount
+ *                 example: 50000
+ *               interestRate:
+ *                 type: number
+ *                 format: float
+ *                 description: Interest rate percentage
+ *                 example: 15.5
+ *               duration:
+ *                 type: integer
+ *                 description: Loan duration in days
+ *                 example: 90
+ *               agentId:
+ *                 type: integer
+ *                 description: Agent ID handling the application
+ *                 example: 1
+ *               branch:
+ *                 type: string
+ *                 description: Branch name
+ *                 example: "Main Branch"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Customer has good credit history"
+ *               purpose:
+ *                 type: string
+ *                 description: Loan purpose
+ *                 example: "Business expansion"
+ *               collateral:
+ *                 type: string
+ *                 description: Collateral description
+ *                 example: "Property deed"
+ *     responses:
+ *       201:
+ *         description: Loan application created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Loan application created successfully"
+ *                 application:
+ *                   $ref: '#/components/schemas/LoanApplication'
+ *       404:
+ *         description: Customer not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /loan-applications/{id}:
+ *   get:
+ *     summary: Get loan application by ID
+ *     tags: [Loan Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Loan application ID
+ *     responses:
+ *       200:
+ *         description: Loan application retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 application:
+ *                   $ref: '#/components/schemas/LoanApplication'
+ *       404:
+ *         description: Loan application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   delete:
+ *     summary: Delete loan application
+ *     tags: [Loan Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Loan application ID
+ *     responses:
+ *       200:
+ *         description: Loan application deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Loan application deleted successfully"
+ *       404:
+ *         description: Loan application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /loan-applications/{id}/status:
+ *   put:
+ *     summary: Update loan application status
+ *     tags: [Loan Applications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Loan application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, Approved, Rejected, Completed]
+ *                 description: New application status
+ *                 example: "Approved"
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes
+ *                 example: "Application approved after review"
+ *               rejectionReason:
+ *                 type: string
+ *                 description: Reason for rejection (if status is Rejected)
+ *                 example: "Insufficient documentation"
+ *     responses:
+ *       200:
+ *         description: Application status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Application approved successfully"
+ *                 application:
+ *                   $ref: '#/components/schemas/LoanApplication'
+ *       404:
+ *         description: Loan application not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Create a new loan application
 const createLoanApplication = async (req, res) => {
   try {
