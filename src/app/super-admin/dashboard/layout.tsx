@@ -1,8 +1,8 @@
 "use client"
 import React, {useState} from 'react';
-import DashboardHeader from '../../../components/Header';
-import DashBoardFooter from '../../../components/Footer';
-import DashBoardSidebar from '../../../components/Sidebar';
+import DashboardHeader from '../components/Header';
+import DashBoardFooter from '../components/Footer';
+import Sidebar from '../components/Sidebar';
 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1 overflow-x-hidden">
        {/* Sidebar  */}
       
-      <DashBoardSidebar setIsOpen={setIsOpen} isOpen={isOpen}/>
+      <Sidebar setIsOpen={setIsOpen} isOpen={isOpen}/>
 
        <div className='flex flex-col flex-1 min-w-0 bg-[#EBEBEB] dark:bg-gray-900'>
         <main  className=" flex-1 overflow-y-auto md:px-5 px-4 pt-[90px] max-md:text-sm antialiased ">

@@ -4,21 +4,21 @@ import { datas } from "../interface/type";
 export const Sidemenuitems: Sidebarmenu[] =[
     {
         title:"Dashboard",
-        path: "/dashboard",
+        path: "/super-admin/dashboard",
         icon: "/icons/sidebar.svg",
 
     },
 
      {
         title:"Merchants",
-        path: "/dashboard/merchants",
+        path: "/super-admin/dashboard/merchants",
         icon: "/icons/merchant.svg",
 
     },
 
      {
         title:"Transactions",
-        path: "/dashboard/transactions",
+        path: "/super-admin/dashboard/transactions",
         icon: "/icons/transaction.svg",
 
     },
@@ -26,7 +26,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
      
     {
         title:"Plans & billings",
-        path: "/dashboard/billings",
+        path: "/super-admin/dashboard/billings",
         icon: "/icons/billing.svg",
 
     },

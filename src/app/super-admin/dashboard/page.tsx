@@ -1,10 +1,10 @@
 "use client"
 import React, { useState } from "react";
-import Dashboardcards from "../../../components/dashboard/cards";
+import Dashboardcards from "../components/dashboard/cards";
 import { FaPlus } from 'react-icons/fa'
-import Charts from "../../../components/dashboard/charts";
+import Charts from "../components/dashboard/charts";
 import Image from "next/image"
-import Addpackage from "../../../components/tables/merchants/modals/Add&EditMerchantModal";
+import Addpackage from "../components/tables/merchants/modals/Add&EditMerchantModal";
 
 export default function Home() {
 

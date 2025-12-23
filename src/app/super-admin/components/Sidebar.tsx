@@ -11,7 +11,7 @@ interface DashboardHeaderProps {
   setIsOpen: (isOpen: boolean) => void;
 }
 
-const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
+const Sidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
 
   const pathName = usePathname();
 
@@ -33,7 +33,6 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
                   <Image src={items.icon} alt={items.title + " icon"} className='my-[auto]' width={18} height={18} />
                   <span className='leading-[24px]  text-[14px] my-[auto] antialiased'>{items.title}</span>
                 </Link>
-
               </div>
             );
           })
@@ -45,4 +44,4 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
   )
 }
 
-export default DashBoardSidebar
+export default Sidebar;

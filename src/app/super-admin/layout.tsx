@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter, Poppins, Lato  } from "next/font/google";
 import "./globals.css";
-import ReactQueryProvider from "../../libs/react-query-provider";
+import ReactQueryProvider from "./libs/react-query-provider";
 
 
 const geistSans = Geist({
@@ -56,14 +56,13 @@ export default function RootLayout({
 }>) {
 
  
-
   return (
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${poppins.variable} ${lato.variable} antialiased  dark:bg-gray-900 dark:text-white transition-colors duration-500`}
+        className={` antialiased  dark:bg-gray-900 dark:text-white transition-colors duration-500`}
       >
         <ReactQueryProvider>
           {children}
