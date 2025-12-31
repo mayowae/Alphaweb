@@ -126,8 +126,8 @@ const DashboardHeader = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
 
             <hr/>
 
-             <Link href={"/dashboard/settings"}><p className="px-6 hover:bg-gray-100">View Profile</p></Link>
-            <Link href={"/dashboard/settings"}><p className="px-6 hover:bg-gray-100 ">Settings</p></Link>
+             <Link href={"/admin/dashboard/settings"}><p className="px-6 hover:bg-gray-100">View Profile</p></Link>
+            <Link href={"/admin/dashboard/settings"}><p className="px-6 hover:bg-gray-100 ">Settings</p></Link>
 
             <hr />
 

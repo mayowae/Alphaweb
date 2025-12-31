@@ -1,28 +1,97 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa';
 import { MerchantData } from '../../../../interface/type';
 import Pagination from '../../../admin/pagination';
+import generateMockData from '../../../../components/data/helpdata';
+import { get } from 'http';
 
+interface TransactionsProps {
+  merchantId: string;
+}
 
-const Transactions = () => {
+const Transactions = ({ merchantId }: TransactionsProps) => {
 
   const [show, setShow] = useState<boolean>(false)
 
   const [filter, setFilter] = useState(false)
 
-  const data: MerchantData[] = [
-    { id: 'COL-103-A45', package: 'Alpha 1K', account: '94565647567', amount: 'N1,000', customer: 'James Odunayo', method:"wallet", status: 'active', created: '23 Jan, 2025' },
-    { id: 'COL-203-B12', package: 'Alpha 2K', account: '94565647568', amount: 'N2,000', customer: 'Jane Doe', method:"wallet", status: 'active', created: '23 Jan, 2025' },
-  ];
+const allData = React.useMemo(() => generateMockData(), []);
+
+
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [typeFilters, setTypeFilters] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const toggleDropdown = (id: string) => {
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
+  const [filteredData, setFilteredData] = useState<MerchantData[]>([]);
+  const [displayData, setDisplayData] = useState<MerchantData[]>([]);
 
+  useEffect(() => {
+    let result = [...allData];
+
+    if (statusFilters.length) {
+      result = result.filter(item => statusFilters.includes(item.status));
+    }
+
+    if (typeFilters.length) {
+      result = result.filter(item =>
+        typeFilters.some(type =>
+          item.package.toLowerCase().includes(type.toLowerCase())
+        )
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(item =>
+        item.id.toLowerCase().includes(query) ||
+        item.package.toLowerCase().includes(query) ||
+        item.customer.toLowerCase().includes(query) ||
+        item.no_of_agents.toLowerCase().includes(query) ||
+        item.no_of_customers.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredData(result);
+    setCurrentPage(1);
+  }, [statusFilters, typeFilters, searchQuery, allData]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const handleStatusFilter = (status: string) => {
+    setStatusFilters(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+  };
+
+  const handleTypeFilter = (type: string) => {
+    setTypeFilters(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+  const clearFilters = () => {
+    setStatusFilters([]);
+    setTypeFilters([]);
+  };
+
+  const applyFilters = () => {
+    setFilter(false);
+  };
+
+  useEffect(() => {
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  setDisplayData(filteredData.slice(startIndex, endIndex));
+}, [filteredData, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   return (
     <div>
       <div className='bg-white dark:bg-gray-900 dark:text-white shadow-sm w-full relative'>
@@ -44,7 +113,7 @@ const Transactions = () => {
 
                     <div className="flex items-center justify-between max-md:flex-col max-md:gap-[5px] ">
                       <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Choose your filters</h1>
-                      <button className=' text-[14px] text-[#4E37FB] font-inter font-semibold'>Clear filters</button>
+                      <button onClick={clearFilters} className=' text-[14px] text-[#4E37FB] font-inter font-semibold'>Clear filters</button>
                     </div>
 
                     <div className='border-t-[1px] w-full'></div>
@@ -55,17 +124,32 @@ const Transactions = () => {
                         <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Type</p>
                         <div className='flex lg:items-center gap-[10px] max-md:flex-col'>
                           <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
-                            <input type="checkbox" name='free' className='' />
+                            <input
+                              type="checkbox"
+                              name='beta'
+                              checked={typeFilters.includes('Free')}
+                              onChange={() => handleTypeFilter('Free')}
+                            />
                             Remittance
                           </div>
 
                           <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
-                            <input type="checkbox" name='basic' className='' />
+                            <input
+                              type="checkbox"
+                              name='gamma'
+                              checked={typeFilters.includes('Basic')}
+                              onChange={() => handleTypeFilter('Basic')}
+                            />
                             Loan repayment
                           </div>
 
                           <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
-                            <input type="checkbox" name='pro' className='' />
+                            <input
+                              type="checkbox"
+                              name='delta'
+                              checked={typeFilters.includes('Pro')}
+                              onChange={() => handleTypeFilter('Pro')}
+                            />
                             Investment
                           </div>
                         </div>
@@ -75,12 +159,22 @@ const Transactions = () => {
                         <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Status</p>
                         <div className='flex lg:items-center gap-[10px] max-md:flex-col'>
                           <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
-                            <input type="checkbox" name='active' className='' />
+                            <input
+                              type="checkbox"
+                              name='active'
+                              checked={statusFilters.includes('active')}
+                              onChange={() => handleStatusFilter('active')}
+                            />
                             Active
                           </div>
 
                           <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
-                            <input type="checkbox" name='inactive' className='' />
+                            <input
+                              type="checkbox"
+                              name='inactive'
+                              checked={statusFilters.includes('inactive')}
+                              onChange={() => handleStatusFilter('inactive')}
+                            />
                             Inactive
                           </div>
                         </div>
@@ -95,25 +189,26 @@ const Transactions = () => {
                         <p className='text-[14px] font-inter text-[#4E37FB] font-semibold' >Close</p>
                       </button>
 
-                      <button className='bg-[#4E37FB] flex h-[40px] cursor-pointer w-[99px] rounded-[4px] items-center gap-[9px] justify-center'>
+                      <button onClick={applyFilters} className='bg-[#4E37FB] flex h-[40px] cursor-pointer w-[99px] rounded-[4px] items-center gap-[9px] justify-center'>
                         <p className='text-[14px] font-inter text-white font-medium'>Add filters</p>
                       </button>
                     </div>
                   </div>
 
-
                 </div>}
             </div>
-
-            <div className='w-[100%]  md:w-[185px] '>
-
-              <select className="h-[40px] w-full outline-none leading-[24px] rounded-[4px] border border-[#D0D5DD] font-inter text-[14px] bg-white px-2 transition-all">
-
-                <option value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 10 per row</option>
-
-                <option value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 15 per row</option>
+            <div className='w-[100%] md:w-[185px] '>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="w-full h-[40px] outline-none leading-[24px] rounded-[4px] border border-[#D0D5DD] font-inter text-[14px] bg-white px-2 transition-all"
+              >
+                <option value="10">Show 10 per row</option>
+                <option value="15">Show 15 per row</option>
               </select>
-
             </div>
 
           </div>
@@ -134,11 +229,12 @@ const Transactions = () => {
 
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-[4px] border border-[#E5E7EB] rounded-[4px] px-3">
               <Image src="/icons/search.png" alt="dashboard" width={20} height={20} className="cursor-pointer" />
-
               <input
                 type="text"
                 placeholder="Search"
-                className="  outline-none px-3 py-2 w-full text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="outline-none px-3 py-2 w-full text-sm"
               />
             </div>
 
@@ -152,7 +248,7 @@ const Transactions = () => {
               <thead className="bg-gray-50 border-b border-[#D9D4D4] dark:bg-gray-900 dark:text-white">
                 <tr className="h-[40px] text-left">
                   <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white"> <div className="flex items-center gap-2">
-                   {/* <input
+                    {/* <input
                       type="checkbox"
                       checked={selectAll}
                        onChange={handleSelectAll}
@@ -194,7 +290,7 @@ const Transactions = () => {
               </thead>
 
               <tbody className="border-b border-[#D9D4D4] w-full">
-                {data.map((item) => (
+                {displayData.map((item) => (
                   <tr key={item.id} className="bg-white dark:bg-gray-900  transition-all border-b duration-500 hover:bg-gray-50">
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal "><div className="flex items-center gap-2">
                       {/*<input
@@ -208,8 +304,8 @@ const Transactions = () => {
                       </span>
                     </div></td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.package}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.account}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.amount}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.no_of_agents}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.no_of_customers}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.customer}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.status}</td>
                     <td className="relative px-3 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal cursor-pointer ">
@@ -231,7 +327,13 @@ const Transactions = () => {
 
           <div className='border-t-[1px] w-full mt-[20px]'></div>
 
-          <Pagination />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredData.length}
+            itemsPerPage={itemsPerPage}
+          />
 
         </div>
 

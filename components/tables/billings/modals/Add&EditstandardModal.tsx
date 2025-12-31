@@ -47,7 +47,7 @@ const AddStandard = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
             reset({
                 plan_name: merchant.package,
                 plan_type: merchant.status ?? "standard",
-                number_customer: merchant.account,
+                number_customer: merchant.no_of_customers,
                 billing_cycle: merchant.id,
                 number_branches: merchant.created,
                 pricing: merchant.amount,

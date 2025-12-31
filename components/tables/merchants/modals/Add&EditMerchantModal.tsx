@@ -4,19 +4,15 @@ import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa'
 import z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form'
 import { MerchantData } from '../../../../interface/type'
-import { useQueryClient } from '@tanstack/react-query';
-
-
 
 const schema = z.object({
-  buisinessName: z.string().min(1, "Business name is required"),
-  business_alias: z.string().min(1, "Business address is required"),
-  phone_number: z.string().min(11, "phone number is required"),
-  email: z.string().email({ message: "Invalid email" }),
-  currency: z.string().min(1, "Business currency is required"),
+  Name: z.string().min(1, "Merchant name is required"),
+  no_of_agents: z.string().min(1, "no of agents is required"),
+  no_of_customers: z.string().min(1, "no of customers is required"),
+  email: z.string().min(1, "Business email is required"),
+  plan: z.string().min(1, "Business plan is required"),
 })
 
 type formdata = z.infer<typeof schema>
@@ -25,96 +21,72 @@ interface AddPackageProps {
   packag: boolean;
   onClose: () => void;
   mode: 'add' | 'edit';
-  merchant?: MerchantData | null
+  merchant?: MerchantData | null;
+  onSubmitMerchant: (data: MerchantData, mode: 'add' | 'edit') => void;
 }
 
-const Addpackage = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
+const Addpackage = ({ packag, onClose, mode, merchant, onSubmitMerchant }: AddPackageProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const
-    { register,
-      handleSubmit,
-      formState: { errors, isValid, isSubmitting },
-      reset
-    } = useForm<formdata>({
-      resolver: zodResolver(schema),
-      mode: "onChange",
-
-    });
-
-  const queryClient = useQueryClient();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset
+  } = useForm<formdata>({
+    resolver: zodResolver(schema),
+    mode: "onChange",
+  });
 
   useEffect(() => {
     if (mode === "edit" && merchant) {
       reset({
-        buisinessName: merchant.package,
-        business_alias: merchant.amount,
-        phone_number: merchant.account,
+        no_of_agents: merchant.no_of_agents,
+        no_of_customers: merchant.no_of_customers,
+        Name: merchant.customer,
         email: merchant.id,
-        currency: merchant.customer,
+        plan: merchant.package,
       });
     } else {
       reset({
-        buisinessName: "",
-        business_alias: "",
-        phone_number: "",
+        Name: "",
+        no_of_agents: "",
+        no_of_customers: "",
         email: "",
-        currency: "NGN",
+        plan: "",
       });
     }
   }, [mode, merchant, reset]);
 
+  const onSubmit = async (data: formdata) => {
+    setIsSubmitting(true);
+    
+    try {
+      // Transform form data to MerchantData structure
+      const merchantData: MerchantData = {
+        id: mode === 'edit' && merchant ? merchant.id : `COL-${Math.floor(Math.random() * 900 + 100)}-${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 90 + 10)}`,
+        package: data.plan,
+        no_of_agents: data.no_of_agents,
+        no_of_customers: data.no_of_customers,
+        customer: data.Name,
+        method: "wallet",
+        status: mode === 'edit' && merchant ? merchant.status : 'active',
+        created: mode === 'edit' && merchant ? merchant.created : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      };
 
-  const addpackage = useMutation({
-    mutationFn: async (data: formdata) => {
-      const res = await fetch("/api/merchants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
+      onSubmitMerchant(merchantData, mode);
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchants"] });
-    },
-    onError(error:any){
-
-    }
-
-  })
-
-
-  const editpackage = useMutation({
-    mutationFn: async (data: formdata) => {
-      const res = await fetch(`/api/merchants/${merchant?.id}`, { 
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
-
-     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchants"] });
-    },
-    onError(error:any){
       
-    }
-  })
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-  const onSubmit = (data: formdata) => {
-    console.log(data)
-    if (mode === "add") {
-      addpackage.mutate(data)
-      console.log("addpackagedata", data)
-    } else {
-      editpackage.mutate(data)
-      console.log("editpackagedata", data)
+      reset();
+      onClose();
+    } catch (error) {
+      console.error('Error submitting merchant:', error);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    //onClose()
-    reset()
-  }
+  };
 
   return (
     <>
@@ -133,7 +105,7 @@ const Addpackage = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
         flex flex-col ${packag ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header (fixed) */}
-        <div className="flex items-center justify-between p-4 border-b  bg-white z-10">
+        <div className="flex items-center justify-between p-4 border-b bg-white z-10">
           <h1 className="text-lg font-semibold font-inter max-md:text-base">
             {mode === "add" ? "Create Merchant" : "Edit Merchant"}
           </h1>
@@ -148,42 +120,42 @@ const Addpackage = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
         </div>
 
         {/* Scrollable form content */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 ">
-           {mode === "add"&& (
-          <p className='font-inter text-sm text-[#717680] text-center'>Fill the form below with merchants details and they will get an email with the necessary details to setup</p>
-        )}
-          <form onSubmit={handleSubmit(onSubmit)}  id="merchantForm" className="space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {mode === "add" && (
+            <p className='font-inter text-sm text-[#717680] text-center'>Fill the form below with merchants details and they will get an email with the necessary details to setup</p>
+          )}
+          <form onSubmit={handleSubmit(onSubmit)} id="merchantForm" className="space-y-5">
             <div>
-              <p className="mb-1 text-sm font-medium font-inter">Business name</p>
+              <p className="mb-1 text-sm font-medium font-inter">Name</p>
               <input
                 type="text"
-                placeholder="Business name"
-                {...register("buisinessName")}
+                placeholder="Name"
+                {...register("Name")}
                 className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
               />
-              <p className="text-sm text-red-500">{errors.buisinessName?.message}</p>
+              <p className="text-sm text-red-500">{errors.Name?.message}</p>
             </div>
 
             <div>
-              <p className="mb-1 text-sm font-medium font-inter">Business alias</p>
-              <input
-                type="text"
-                placeholder="Enter Business alias"
-                {...register("business_alias")}
-                className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
-              />
-              <p className="text-sm text-red-500">{errors.business_alias?.message}</p>
-            </div>
-
-            <div>
-              <p className="mb-1 text-sm font-medium font-inter">Phone number</p>
+              <p className="mb-1 text-sm font-medium font-inter">No of agents</p>
               <input
                 type="number"
-                placeholder="+2347000000000"
-                {...register("phone_number")}
+                placeholder="Enter No of agents"
+                {...register("no_of_agents")}
                 className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
               />
-              <p className="text-sm text-red-500">{errors.phone_number?.message}</p>
+              <p className="text-sm text-red-500">{errors.no_of_agents?.message}</p>
+            </div>
+
+            <div>
+              <p className="mb-1 text-sm font-medium font-inter">No of customers</p>
+              <input
+                type="number"
+                placeholder="Enter No of customers"
+                {...register("no_of_customers")}
+                className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
+              />
+              <p className="text-sm text-red-500">{errors.no_of_customers?.message}</p>
             </div>
 
             <div>
@@ -198,49 +170,48 @@ const Addpackage = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
             </div>
 
             <div>
-              <p className="mb-1 text-sm font-medium font-inter">Currency</p>
+              <p className="mb-1 text-sm font-medium font-inter">Plan</p>
               <div className="relative w-full">
                 <select
-                  {...register("currency")}
+                  {...register("plan")}
                   className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none"
                 >
-                  <option value="NGN">₦ (NGN)</option>
-                  <option value="USD">$ (USD)</option>
+                  <option value="Free">Free</option>
+                  <option value="Basic">Basic</option>
+                   <option value="Pro">Pro</option>
+                    <option value="Custom">Custom</option>
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
                   <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
                 </div>
               </div>
-              <p className="text-sm text-red-500">{errors.currency?.message}</p>
+              <p className="text-sm text-red-500">{errors.plan?.message}</p>
             </div>
-
           </form>
         </div>
 
         {/* Footer (fixed) */}
-            <div className="border-t bg-white p-4 flex justify-center">
-              <button
-                type="submit"
-                form="merchantForm"
-                disabled={!isValid || isSubmitting}
-                className={`bg-[#4E37FB] text-white font-medium h-[40px] w-[167px] rounded-[4px] flex items-center justify-center ${!isValid || isSubmitting
-                    ? "opacity-70 cursor-not-allowed"
-                    : "cursor-pointer"
-                  }`}
-              >
-                {addpackage.isPending || editpackage.isPending
-                  ? "Saving..."
-                  : mode === "add"
-                    ? "Create Merchant"
-                    : "Save Changes"}
-              </button>
-            </div>
-
-        
+        <div className="border-t bg-white p-4 flex justify-center">
+          <button
+            type="submit"
+            form="merchantForm"
+            disabled={!isValid || isSubmitting}
+            className={`bg-[#4E37FB] text-white font-medium h-[40px] w-[167px] rounded-[4px] flex items-center justify-center ${!isValid || isSubmitting
+                ? "opacity-70 cursor-not-allowed"
+                : "cursor-pointer"
+              }`}
+          >
+            {isSubmitting
+              ? "Saving..."
+              : mode === "add"
+                ? "Create Merchant"
+                : "Save Changes"}
+          </button>
+        </div>
       </div>
     </>
   );
+};
 
-}
+export default Addpackage;
 
-export default Addpackage

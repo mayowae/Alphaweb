@@ -1,39 +1,83 @@
 
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa';
-import { MerchantData } from '../../../../interface/type';
 import Pagination from '../../../admin/pagination';
 import { data } from "../../../../src/app/admin/utilis/sidebarmenuitems"
+import generateMockData from '../../../../components/data/helpdata';
+import { MerchantData } from '../../../../interface/type';
 
-const Subscriptions_Billings = () => {
-
+interface TransactionsProps {
+  merchantId: string;
+}
+const Subscriptions_Billings = ({ merchantId }: TransactionsProps) => {
 
   const [show, setShow] = useState<boolean>(false)
 
   const [filter, setFilter] = useState(false)
 
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const allData = generateMockData();
 
-  const handleSelectUser = (userId: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  };
-
-
-  const datas: MerchantData[] = [
-    { id: 'COL-103-A45', package: 'Alpha 1K', account: '94565647567', amount: 'N1,000', customer: 'James Odunayo', method: "wallet", status: 'active', created: '23 Jan, 2025' },
-    { id: 'COL-203-B12', package: 'Alpha 2K', account: '94565647568', amount: 'N2,000', customer: 'Jane Doe', method: "wallet", status: 'active', created: '23 Jan, 2025' },
-  ];
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [typeFilters, setTypeFilters] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const toggleDropdown = (id: string) => {
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
+  const [filteredData, setFilteredData] = useState<MerchantData[]>([]);
+  const [displayData, setDisplayData] = useState<MerchantData[]>([]);
 
+  useEffect(() => {
+    setFilteredData(generateMockData());
+  }, [allData]);
+
+
+
+  useEffect(() => {
+    let result = [...allData];
+
+    if (statusFilters.length > 0) {
+      result = result.filter(item => statusFilters.includes(item.status));
+    }
+
+
+    if (typeFilters.length > 0) {
+      result = result.filter(item => {
+        const packageLower = item.package.toLowerCase();
+        return typeFilters.some(type => packageLower.includes(type.toLowerCase()));
+      });
+    }
+
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(item =>
+        item.id.toLowerCase().includes(query) ||
+        item.package.toLowerCase().includes(query) ||
+        item.customer.toLowerCase().includes(query) ||
+        item.no_of_agents.toLowerCase().includes(query) ||
+        item.no_of_customers.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredData(result);
+    setCurrentPage(1);
+  }, [statusFilters, typeFilters, searchQuery, allData]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Apply pagination
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setDisplayData(filteredData.slice(startIndex, endIndex));
+  }, [filteredData, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   return (
     <div>
       <div className='bg-white dark:bg-gray-900 dark:text-white shadow-sm w-full relative'>
@@ -44,7 +88,7 @@ const Subscriptions_Billings = () => {
           </div>
 
           <button className='bg-[#E9E6FF] rounded-sm p-2 flex items-center gap-2 font-inter font-semibold text-[14px] leading-[20px] text-[#4E37FB] max-sm:text-[12px] max-sm:mt-3'>
-           Upgrade plan
+            Upgrade plan
           </button>
         </div>
 
@@ -180,16 +224,20 @@ const Subscriptions_Billings = () => {
                 </div>}
             </div>
 
-            <div className='w-[100%]  md:w-[185px] '>
-
-              <select className="h-[40px] w-full outline-none leading-[24px] rounded-[4px] border border-[#D0D5DD] font-inter text-[14px] bg-white px-2 transition-all">
-
-                <option value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 10 per row</option>
-
-                <option value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 15 per row</option>
+            <div className='w-[100%] md:w-[185px] '>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="w-full h-[40px] outline-none leading-[24px] rounded-[4px] border border-[#D0D5DD] font-inter text-[14px] bg-white px-2 transition-all"
+              >
+                <option value="10">Show 10 per row</option>
+                <option value="15">Show 15 per row</option>
               </select>
-
             </div>
+
 
           </div>
 
@@ -210,10 +258,12 @@ const Subscriptions_Billings = () => {
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-[4px] border border-[#E5E7EB] rounded-[4px] px-3">
               <Image src="/icons/search.png" alt="dashboard" width={20} height={20} className="cursor-pointer" />
 
-              <input
+             <input
                 type="text"
                 placeholder="Search"
-                className="  outline-none px-3 py-2 w-full text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="outline-none px-3 py-2 w-full text-sm"
               />
             </div>
 
@@ -278,7 +328,7 @@ const Subscriptions_Billings = () => {
               </thead>
 
               <tbody className="border-b border-[#D9D4D4] w-full">
-                {datas.map((item) => (
+                {displayData.map((item) => (
                   <tr key={item.id} className="bg-white dark:bg-gray-900  transition-all border-b duration-500 hover:bg-gray-50">
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal "><div className="flex items-center gap-2">
                       {/*<input
@@ -292,8 +342,8 @@ const Subscriptions_Billings = () => {
                       </span>
                     </div></td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.package}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.account}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.amount}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.no_of_agents}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.no_of_customers}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.customer}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.method}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.status}</td>
@@ -316,7 +366,13 @@ const Subscriptions_Billings = () => {
 
           <div className='border-t-[1px] w-full mt-[20px]'></div>
 
-          <Pagination />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredData.length}
+            itemsPerPage={itemsPerPage}
+          />
 
         </div>
 

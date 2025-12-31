@@ -5,10 +5,31 @@ import { FaPlus } from 'react-icons/fa'
 import Charts from "../../../../components/dashboard/charts";
 import Image from "next/image"
 import Addpackage from "../../../../components/tables/merchants/modals/Add&EditMerchantModal";
+import { MerchantData } from "../../../../interface/type";
+
 
 export default function Home() {
 
-const [packag, setPackag] = useState<boolean>(false)
+  const [packag, setPackag] = useState<boolean>(false)
+  const [selectedMerchant, setSelectedMerchant] = useState<MerchantData | null>(null);
+  const [merchants, setMerchants] = useState<MerchantData[]>([]);
+  
+  const handleAddOrUpdate = (merchant: MerchantData, mode: "add" | "edit") => {
+
+    const stored: MerchantData[] = JSON.parse(localStorage.getItem("merchants") || "[]");
+
+    if (mode === "add") {
+      stored.push(merchant);
+    } else {
+      const idx = stored.findIndex(m => m.id === merchant.id);
+      if (idx !== -1) stored[idx] = merchant;
+    }
+
+    localStorage.setItem("merchants", JSON.stringify(stored));
+  };
+
+
+
 
   return (
     <div className="w-full">
@@ -20,7 +41,10 @@ const [packag, setPackag] = useState<boolean>(false)
         </div>
 
         <div className='flex items-end md:mt-0 w-full md:w-auto'>
-          <button  onClick={() => setPackag(true)} className='bg-[#4E37FB] dark:bg-gray-900 dark:border dark:border-gray-700 flex h-[40px] cursor-pointer w-full md:w-[167px] rounded-[4px] items-center gap-[9px] justify-center'>
+          <button onClick={() => {
+            setSelectedMerchant(null);
+            setPackag(true);
+          }} className='bg-[#4E37FB] dark:bg-gray-900 dark:border dark:border-gray-700 flex h-[40px] cursor-pointer w-full md:w-[167px] rounded-[4px] items-center gap-[9px] justify-center'>
             <FaPlus className='text-white font-normal w-[12px]' />
             <p className='text-[14px] font-inter text-white font-medium'>Add merchant</p>
           </button>
@@ -59,12 +83,12 @@ const [packag, setPackag] = useState<boolean>(false)
                   <th className="px-5 py-2 ">Action</th>
                   <th className="px-5 py-2 ">
                     <div className="flex items-center gap-[3px]">
-                    Details
-                    <div className='flex flex-col gap-[1px]'>
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={7} height={7} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={7} height={7} className="shrink-0" />
+                      Details
+                      <div className='flex flex-col gap-[1px]'>
+                        <Image src="/icons/uparr.svg" alt="uparrow" width={7} height={7} className="shrink-0" />
+                        <Image src="/icons/downarr.svg" alt="uparrow" width={7} height={7} className="shrink-0" />
+                      </div>
                     </div>
-                  </div>
                   </th>
                 </tr>
               </thead>
@@ -91,8 +115,8 @@ const [packag, setPackag] = useState<boolean>(false)
                     </div>
                   </td>
 
-                {/* Mobile stacked row */}
-                {/*<td className=" md:hidden block divide-y divide-gray-200 dark:divide-gray-700">
+                  {/* Mobile stacked row */}
+                  {/*<td className=" md:hidden block divide-y divide-gray-200 dark:divide-gray-700">
                   <div className="p-4 flex flex-col gap-3 text-sm text-gray-700 dark:text-gray-200">
                     <div className="flex justify-between">
                       <span className="font-medium">Date & Time:</span>
@@ -128,15 +152,16 @@ const [packag, setPackag] = useState<boolean>(false)
               </tbody>
             </table>
           </div>
-  
-      </div>
+
+        </div>
       </div>
 
-       <Addpackage
-      packag={packag}
-      onClose={() => setPackag(false)}
-      mode="add"
-      merchant={null}
+      <Addpackage
+        packag={packag}
+        onClose={() => setPackag(false)}
+        mode="add"
+        merchant={selectedMerchant}
+        onSubmitMerchant={handleAddOrUpdate}
       />
 
     </div>

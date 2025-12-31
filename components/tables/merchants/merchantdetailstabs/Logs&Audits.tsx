@@ -1,17 +1,49 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa';
 import Pagination from '../../../admin/pagination';
+import  generateMockData  from '../../../../components/data/helpdata';
+import { MerchantData } from '../../../../interface/type';
 
+interface TransactionsProps {
+  merchantId: string;
+}
+const Logs_Audits =  ({ merchantId }: TransactionsProps) => {
 
-const Logs_Audits = () => {
-
+    const [merchants, setMerchants] = useState<MerchantData[]>([]);
+  
+    useEffect(() => {
+      setMerchants(generateMockData());
+    }, []);
   const [show, setShow] = useState<boolean>(false)
 
   const [filter, setFilter] = useState(false)
 
+ const [filteredData, setFilteredData] = useState<MerchantData[]>([]);
+  const [displayData, setDisplayData] = useState<MerchantData[]>([]);
 
+  
+     useEffect(() => {
+      setFilteredData(generateMockData());
+    }, []);
+  
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Apply pagination
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setDisplayData(filteredData.slice(startIndex, endIndex));
+  }, [filteredData, currentPage, itemsPerPage]);
+
+
+
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  
   return (
 
     <div>
@@ -258,7 +290,14 @@ const Logs_Audits = () => {
 
           <div className='border-t-[1px] w-full mt-[20px]'></div>
 
-          <Pagination />
+           <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredData.length}
+            itemsPerPage={itemsPerPage}
+          />
+
 
         </div>
 

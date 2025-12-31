@@ -1,61 +1,74 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa'
 import z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form'
-import { MerchantData } from '../../../../interface/type'
-
 
 const schema = z.object({
-    role: z.string().min(1, "role is required"),
-    dashboard: z.string().min(1, "dashboard is required"),
-    merchants: z.string().min(1, "merchants is required"),
-    transactions: z.string().min(1, "transaction is required"),
-    billings: z.string().min(1, "billing is required"),
-    audits: z.string().min(1, "audits is required"),
-    support: z.string().min(1, "support is required"),
+    role_name: z.string().min(1, "Role name is required"),
+    dashboard: z.string().min(1, "Dashboard permission is required"),
+    merchants: z.string().min(1, "Merchants permission is required"),
+    transactions: z.string().min(1, "Transactions permission is required"),
+    billings: z.string().min(1, "Plans & billings permission is required"),
+    audits: z.string().min(1, "Audit logs permission is required"),
+    support: z.string().min(1, "Support & messages permission is required"),
 })
 
-type formdata = z.infer<typeof schema>
+type RoleFormData = z.infer<typeof schema>
 
-interface AddPackageProps {
+interface RoleMember {
+  id: string;
+  roleName: string;
+  cantView: string;
+  canViewOnly: string;
+  canEdit: string;
+  lastUpdated: string;
+  created: string;
+}
+
+interface AddRolesProps {
     packag: boolean;
     onClose: () => void;
     mode: 'add' | 'edit';
-    merchant?: MerchantData | null
+    merchant: RoleMember | null;
+    onAddRole?: (data: RoleFormData) => void;
+    onUpdateRole?: (data: RoleFormData, id: string) => void;
 }
 
-const Addroles = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
+const Addroles = ({
+    packag,
+    onClose,
+    mode,
+    merchant,
+    onAddRole,
+    onUpdateRole,
+}: AddRolesProps) => {
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isValid },
+        reset,
+        setValue,
+    } = useForm<RoleFormData>({
+        resolver: zodResolver(schema),
+        mode: "onChange",
+    });
 
-    const
-        { register,
-            handleSubmit,
-            formState: { errors, isValid, isSubmitting },
-            reset
-        } = useForm<formdata>({
-            resolver: zodResolver(schema),
-            mode: "onChange",
-        });
-
-    const queryClient = useQueryClient();
 
     useEffect(() => {
         if (mode === "edit" && merchant) {
-            reset({
-                role: merchant.package,
-                dashboard: merchant.amount,
-                merchants: merchant.account,
-                transactions: merchant.id,
-                billings: merchant.created,
-                audits: merchant.status,
-                support: merchant.method
-            });
+            setValue("role_name", merchant.roleName || "");
+            setValue("dashboard", merchant.canEdit.includes("Dashboard") ? "Admin" : "Officer"); 
+            setValue("merchants", merchant.canEdit.includes("Merchants") ? "Admin" : "Officer");
+            setValue("transactions", merchant.canEdit.includes("Transactions") ? "Admin" : "Officer");
+            setValue("billings", merchant.canEdit.includes("Billings") ? "Admin" : "Officer");
+            setValue("audits", merchant.canEdit.includes("Audit") ? "Admin" : "Officer");
+            setValue("support", merchant.canEdit.includes("Support") ? "Admin" : "Officer");
         } else {
             reset({
-                role: "",
+                role_name: "",
                 dashboard: "",
                 merchants: "",
                 transactions: "",
@@ -64,64 +77,22 @@ const Addroles = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                 support: ""
             });
         }
-    }, [mode, merchant, reset]);
+    }, [mode, merchant, reset, setValue]);
 
-
-    const addpackage = useMutation({
-        mutationFn: async (data: formdata) => {
-            const res = await fetch("/api/merchants", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
-        },
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["merchants"] });
-        },
-        onError(error: any) {
-
-        }
-
-    })
-
-
-    const editpackage = useMutation({
-        mutationFn: async (data: formdata) => {
-            const res = await fetch(`/api/merchants/${merchant?.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
-        },
-
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["merchants"] });
-        },
-        onError(error: any) {
-
-        }
-    })
-
-    const onSubmit = (data: formdata) => {
-        console.log(data)
+    const onSubmit = (data: RoleFormData) => {
         if (mode === "add") {
-            addpackage.mutate(data)
-            console.log("addpackagedata", data)
-        } else {
-            editpackage.mutate(data)
-            console.log("editpackagedata", data)
+            onAddRole?.(data);
+        } else if (merchant?.id) {
+            onUpdateRole?.(data, merchant.id);
         }
 
-        //onClose()
-        reset()
-    }
+        onClose();
+        reset();
+    };
 
     return (
         <>
-            {/* Overlay backdrop */}
+            {/* Backdrop */}
             {packag && (
                 <div
                     onClick={onClose}
@@ -129,14 +100,14 @@ const Addroles = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                 />
             )}
 
-            {/* Drawer container */}
+            
             <div
                 className={`fixed inset-y-0 right-0 h-screen w-[90%] sm:w-[500px] bg-white shadow-xl z-50
-        transform transition-transform duration-300 ease-in-out
-        flex flex-col ${packag ? 'translate-x-0' : 'translate-x-full'}`}
+                    transform transition-transform duration-300 ease-in-out flex flex-col
+                    ${packag ? 'translate-x-0' : 'translate-x-full'}`}
             >
-                {/* Header (fixed) */}
-                <div className="flex items-center justify-between p-4 border-b  bg-white z-10">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b bg-white z-10">
                     <h1 className="text-lg font-semibold font-inter max-md:text-base">
                         {mode === "add" ? "Create Role" : "Edit Role"}
                     </h1>
@@ -150,46 +121,58 @@ const Addroles = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                     />
                 </div>
 
-                {/* Scrollable form content */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 ">
-                    <form onSubmit={handleSubmit(onSubmit)} id="merchantForm" className="space-y-5">
+                {/* Scrollable Form */}
+                <div className="flex-1 overflow-y-auto px-4 py-4">
+                    <form onSubmit={handleSubmit(onSubmit)} id="roleForm" className="space-y-5">
                         <div>
                             <p className="mb-1 text-sm font-medium font-inter">Role name</p>
                             <input
                                 type="text"
-                                placeholder="John Doe"
-                                {...register("role")}
+                                placeholder="e.g. Super Admin"
+                                {...register("role_name")}
                                 className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
                             />
-                            <p className="text-sm text-red-500">{errors.role?.message}</p>
+                            {errors.role_name && <p className="text-sm text-red-500 mt-1">{errors.role_name.message}</p>}
                         </div>
 
-                        <h1 className='font-inter font-semibold'>Access permissions</h1>
+                        <h1 className='font-inter font-semibold text-[16px] mt-6'>Access permissions</h1>
 
                         <div>
                             <p className="mb-1 text-sm font-medium font-inter">Dashboard</p>
-                            <select
-                                {...register("dashboard")}
-                                className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]"
-                            >
-                                <option value="">Select role</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Officer">Officer</option>
-                            </select>
-                            <p className="text-sm text-red-500">{errors.dashboard?.message}</p>
+                            <div className="relative w-full">
+                                <select
+                                    {...register("dashboard")}
+                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none bg-white"
+                                >
+                                    <option value="">Select permission</option>
+                                    <option value="full">Full Access</option>
+                                    <option value="view">View Only</option>
+                                    <option value="none">No Access</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
+                                </div>
+                            </div>
+                            {errors.dashboard && <p className="text-sm text-red-500 mt-1">{errors.dashboard.message}</p>}
                         </div>
 
                         <div>
                             <p className="mb-1 text-sm font-medium font-inter">Merchants</p>
-                            <select
-                                {...register("merchants")}
-                                className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]"
-                            >
-                                <option value="">Select role</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Officer">Officer</option>
-                            </select>
-                            <p className="text-sm text-red-500">{errors.merchants?.message}</p>
+                            <div className="relative w-full">
+                                <select
+                                    {...register("merchants")}
+                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none bg-white"
+                                >
+                                    <option value="">Select permission</option>
+                                    <option value="full">Full Access</option>
+                                    <option value="view">View Only</option>
+                                    <option value="none">No Access</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
+                                </div>
+                            </div>
+                            {errors.merchants && <p className="text-sm text-red-500 mt-1">{errors.merchants.message}</p>}
                         </div>
 
                         <div>
@@ -197,17 +180,18 @@ const Addroles = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                             <div className="relative w-full">
                                 <select
                                     {...register("transactions")}
-                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none"
+                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none bg-white"
                                 >
-                                    <option value="">Select role</option>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Officer">Officer</option>
+                                    <option value="">Select permission</option>
+                                    <option value="full">Full Access</option>
+                                    <option value="view">View Only</option>
+                                    <option value="none">No Access</option>
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                     <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
                                 </div>
                             </div>
-                            <p className="text-sm text-red-500">{errors.transactions?.message}</p>
+                            {errors.transactions && <p className="text-sm text-red-500 mt-1">{errors.transactions.message}</p>}
                         </div>
 
                         <div>
@@ -215,84 +199,78 @@ const Addroles = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                             <div className="relative w-full">
                                 <select
                                     {...register("billings")}
-                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none"
+                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none bg-white"
                                 >
-                                    <option value="">Select role</option>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Officer">Officer</option>
+                                    <option value="">Select permission</option>
+                                    <option value="full">Full Access</option>
+                                    <option value="view">View Only</option>
+                                    <option value="none">No Access</option>
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                     <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
                                 </div>
                             </div>
-                            <p className="text-sm text-red-500">{errors.billings?.message}</p>
+                            {errors.billings && <p className="text-sm text-red-500 mt-1">{errors.billings.message}</p>}
                         </div>
-
 
                         <div>
                             <p className="mb-1 text-sm font-medium font-inter">Audit logs</p>
                             <div className="relative w-full">
                                 <select
                                     {...register("audits")}
-                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none"
+                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none bg-white"
                                 >
-                                    <option value="">Select role</option>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Officer">Officer</option>
+                                    <option value="">Select permission</option>
+                                    <option value="full">Full Access</option>
+                                    <option value="view">View Only</option>
+                                    <option value="none">No Access</option>
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                     <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
                                 </div>
                             </div>
-                            <p className="text-sm text-red-500">{errors.audits?.message}</p>
+                            {errors.audits && <p className="text-sm text-red-500 mt-1">{errors.audits.message}</p>}
                         </div>
-
 
                         <div>
                             <p className="mb-1 text-sm font-medium font-inter">Support & messages</p>
                             <div className="relative w-full">
                                 <select
                                     {...register("support")}
-                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none"
+                                    className="w-full h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px] appearance-none bg-white"
                                 >
-                                    <option value="">Select role</option>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Officer">Officer</option>
+                                    <option value="">Select permission</option>
+                                    <option value="full">Full Access</option>
+                                    <option value="view">View Only</option>
+                                    <option value="none">No Access</option>
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
                                     <FaAngleDown className="w-4 h-4 text-[#8E8E93]" />
                                 </div>
                             </div>
-                            <p className="text-sm text-red-500">{errors.support?.message}</p>
+                            {errors.support && <p className="text-sm text-red-500 mt-1">{errors.support.message}</p>}
                         </div>
-
                     </form>
                 </div>
 
-                {/* Footer (fixed) */}
+                {/* Footer */}
                 <div className="border-t bg-white p-4 flex justify-center">
                     <button
                         type="submit"
-                        form="merchantForm"
-                        disabled={!isValid || isSubmitting}
-                        className={`bg-[#4E37FB] text-white font-medium h-[40px] w-[167px] rounded-[4px] flex items-center justify-center ${!isValid || isSubmitting
-                            ? "opacity-70 cursor-not-allowed"
-                            : "cursor-pointer"
+                        form="roleForm"
+                        disabled={!isValid}
+                        className={`bg-[#4E37FB] text-white font-medium h-[40px] w-[167px] rounded-[4px] flex items-center justify-center transition
+                            ${!isValid
+                                ? "opacity-70 cursor-not-allowed"
+                                : "hover:bg-[#3e2ce8] cursor-pointer"
                             }`}
                     >
-                        {addpackage.isPending || editpackage.isPending
-                            ? "Saving..."
-                            : mode === "add"
-                                ? "Create role"
-                                : "Save Changes"}
+                        {mode === "add" ? "Create role" : "Save Changes"}
                     </button>
                 </div>
-
-
             </div>
         </>
     );
-
 }
 
 export default Addroles;
