@@ -63,6 +63,8 @@ module.exports = (sequelize, DataTypes) => {
     Merchant.hasMany(models.InvestmentApplication, { foreignKey: 'merchantId' });
     Merchant.hasMany(models.LoanApplication, { foreignKey: 'merchantId' });
     Merchant.hasMany(models.CustomerWallet, { foreignKey: 'merchantId' });
+    Merchant.hasMany(models.Agent, { foreignKey: 'merchantId', as: 'agents' });
+    Merchant.hasMany(models.Customer, { foreignKey: 'merchantId', as: 'customers' });
   };
 
   return Merchant;

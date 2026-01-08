@@ -4,9 +4,9 @@ import FaqAccordion from "components/FaqAccordion";
 import { FaChevronRight } from "react-icons/fa";
 import Footer from 'components/Footer';
 
-export default function CategoryPage({ params }: { params: { id: string } }) {
-
-    const category = helpCategories.find(cat => cat.slug === params.id);
+export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const category = helpCategories.find(cat => cat.slug === id);
 
     if (!category) return <p>Category not found</p>;
 

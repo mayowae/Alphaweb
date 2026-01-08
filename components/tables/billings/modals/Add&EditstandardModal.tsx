@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form'
 import { MerchantData } from '../../../../interface/type'
+import adminAPI from '../../../../src/app/admin/utilis/adminApi';
 
 
 const schema = z.object({
@@ -14,8 +15,9 @@ const schema = z.object({
     plan_name: z.string().min(1, "plan_name is required"),
     billing_cycle: z.string().min(1, "billing_cycle is required"),
     pricing: z.string().min(1, "pricing is required"),
-    number_branches: z.string().min(1, "number_branches is required"),
-    number_customer: z.string().min(1, "number_customer is required"),
+    max_agents: z.string().optional(),
+    max_customers: z.string().optional(),
+    max_transactions: z.string().optional(),
 })
 
 type formdata = z.infer<typeof schema>
@@ -24,7 +26,7 @@ interface AddPackageProps {
     packag: boolean;
     onClose: () => void;
     mode: 'add' | 'edit';
-    merchant?: MerchantData | null
+    merchant?: any | null
 }
 
 const AddStandard = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
@@ -45,76 +47,91 @@ const AddStandard = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
     useEffect(() => {
         if (mode === "edit" && merchant) {
             reset({
-                plan_name: merchant.package,
-                plan_type: merchant.status ?? "standard",
-                number_customer: merchant.account,
-                billing_cycle: merchant.id,
-                number_branches: merchant.created,
-                pricing: merchant.amount,
+                plan_name: merchant.name || "",
+                plan_type: "standard",
+                max_customers: merchant.maxCustomers?.toString() || merchant.max_customers?.toString() || "",
+                billing_cycle: merchant.billingCycle || merchant.billing_cycle || "",
+                max_agents: merchant.maxAgents?.toString() || merchant.max_agents?.toString() || "",
+                max_transactions: merchant.maxTransactions?.toString() || merchant.max_transactions?.toString() || "",
+                pricing: merchant.pricing?.toString() || "",
             });
         } else {
             reset({
                 plan_name: "",
                 plan_type: "standard",
-                number_customer: "",
+                max_customers: "",
                 billing_cycle: "",
-                number_branches: "",
+                max_agents: "",
+                max_transactions: "",
                 pricing: "",
             });
         }
     }, [mode, merchant, reset]);
 
 
-    const addpackage = useMutation({
+    const addPlanMutation = useMutation({
         mutationFn: async (data: formdata) => {
-            const res = await fetch("/api/merchants", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
+            const planData = {
+                type: data.plan_type,
+                name: data.plan_name,
+                billing_cycle: data.billing_cycle,
+                pricing: parseFloat(data.pricing),
+                max_agents: data.max_agents ? parseInt(data.max_agents) : null,
+                max_customers: data.max_customers ? parseInt(data.max_customers) : null,
+                max_transactions: data.max_transactions ? parseInt(data.max_transactions) : null,
+                status: 'active',
+                currency: 'NGN'
+            };
+            return adminAPI.createPlan(planData);
         },
 
         onSuccess: () => {
-           // queryClient.invalidateQueries({ queryKey: ["merchants"] });
+            queryClient.invalidateQueries({ queryKey: ["allPlans"] });
+            queryClient.invalidateQueries({ queryKey: ["standardPlans"] });
+            alert("Plan created successfully!");
+            onClose();
         },
         onError(error: any) {
-
+            alert(`Failed to create plan: ${error.message}`);
         }
 
     })
 
 
-    const editpackage = useMutation({
+    const editPlanMutation = useMutation({
         mutationFn: async (data: formdata) => {
-            const res = await fetch(`/api/merchants/${merchant?.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
+            const planData = {
+                type: data.plan_type,
+                name: data.plan_name,
+                billing_cycle: data.billing_cycle,
+                pricing: parseFloat(data.pricing),
+                max_agents: data.max_agents ? parseInt(data.max_agents) : null,
+                max_customers: data.max_customers ? parseInt(data.max_customers) : null,
+                max_transactions: data.max_transactions ? parseInt(data.max_transactions) : null,
+            };
+            return adminAPI.updatePlan(merchant.id, planData);
         },
 
         onSuccess: () => {
-            //queryClient.invalidateQueries({ queryKey: ["merchants"] });
+            queryClient.invalidateQueries({ queryKey: ["allPlans"] });
+            queryClient.invalidateQueries({ queryKey: ["standardPlans"] });
+            alert("Plan updated successfully!");
+            onClose();
         },
         onError(error: any) {
-
+            alert(`Failed to update plan: ${error.message}`);
         }
     })
 
     const onSubmit = (data: formdata) => {
         console.log(data)
         if (mode === "add") {
-            addpackage.mutate(data)
-            console.log("addpackagedata", data)
+            addPlanMutation.mutate(data)
+            console.log("addPlanData", data)
         } else {
-            editpackage.mutate(data)
-            console.log("editpackagedata", data)
+            editPlanMutation.mutate(data)
+            console.log("editPlanData", data)
         }
-
-        //onClose()
-        reset()
     }
 
     return (
@@ -204,32 +221,46 @@ const AddStandard = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                         <div>
                             <div className='flex gap-2 items-center mb-1'>
                                 <input type="checkbox" />
-                                <p className="mb-1 text-sm font-medium font-inter">Number of Branches</p>
+                                <p className="mb-1 text-sm font-medium font-inter">Max Agents</p>
                             </div>
-                            <p className="mb-1 text-sm font-medium font-inter">Upto</p>
+                            <p className="mb-1 text-sm font-medium font-inter">Upto (leave empty for unlimited)</p>
                             <input
                                 type="text"
                                 placeholder="20"
-                                {...register("number_branches")}
+                                {...register("max_agents")}
                                 className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
                             />
-                            <p className="text-sm text-red-500">{errors.number_branches?.message}</p>
+                            <p className="text-sm text-red-500">{errors.max_agents?.message}</p>
                         </div>
-
 
                         <div>
                             <div className='flex gap-2 items-center mb-1'>
                                 <input type="checkbox" />
-                                <p className="mb-1 text-sm font-medium font-inter">Number of Customers</p>
+                                <p className="mb-1 text-sm font-medium font-inter">Max Customers</p>
                             </div>
-                            <p className="mb-1 text-sm font-medium font-inter">Upto</p>
+                            <p className="mb-1 text-sm font-medium font-inter">Upto (leave empty for unlimited)</p>
                             <input
                                 type="text"
-                                placeholder="20"
-                                {...register("number_customer")}
+                                placeholder="100"
+                                {...register("max_customers")}
                                 className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
                             />
-                            <p className="text-sm text-red-500">{errors.number_customer?.message}</p>
+                            <p className="text-sm text-red-500">{errors.max_customers?.message}</p>
+                        </div>
+
+                        <div>
+                            <div className='flex gap-2 items-center mb-1'>
+                                <input type="checkbox" />
+                                <p className="mb-1 text-sm font-medium font-inter">Max Transactions</p>
+                            </div>
+                            <p className="mb-1 text-sm font-medium font-inter">Upto (leave empty for unlimited)</p>
+                            <input
+                                type="text"
+                                placeholder="500"
+                                {...register("max_transactions")}
+                                className="w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none"
+                            />
+                            <p className="text-sm text-red-500">{errors.max_transactions?.message}</p>
                         </div>
 
                     </form>
@@ -246,7 +277,7 @@ const AddStandard = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                             : "cursor-pointer"
                             }`}
                     >
-                        {addpackage.isPending || editpackage.isPending
+                        {addPlanMutation.isPending || editPlanMutation.isPending
                             ? "Saving..."
                             : mode === "add"
                                 ? "Create plan"

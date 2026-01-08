@@ -1,72 +1,93 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
-import { MerchantData } from '../../../interface/type';
 import Pagination from '../../admin/pagination';
-import Addroles from './modals/Add&EditroleModal';
+
+interface RoleMember {
+  id: string | number;
+  roleName?: string;
+  name?: string;
+  cantView?: string;
+  canViewOnly?: string;
+  canEdit?: string;
+  permissions?: string[];
+  lastUpdated?: string;
+  updatedAt?: string;
+  created?: string;
+  createdAt?: string;
+}
+
+interface RolesTableProps {
+  rolesData: RoleMember[];
+  onOpenEditModal: (role: RoleMember) => void;
+  onDeleteRole: (id: string | number) => void;
+}
+
+const RolesTable: React.FC<RolesTableProps> = ({ rolesData, onOpenEditModal, onDeleteRole }) => {
+  const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
 
 
-const RolesTable = () => {
+  const [entriesPerPage, setEntriesPerPage] = useState<number>(10)
+  const [currentPage, setCurrentPage] = useState<number>(1)
 
-  const [addeditrole, setAddEditRole] = useState<boolean>(false)
-
-  const [selectedMerchant, setSelectedMerchant] = useState<MerchantData | null>(null);
-
-  const data: MerchantData[] = [
-    { id: 'COL-103-A45', package: 'Alpha 1K', account: '94565647567', amount: 'N1,000', customer: 'James Odunayo', method: "wallet", status: 'active', created: '23 Jan, 2025' },
-    { id: 'COL-203-B12', package: 'Alpha 2K', account: '94565647568', amount: 'N2,000', customer: 'Jane Doe', method: "wallet", status: 'active', created: '23 Jan, 2025' },
-  ];
-
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-
-  const toggleDropdown = (id: string) => {
+  const toggleDropdown = (id: string | number) => {
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
 
-  const clickEdits = (menu:MerchantData) => {
-    setAddEditRole(true)
-    setSelectedMerchant(menu)
-  }
+  const handleEditClick = (role: RoleMember) => {
+    onOpenEditModal(role);
+  };
+
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * entriesPerPage;
+    const end = start + entriesPerPage;
+    return rolesData.slice(start, end);
+  }, [rolesData, currentPage, entriesPerPage]);
+
+  const totalPages = Math.ceil(rolesData.length / entriesPerPage);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rolesData.length]);
+
+  const formatPermissions = (permissions: string[] | undefined, type: 'view' | 'edit') => {
+    if (!permissions) return '0';
+    if (type === 'view') {
+      return permissions.filter(p => p.startsWith('view_')).length + ' items';
+    }
+    return permissions.filter(p => p.startsWith('edit_') || p.startsWith('create_') || p.startsWith('delete_') || p.startsWith('manage_')).length + ' items';
+  };
 
   return (
     <div>
       <div className='bg-white dark:bg-gray-900 dark:text-white shadow-sm w-full relative'>
 
-        {/*table*/}
+        {/* Table */}
         <div className='overflow-x-auto mt-4'>
           <div className='overflow-auto w-full'>
-            <table className="table-auto w-full whitespace-nowrap  ">
+            <table className="table-auto w-full whitespace-nowrap">
               <thead className="bg-gray-50 border-b border-[#D9D4D4] dark:bg-gray-900 dark:text-white">
                 <tr className="h-[40px] text-left">
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white"> <div className="flex items-center gap-2">
-                    {/* <input
-                      type="checkbox"
-                      checked={selectAll}
-                       onChange={handleSelectAll}
-                      className="w-5 h-5 border border-gray-300 rounded-md hover:border-indigo-500 hover:bg-indigo-100 checked:bg-indigo-100"
-                    />*/}
-                    <span className="flex items-center gap-[3px] text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
+                    <div className="flex items-center gap-[3px]">
                       ID
                       <div className="flex flex-col gap-[1px] shrink-0">
-                        <Image src="/icons/uparr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
-                        <Image src="/icons/downarr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
+                        <Image src="/icons/uparr.svg" alt="up" width={6} height={6} />
+                        <Image src="/icons/downarr.svg" alt="down" width={6} height={6} />
                       </div>
-                    </span>
-                  </div></th>
+                    </div>
+                  </th>
                   <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Role</th>
                   <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Can’t view</th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
-                    Can view only
-                  </th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white ">
-                    Can edit
-                  </th>
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Can view only</th>
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Can edit</th>
                   <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
                     <div className="flex items-center gap-[3px]">
                       Last updated
                       <div className="flex flex-col gap-[1px] shrink-0">
-                        <Image src="/icons/uparr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
-                        <Image src="/icons/downarr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
+                        <Image src="/icons/uparr.svg" alt="up" width={6} height={6} />
+                        <Image src="/icons/downarr.svg" alt="down" width={6} height={6} />
                       </div>
                     </div>
                   </th>
@@ -74,48 +95,66 @@ const RolesTable = () => {
                     <div className="flex items-center gap-[3px]">
                       Date created
                       <div className="flex flex-col gap-[1px] shrink-0">
-                        <Image src="/icons/uparr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
-                        <Image src="/icons/downarr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
+                        <Image src="/icons/uparr.svg" alt="up" width={6} height={6} />
+                        <Image src="/icons/downarr.svg" alt="down" width={6} height={6} />
                       </div>
                     </div>
                   </th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] "></th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] "></th>
+                  <th className="px-5 py-2"></th>
+                  <th className="px-5 py-2"></th>
                 </tr>
               </thead>
 
               <tbody className="border-b border-[#D9D4D4] w-full">
-                {data.map((item) => (
-                  <tr key={item.id} className="bg-white dark:bg-gray-900  transition-all border-b duration-500 hover:bg-gray-50">
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal "><div className="flex items-center gap-2">
-                      {/*<input
-                        type="checkbox"
-                        checked={selectedUsers.includes(item.id)}
-                        onChange={() => handleSelectUser(item.id)}
-                        className="w-5 h-5 border border-gray-300 rounded-md hover:border-indigo-500 hover:bg-indigo-100 checked:bg-indigo-100"
-                      />*/}
-                      <span className="flex items-center gap-[3px] text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
-                        {item.id}
-                      </span>
-                    </div></td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.package}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.account}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.amount}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.customer}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.status}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.created}</td>
-                    <td className="relative px-3 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal cursor-pointer ">
-                      <Image src="/icons/lucide_edit.svg" alt="dots" width={20} height={20} onClick={() => clickEdits(item)} />
+                {paginatedData.map((item) => (
+                  <tr key={item.id} className="bg-white dark:bg-gray-900 transition-all border-b duration-500 hover:bg-gray-50">
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{item.id}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white capitalize">{item.roleName || item.name}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.cantView || '-'}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">
+                      {item.canViewOnly || formatPermissions(item.permissions, 'view')}
                     </td>
-                    <td className="relative px-3 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal cursor-pointer ">
-                      <Image src="/icons/dots.svg" alt="dots" width={20} height={20} onClick={() => toggleDropdown(item.id)} />
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">
+                      {item.canEdit || formatPermissions(item.permissions, 'edit')}
+                    </td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">
+                      {item.lastUpdated || (item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'N/A')}
+                    </td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">
+                      {item.created || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A')}
+                    </td>
+                    <td className="px-3 py-4">
+                      <Image
+                        src="/icons/lucide_edit.svg"
+                        alt="edit"
+                        width={20}
+                        height={20}
+                        className="cursor-pointer hover:opacity-70"
+                        onClick={() => handleEditClick(item)}
+                      />
+                    </td>
+                    <td className="relative px-3 py-4">
+                      <Image
+                        src="/icons/dots.svg"
+                        alt="more"
+                        width={20}
+                        height={20}
+                        className="cursor-pointer"
+                        onClick={() => toggleDropdown(item.id)}
+                      />
 
                       {openDropdownId === item.id && (
-                        <div className="absolute right-0  mt-1 bg-white shadow-lg rounded-md z-50">
-                          <p className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">Delete</p>
+                        <div className="absolute right-0 mt-1 bg-white shadow-lg rounded-md z-50">
+                          <button 
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer bg-transparent border-none"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteRole(item.id);
+                              setOpenDropdownId(null);
+                            }}
+                          >Delete</button>
                         </div>
                       )}
-
                     </td>
                   </tr>
                 ))}
@@ -125,20 +164,16 @@ const RolesTable = () => {
 
           <div className='border-t-[1px] w-full mt-[20px]'></div>
 
-          <Pagination />
-
+          
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={rolesData.length}
+            itemsPerPage={entriesPerPage}
+          />
         </div>
-
       </div>
-
-
-
-      <Addroles
-        packag={addeditrole}
-        onClose={() => setAddEditRole(false)}
-        mode="edit"
-        merchant={selectedMerchant}
-      />
     </div>
   )
 }

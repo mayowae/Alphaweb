@@ -112,6 +112,22 @@ const registerMerchant = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const errors = error.errors ? error.errors.map(e => ({
+        field: e.path,
+        message: e.message,
+        value: e.value
+      })) : [];
+      
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors,
+        details: error.message 
+      });
+    }
+    
     res.status(500).json({ message: 'Registration failed', error: error.message });
   }
 };

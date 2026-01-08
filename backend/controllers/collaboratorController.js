@@ -318,19 +318,41 @@ const { Collaborator } = require('../models');
  *                   example: "Password change failed"
  */
 
-// Configure nodemailer
-transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
-  auth: process.env.EMAIL_USER && process.env.EMAIL_PASS ? {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  } : undefined,
-  tls: { rejectUnauthorized: false },
-  requireTLS: true,
-  debug: true,
-});
+// Configure nodemailer (env-driven; safe fallback)
+let transporter;
+try {
+  if (String(process.env.EMAIL_DISABLED || '').toLowerCase() === 'true') {
+    transporter = null;
+  } else if (process.env.SMTP_HOST) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+      auth: process.env.EMAIL_USER && process.env.EMAIL_PASS ? {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      } : undefined,
+      tls: { rejectUnauthorized: false },
+      requireTLS: true,
+      debug: true,
+    });
+  } else {
+    // Default to Gmail if specified; otherwise mock
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+    } else {
+      transporter = null; // mock mode
+    }
+  }
+} catch (_) {
+  transporter = null;
+}
 
 // Generate OTP
 const generateOTP = () => {
@@ -339,14 +361,23 @@ const generateOTP = () => {
 
 // Send OTP email
 const sendOTPEmail = async (email, otp) => {
+  if (!transporter) {
+    console.warn('Email disabled or not configured. OTP:', otp, 'Recipient:', email);
+    return { sent: false, reason: 'disabled_or_not_configured' };
+  }
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
     to: email,
     subject: 'Your OTP for AlphaWeb',
     text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
   };
-
-  await transporter.sendMail(mailOptions);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    return { sent: true, info };
+  } catch (err) {
+    console.error('Email sending failed:', err && err.message ? err.message : err);
+    return { sent: false, error: err };
+  }
 };
 
 // Register collaborator
@@ -378,12 +409,15 @@ const registerCollaborator = async (req, res) => {
       otpExpires,
     });
 
-    // Send OTP email
-    await sendOTPEmail(email, otp);
-
+    // Try to send OTP email, but don't fail registration if email fails
+    const emailResult = await sendOTPEmail(email, otp);
     res.status(201).json({
-      message: 'Collaborator registered successfully. Please verify your email with the OTP sent.',
+      message: emailResult.sent
+        ? 'Collaborator registered successfully. Please verify your email with the OTP sent.'
+        : 'Collaborator registered successfully. Email not sent; use the OTP below to verify.',
       collaboratorId: collaborator.id,
+      otp: otp,
+      emailSent: !!emailResult.sent,
     });
   } catch (error) {
     console.error('Collaborator registration error:', error);
@@ -453,10 +487,13 @@ const collaboratorForgotPassword = async (req, res) => {
     // Update collaborator with OTP
     await collaborator.update({ otp, otpExpires });
 
-    // Send OTP email
-    await sendOTPEmail(email, otp);
-
-    res.json({ message: 'OTP sent to your email' });
+    // Send OTP email (non-blocking for dev)
+    const emailResult = await sendOTPEmail(email, otp);
+    res.json({
+      message: emailResult.sent ? 'OTP sent to your email' : 'Email not sent; use the OTP shown here',
+      otp: otp,
+      emailSent: !!emailResult.sent,
+    });
   } catch (error) {
     console.error('Collaborator forgot password error:', error);
     res.status(500).json({ message: 'Failed to send OTP', error: error.message });
@@ -481,9 +518,12 @@ const collaboratorResendOTP = async (req, res) => {
     await collaborator.update({ otp, otpExpires });
 
     // Send OTP email
-    await sendOTPEmail(email, otp);
-
-    res.json({ message: 'OTP resent to your email' });
+    const emailResult = await sendOTPEmail(email, otp);
+    res.json({
+      message: emailResult.sent ? 'OTP resent to your email' : 'Email not sent; use the OTP shown here',
+      otp: otp,
+      emailSent: !!emailResult.sent,
+    });
   } catch (error) {
     console.error('Collaborator resend OTP error:', error);
     res.status(500).json({ message: 'Failed to resend OTP', error: error.message });

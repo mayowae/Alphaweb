@@ -51,9 +51,11 @@ const walletController = require('./controllers/walletController');
 const remittanceController = require('./controllers/remittanceController');
 const customerWalletController = require('./controllers/customerWalletController');
 const dashboardController = require('./controllers/dashboardController');
+const superAdminController = require('./controllers/superAdminController');
+const merchantManagementController = require('./controllers/merchantManagementController');
 
 // Import middleware
-const { verifyToken, requireMerchant, requireCollaborator, requireAuthenticated } = require('./middleware/auth');
+const { verifyToken, requireMerchant, requireCollaborator, requireAuthenticated, requireSuperAdmin } = require('./middleware/auth');
 
 // Swagger configuration moved to ./swagger.js
 
@@ -138,6 +140,57 @@ app.post('/collaborator/forgot-password', collaboratorController.collaboratorFor
 app.post('/collaborator/resend-otp', collaboratorController.collaboratorResendOTP);
 app.post('/collaborator/verify-otp', collaboratorController.collaboratorVerifyOTP);
 app.post('/collaborator/change-password', collaboratorController.collaboratorChangePassword);
+
+// Super Admin authentication routes
+app.post('/superadmin/login', superAdminController.loginSuperAdmin);
+
+// Super Admin protected routes
+app.get('/superadmin/superStats', verifyToken, requireSuperAdmin, superAdminController.getSuperAdminStats);
+app.get('/superadmin/merchantStats', verifyToken, requireSuperAdmin, superAdminController.getMerchantStats);
+app.get('/superadmin/allActivities', verifyToken, requireSuperAdmin, superAdminController.getAllActivities);
+app.get('/superadmin/allMerchants', verifyToken, requireSuperAdmin, superAdminController.getAllMerchants);
+app.get('/superadmin/allTransactions', verifyToken, requireSuperAdmin, superAdminController.getAllTransactions);
+app.post('/superadmin/createPlan', verifyToken, requireSuperAdmin, superAdminController.createPlan);
+app.get('/superadmin/getAllPlans', verifyToken, requireSuperAdmin, superAdminController.getAllPlans);
+app.put('/superadmin/plans/:id', verifyToken, requireSuperAdmin, superAdminController.updatePlan);
+app.delete('/superadmin/plans/:id', verifyToken, requireSuperAdmin, superAdminController.deletePlan);
+app.post('/superadmin/createRole', verifyToken, requireSuperAdmin, superAdminController.createRole);
+app.put('/superadmin/updateRole/:id', verifyToken, requireSuperAdmin, superAdminController.updateRole);
+app.delete('/superadmin/deleteRole/:id', verifyToken, requireSuperAdmin, superAdminController.deleteRole);
+app.get('/superadmin/getAllPermissions', verifyToken, requireSuperAdmin, superAdminController.getAllPermissions);
+app.get('/superadmin/getAllRoles', verifyToken, requireSuperAdmin, superAdminController.getAllRoles);
+app.post('/superadmin/createAdminStaff', verifyToken, requireSuperAdmin, superAdminController.createAdminStaff);
+app.put('/superadmin/updateAdminStaff/:id', verifyToken, requireSuperAdmin, superAdminController.updateAdminStaff);
+app.get('/superadmin/getAllAdminStaff', verifyToken, requireSuperAdmin, superAdminController.getAllAdminStaff);
+app.get('/superAdmin/logs', verifyToken, requireSuperAdmin, superAdminController.getAllAdminLogs);
+app.get('/superAdmin/logs/:staffId', verifyToken, requireSuperAdmin, superAdminController.getAdminLogsByStaff);
+
+// Support Tickets
+app.get('/superadmin/tickets', verifyToken, requireSuperAdmin, superAdminController.getAllTickets);
+app.get('/superadmin/tickets/:id', verifyToken, requireSuperAdmin, superAdminController.getTicketDetails);
+app.post('/superadmin/tickets/:id/reply', verifyToken, requireSuperAdmin, superAdminController.replyToTicket);
+app.put('/superadmin/tickets/:id/status', verifyToken, requireSuperAdmin, superAdminController.updateTicketStatus);
+
+// Announcements
+app.get('/superadmin/announcements', verifyToken, requireSuperAdmin, superAdminController.getAllAnnouncements);
+app.post('/superadmin/announcements', verifyToken, requireSuperAdmin, superAdminController.createAnnouncement);
+app.delete('/superadmin/announcements/:id', verifyToken, requireSuperAdmin, superAdminController.deleteAnnouncement);
+
+// FAQs
+app.get('/superadmin/faqs', verifyToken, requireSuperAdmin, superAdminController.getAllFaqs);
+app.post('/superadmin/faqs', verifyToken, requireSuperAdmin, superAdminController.createFaq);
+app.delete('/superadmin/faqs/:id', verifyToken, requireSuperAdmin, superAdminController.deleteFaq);
+
+// Merchant Management routes (Super Admin only)
+app.put('/superadmin/merchants/:id', verifyToken, requireSuperAdmin, merchantManagementController.updateMerchant);
+app.put('/superadmin/merchants/:id/status', verifyToken, requireSuperAdmin, merchantManagementController.updateMerchantStatus);
+app.put('/superadmin/merchants/:id/reset-password', verifyToken, requireSuperAdmin, merchantManagementController.resetMerchantPassword);
+app.delete('/superadmin/merchants/:id', verifyToken, requireSuperAdmin, merchantManagementController.deleteMerchant);
+
+// Merchant detail tabs routes
+app.get('/superadmin/merchants/:id/transactions', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantTransactions);
+app.get('/superadmin/merchants/:id/subscriptions', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantSubscriptions);
+app.get('/superadmin/merchants/:id/logs', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantLogs);
 
 // Mobile endpoints removed
 

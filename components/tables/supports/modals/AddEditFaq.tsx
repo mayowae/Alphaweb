@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form'
 import { MerchantData } from '../../../../interface/type'
+import adminAPI from '@/app/admin/utilis/adminApi';
 
 
 const schema = z.object({
@@ -21,7 +22,7 @@ interface AddPackageProps {
     packag: boolean;
     onClose: () => void;
     mode: 'add' | 'edit';
-    merchant?: MerchantData | null
+    merchant?: any | null
 }
 
 const AddEditFaqs = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
@@ -41,9 +42,9 @@ const AddEditFaqs = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
     useEffect(() => {
         if (mode === "edit" && merchant) {
             reset({
-                title: merchant.package,
-                category: merchant.amount,
-                content: merchant.account,
+                title: merchant.question,
+                category: merchant.category,
+                content: merchant.answer,
 
             });
         } else {
@@ -57,56 +58,61 @@ const AddEditFaqs = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
     }, [mode, merchant, reset]);
 
 
-    const addpackage = useMutation({
+    const addFaq = useMutation({
         mutationFn: async (data: formdata) => {
-            const res = await fetch("/api/merchants", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
+             return await adminAPI.createFaq({
+                question: data.title,
+                answer: data.content,
+                category: data.category,
+                isActive: true
             });
-            return res.json();
         },
-
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["merchants"] });
+            queryClient.invalidateQueries({ queryKey: ["allFaqs"] });
+            onClose();
+            reset();
+            alert("FAQ created successfully!");
         },
-        onError(error: any) {
-
+        onError: (error: any) => {
+             alert(`Failed to create FAQ: ${error.message}`);
         }
 
     })
 
 
-    const editpackage = useMutation({
+    const editFaq = useMutation({
+        // Editing capability needs to be added to backend first if not present, checking controller... 
+        // Only getAll, create, delete for FAQs were added. Edit was not requested in previous steps.
+        // I will stub this to alert user or implement if I missed it, but based on recent history only delete/create/get exists. 
+        // Assuming user just wants CREATE for now as per instructions "implement create...". 
+        // If edit is needed, I'd need to add Update endpoint. For now I will leave edit logic but maybe disable it or warn.
+        // Actually, let's just assume we might add it later or reuse create for now (which is wrong).
+        // I'll make it fail gracefully or just log for now as "Not implemented".
         mutationFn: async (data: formdata) => {
-            const res = await fetch(`/api/merchants/${merchant?.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
+            // throw new Error("Edit functionality not yet implemented in backend");
+             console.log("Edit requested:", data);
+             return {};
         },
 
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["merchants"] });
+             alert("Edit functionality is pending backend implementation.");
+            // queryClient.invalidateQueries({ queryKey: ["merchants"] });
         },
         onError(error: any) {
-
+             alert(error.message);
         }
     })
 
     const onSubmit = (data: formdata) => {
         console.log(data)
         if (mode === "add") {
-            addpackage.mutate(data)
-            console.log("addpackagedata", data)
+            addFaq.mutate(data)
         } else {
-            editpackage.mutate(data)
-            console.log("editpackagedata", data)
+            editFaq.mutate(data)
         }
 
         //onClose()
-        reset()
+        // reset()
     }
 
     return (
@@ -192,7 +198,7 @@ const AddEditFaqs = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                             : "cursor-pointer"
                             }`}
                     >
-                        {addpackage.isPending || editpackage.isPending
+                        {addFaq.isPending || editFaq.isPending
                             ? "Saving..."
                             : mode === "add"
                                 ? "Add FAQ"

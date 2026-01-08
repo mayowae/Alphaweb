@@ -1,6 +1,9 @@
 "use client"
 import React, { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import adminAPI from '@/app/admin/utilis/adminApi';
 import Pagination from '../../admin/pagination';
 import { MerchantData } from '../../../interface/type';
 import { FaAngleDown } from 'react-icons/fa';
@@ -8,14 +11,27 @@ import NewAnnouncement from './modals/NewAnnouncement';
 
 const Announcements = () => {
 
+  const { data: adsData, isLoading, refetch } = useQuery({
+     queryKey: ['allAnnouncements'],
+     queryFn: adminAPI.getAllAnnouncements
+  });
+
   const [show, setShow] = useState<boolean>(false)
   const [announcement, setAnnouncement] = useState<boolean>(false)
 
-  const data: MerchantData[] = [
-    { id: 'COL-103-A45', package: 'Alpha 1K', account: '94565647567', amount: 'N1,000', customer: 'James Odunayo', method: "wallet", status: 'active', created: '23 Jan, 2025' },
-    { id: 'COL-203-B12', package: 'Alpha 2K', account: '94565647568', amount: 'N2,000', customer: 'Jane Doe', method: "wallet", status: 'active', created: '23 Jan, 2025' },
-  ];
+  const items = adsData?.data || [];
 
+  const handleDelete = async (id: number) => {
+    if (confirm('Are you sure you want to delete this announcement?')) {
+      try {
+        await adminAPI.deleteAnnouncement(id);
+        refetch();
+      } catch (error) {
+        console.error("Failed to delete announcement", error);
+        alert("Failed to delete announcement");
+      }
+    }
+  };
 
   return (
     <div>
@@ -33,60 +49,39 @@ const Announcements = () => {
         </div>
 
         <div className='flex flex-wrap items-center justify-between gap-4 max-md:flex-col max-md:gap-[10px] p-[10px] md:p-[20px] '>
-
-          <div className='flex flex-wrap gap-4 max-sm:mt-3 items-center md:gap-[20px] w-full md:w-auto'>
-
+           {/* ... filters ... */}
+           {/* keeping existing filters structure */}
+           <div className='flex flex-wrap gap-4 max-sm:mt-3 items-center md:gap-[20px] w-full md:w-auto'>
             <div className='w-[100%]  md:w-[150px]'>
               <select className="h-[40px] w-full outline-none leading-[24px] rounded-[4px] border border-[#D0D5DD] font-inter text-[14px] bg-white px-2 transition-all">
-
-                <option value="" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Status</option>
-
-                <option value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 10 per row</option>
-
-                <option value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 15 per row</option>
+                <option value="">All Status</option>
+                <option value="10">Show 10 per row</option>
+                <option value="15">Show 15 per row</option>
               </select>
-
             </div>
-
             <div className='w-[100%]  md:w-[185px] '>
               <select className="h-[40px] w-full outline-none leading-[24px] rounded-[4px] border border-[#D0D5DD] font-inter text-[14px] bg-white px-2 transition-all">
-
-                <option value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 10 per row</option>
-
-                <option value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 15 per row</option>
+                <option value="10">Show 10 per row</option>
+                <option value="15">Show 15 per row</option>
               </select>
-
             </div>
-
           </div>
 
           <div className='flex flex-wrap gap-[10px] md:gap-[20px] w-full md:w-auto'>
-
-
             <div className='relative w-full md:w-auto'>
               <button onClick={() => setShow(!show)} className='bg-[#FAF9FF] h-[40px] cursor-pointer w-[105px] flex items-center justify-center gap-[7px] rounded-[4px]'>
                 <p className='text-[#4E37FB] font-medium text-[14px]'>Export</p>
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
-
               {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">Pending</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Open</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Resolved</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Closed</p>
+                 <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">Pending</p>
+                 {/* ... */}
               </div>}
             </div>
-
-            <div className="flex items-center h-[40px] w-full md:w-[311px] gap-[4px] border border-[#E5E7EB] rounded-[4px] px-3">
+             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-[4px] border border-[#E5E7EB] rounded-[4px] px-3">
               <Image src="/icons/search.png" alt="dashboard" width={20} height={20} className="cursor-pointer" />
-
-              <input
-                type="text"
-                placeholder="Search"
-                className="  outline-none px-3 py-2 w-full text-sm"
-              />
+              <input type="text" placeholder="Search" className="outline-none px-3 py-2 w-full text-sm" />
             </div>
-
           </div>
         </div>
 
@@ -97,41 +92,37 @@ const Announcements = () => {
             <table className="table-auto w-full whitespace-nowrap  ">
               <thead className="bg-gray-50 border-b border-[#D9D4D4] dark:bg-gray-900 dark:text-white">
                 <tr className="h-[40px] text-left">
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
-                    Title
-                  </th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Messages</th>
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Title</th>
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Content</th>
                   <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Target Audience</th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
-                    <div className="flex items-center gap-[3px]">
-                      Created Date
-                      <div className="flex flex-col gap-[1px] shrink-0">
-                        <Image src="/icons/uparr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
-                        <Image src="/icons/downarr.svg" alt="uparrow" width={6} height={6} className="shrink-0" />
-                      </div>
-                    </div>
-                  </th>
-                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white ">
-                    Status
-                  </th>
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">Created Date</th>
+                  <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white ">Status</th>
                   <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] "></th>
                 </tr>
               </thead>
 
               <tbody className="border-b border-[#D9D4D4] w-full">
-                {data.map((item) => (
+                {isLoading ? <tr><td colSpan={6} className="text-center py-4">Loading...</td></tr> :
+                 items.length === 0 ? <tr><td colSpan={6} className="text-center py-4">No announcements found</td></tr> :
+                 items.map((item: any) => (
                   <tr key={item.id} className="bg-white dark:bg-gray-900  transition-all border-b duration-500 hover:bg-gray-50">
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal "><div className="flex items-center gap-2">
                       <span className="flex items-center gap-[3px] text-[12px] leading-[18px] font-lato font-normal text-[#141414] dark:text-white">
-                        {item.id}
+                        {item.title}
                       </span>
                     </div></td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.package}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.account}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.amount}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{item.customer}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white truncate max-w-[200px]">{item.content}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white ">{item.targetAudience}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">{new Date(item.createdAt).toLocaleDateString()}</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal dark:text-white">
+                         <span className={`px-2 py-1 rounded text-xs ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {item.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
                     <td className="px-3 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal cursor-pointer dark:text-white">
-                      <Image src="/icons/delred.svg" alt='delred' width={20} height={20} />
+                       <button onClick={() => handleDelete(item.id)} className="p-1 hover:bg-red-50 rounded">
+                        <Image src="/icons/delred.svg" alt='delred' width={20} height={20} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -140,9 +131,13 @@ const Announcements = () => {
           </div>
 
           <div className='border-t-[1px] w-full mt-[20px]'></div>
-
-          <Pagination />
-
+          <Pagination 
+            currentPage={1}
+            totalPages={1}
+            onPageChange={() => {}}
+            totalItems={items.length}
+            itemsPerPage={10}
+          />
         </div>
 
       </div>

@@ -23,7 +23,7 @@ interface AddPackageProps {
     packag: boolean;
     onClose: () => void;
     mode: 'add' | 'edit';
-    merchant?: MerchantData | null
+    merchant?: any | null
 }
 
 const Addeditaccountmodal = ({ packag, onClose, mode, merchant }: AddPackageProps) => {

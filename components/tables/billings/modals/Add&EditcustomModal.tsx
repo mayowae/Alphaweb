@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { FaAngleDown } from 'react-icons/fa'
 import z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form'
 import { MerchantData } from '../../../../interface/type'
 
@@ -32,26 +31,25 @@ interface AddPackageProps {
 }
 
 const AddCustom = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const
-        { register,
-            handleSubmit,
-            formState: { errors, isValid, isSubmitting },
-            reset
-        } = useForm<formdata>({
-            resolver: zodResolver(schema),
-            mode: "onChange",
-            defaultValues: { plan_type: "custom" }
-        });
-
-    const queryClient = useQueryClient();
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isValid },
+        reset
+    } = useForm<formdata>({
+        resolver: zodResolver(schema),
+        mode: "onChange",
+        defaultValues: { plan_type: "custom" }
+    });
 
     useEffect(() => {
         if (packag && mode === "edit" && merchant) {
             reset({
                 plan_name: String(merchant.package ?? ""),
                 plan_type: String(merchant.customer ?? "custom"),
-                merchants: String(merchant.account ?? ""),
+                merchants: String(merchant.no_of_agents ?? ""),
                 billing_cycle: String(merchant.id ?? ""),
                 start_date: String(merchant.created ?? ""),
                 pricing: String(merchant.amount ?? ""),
@@ -73,57 +71,26 @@ const AddCustom = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
         }
     }, [packag, mode, merchant, reset]);
 
+    const onSubmit = async (data: formdata) => {
+        setIsSubmitting(true);
+        
+        try {
+           
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const addpackage = useMutation({
-        mutationFn: async (data: formdata) => {
-            const res = await fetch("/api/merchants", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
-        },
+            if (mode === "add") {
+                console.log("addpackagedata", data);
+            } else {
+                console.log("editpackagedata", data);
+            }
 
-        onSuccess: () => {
-            // queryClient.invalidateQueries({ queryKey: ["merchants"] });
-        },
-        onError(error: any) {
-
+            onClose();
+            reset();
+        } catch (error) {
+            console.error("Error:", error);
+        } finally {
+            setIsSubmitting(false);
         }
-
-    })
-
-
-    const editpackage = useMutation({
-        mutationFn: async (data: formdata) => {
-            const res = await fetch(`/api/merchants/${merchant?.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            return res.json();
-        },
-
-        onSuccess: () => {
-            //queryClient.invalidateQueries({ queryKey: ["merchants"] });
-        },
-        onError(error: any) {
-
-        }
-    })
-
-    const onSubmit = (data: formdata) => {
-        console.log(data)
-        if (mode === "add") {
-            addpackage.mutate(data)
-            console.log("addpackagedata", data)
-        } else {
-            editpackage.mutate(data)
-            console.log("editpackagedata", data)
-        }
-
-        //onClose()
-        reset()
     }
 
     return (
@@ -312,7 +279,7 @@ const AddCustom = ({ packag, onClose, mode, merchant }: AddPackageProps) => {
                             : "cursor-pointer"
                             }`}
                     >
-                        {addpackage.isPending || editpackage.isPending
+                        {isSubmitting
                             ? "Saving..."
                             : mode === "add"
                                 ? "Create plan"

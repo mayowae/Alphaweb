@@ -27,12 +27,13 @@ export interface InvestmentTransaction {
 export interface MerchantData {
     id: string;
     package: string;
-    account: string;
-    amount: string;
     customer: string;
     method:string;
     status: string;
     created: string;
+    no_of_agents:string;
+    no_of_customers:string;
+    amount?:string;
   }
   export interface datas {
     id:string;

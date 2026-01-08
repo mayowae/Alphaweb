@@ -85,6 +85,19 @@ db.Repayment = require('./repayment')(sequelize, Sequelize.DataTypes);
 db.InvestmentTransaction = require('./investmentTransaction')(sequelize, Sequelize.DataTypes);
 db.Remittance = require('./remittance')(sequelize, Sequelize.DataTypes);
 
+// Super Admin models
+db.SuperAdmin = require('./SuperAdmin')(sequelize, Sequelize.DataTypes);
+db.Activity = require('./activity')(sequelize, Sequelize.DataTypes);
+db.Plan = require('./plan')(sequelize, Sequelize.DataTypes);
+db.Transaction = require('./transaction')(sequelize, Sequelize.DataTypes);
+db.AdminRole = require('./adminRole')(sequelize, Sequelize.DataTypes);
+db.AdminStaff = require('./adminStaff')(sequelize, Sequelize.DataTypes);
+db.AdminLog = require('./adminLog')(sequelize, Sequelize.DataTypes);
+db.SupportTicket = require('./supportTicket')(sequelize, Sequelize.DataTypes);
+db.TicketMessage = require('./ticketMessage')(sequelize, Sequelize.DataTypes);
+db.Announcement = require('./announcement')(sequelize, Sequelize.DataTypes);
+db.Faq = require('./faq')(sequelize, Sequelize.DataTypes);
+
 // Define associations
 db.Merchant.hasMany(db.Agent, { foreignKey: 'merchantId' });
 db.Agent.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
@@ -217,6 +230,19 @@ db.Customer.hasMany(db.Remittance, { foreignKey: 'customerId' });
 db.Remittance.belongsTo(db.Customer, { foreignKey: 'customerId' });
 db.Agent.hasMany(db.Remittance, { foreignKey: 'agentId' });
 db.Remittance.belongsTo(db.Agent, { foreignKey: 'agentId' });
+
+// Transaction associations
+db.Merchant.hasMany(db.Transaction, { foreignKey: 'merchantId' });
+db.Transaction.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
+
+// Admin Role and Staff associations
+db.AdminRole.hasMany(db.AdminStaff, { foreignKey: 'roleId' });
+db.AdminStaff.belongsTo(db.AdminRole, { foreignKey: 'roleId' });
+
+// Admin Log associations
+db.AdminStaff.hasMany(db.AdminLog, { foreignKey: 'staffId' });
+db.AdminLog.belongsTo(db.AdminStaff, { foreignKey: 'staffId' });
+
 
 // Call associate functions for all models
 Object.keys(db).forEach(modelName => {

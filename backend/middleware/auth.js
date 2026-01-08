@@ -73,10 +73,19 @@ const requireAuthenticated = (req, res, next) => {
   next();
 };
 
+// Middleware to check if user is a super admin
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user.role !== 'super_admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied. SuperAdmin role required.' });
+  }
+  next();
+};
+
 module.exports = {
   verifyToken,
   requireMerchant,
   requireCollaborator,
   requireAuthenticated,
+  requireSuperAdmin,
 };
 

@@ -34,17 +34,17 @@ export default function Login() {
   const router = useRouter()
 
   const loginUser = async (data: FormValues) => {
-    const res = await fetch("/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      throw new Error("Login failed");
+    // Import adminAPI dynamically to avoid SSR issues
+    const { default: adminAPI, setAuthToken } = await import('./utilis/adminApi');
+    
+    const response = await adminAPI.login(data.email, data.password);
+    
+    // Store the token
+    if (response.token) {
+      setAuthToken(response.token);
     }
-
-    return res.json();
+    
+    return response;
   };
 
 
@@ -62,18 +62,30 @@ export default function Login() {
     mutationFn: loginUser,
     onSuccess: (data) => {
       console.log("Login successful:", data);
-      reset()
-      // You can save token, redirect, etc.
+      
+      // Store the token in localStorage
+      if (data.token) {
+        localStorage.setItem('adminToken', data.token);
+      }
+      
+      // Store super admin info
+      if (data.superAdmin) {
+        localStorage.setItem('superAdmin', JSON.stringify(data.superAdmin));
+      }
+      
+      reset();
+      
+      // Redirect to admin dashboard
+      router.push('/admin/dashboard');
     },
     onError: (error: any) => {
-      console.error(" Login failed:", error.message);
+      console.error("Login failed:", error.message);
     },
   });
 
 
   const onSubmit = (data: FormValues) => {
     mutation.mutate(data);
-    console.log("Login successful:", data);
   };
 
 

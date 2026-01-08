@@ -1,5 +1,5 @@
 // Prefer environment variable; fallback to same-origin in browser; fallback to localhost in SSR/dev
-export const BASE_URL = 'https://alphakolect.com/api';
+export const BASE_URL = 'http://localhost:5000';
 
 function getAuthHeaders(): Record<string, string> {
   const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;

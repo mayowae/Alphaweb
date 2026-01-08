@@ -1,11 +1,20 @@
 
+"use client"
 import React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Audittable from '../../../../../../components/tables/auditslogs/Audittable';
+import adminAPI from '../../../utilis/adminApi';
 
 
 
 const Page = () => {
+  // Fetch audit logs from API
+  const { data: logsData, isLoading } = useQuery({
+    queryKey: ['allAdminLogs'],
+    queryFn: adminAPI.getAllAdminLogs,
+  });
 
+  const logs = logsData?.data || [];
 
   return (
 
@@ -18,7 +27,7 @@ const Page = () => {
         </div>
       </div>
 
-      <Audittable />
+      <Audittable logs={logs} isLoading={isLoading} />
 
 
     </div>

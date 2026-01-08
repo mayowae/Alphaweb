@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Poppins, Lato  } from "next/font/google";
 import "./globals.css";
 import HeaderWrapper from "components/Headerwrapper";
@@ -45,7 +45,11 @@ export const metadata: Metadata = {
   title: "AlphaWeb",
   keywords: ["finance", "app", "nextjs", "react"],
   description: "A modern web finance application",
-  viewport: "width=device-width, initial-scale=1.0",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1.0,
 };
 
 export default function RootLayout({
@@ -54,10 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </head>
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${poppins.variable} ${lato.variable} antialiased`}
       >

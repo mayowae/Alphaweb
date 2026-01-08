@@ -349,6 +349,35 @@ const createCustomer = async (req, res) => {
       accountNumber,
     });
 
+    // Create Virtual Account via TransactPay
+    try {
+        const names = fullName ? fullName.trim().split(' ') : ['Guest'];
+        const firstname = names[0];
+        const lastname = names.length > 1 ? names.slice(1).join(' ') : 'User';
+        
+        const { createVirtualAccount } = require('../utils/transactPay');
+        const tpResult = await createVirtualAccount({
+            firstname,
+            lastname,
+            email,
+            phoneNumber,
+            address: address || 'Lagos, Nigeria'
+        });
+
+        if (tpResult && (tpResult.status === 'success' || tpResult.status === true)) {
+            const accNum = tpResult.accountNumber || (tpResult.data && tpResult.data.account_number);
+            
+            if (accNum) {
+                console.log(`Updating customer ${customer.id} with account number: ${accNum}`);
+                await customer.update({ accountNumber: accNum });
+                customer.accountNumber = accNum; // Update object for response
+            }
+        }
+    } catch (tpError) {
+        console.error('TransactPay Integration Error:', tpError);
+        // Continue without failing the request ideally, or maybe fail? keeping it non-blocking for now but logging
+    }
+
     res.status(201).json({
       message: 'Customer created successfully',
       customer: {

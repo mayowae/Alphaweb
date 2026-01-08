@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import z from "zod";
+import adminAPI from '@/app/admin/utilis/adminApi';
 
 
 const schema = z
@@ -87,25 +88,34 @@ const NewAnnouncement = ({ packag, onClose }: AddPackageProps) => {
 
     const queryClient = useQueryClient();
 
-    const addpackage = useMutation({
+    const addAnnouncement = useMutation({
         mutationFn: async (data: FormData) => {
-            const res = await fetch("/api/merchants", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
+            return await adminAPI.createAnnouncement({
+                title: data.title,
+                content: data.message,
+                audience: data.target_audience, // Mapping frontend enum snake_case to backend expected field if needed, or keeping it as is. Backend typically expects 'All', 'Specific', etc. but we'll stick to what we have or adjust. 
+                // Let's assume backend accepts these literal values for now or mapped strings.
+                // Looking at backend controller: const { title, content, targetAudience, scheduleTime } = req.body;
+                targetAudience: data.target_audience === 'all_merchants' ? 'all' : 'merchants',
+                isActive: true // Default to active for 'now', maybe handled by schedule logic
             });
-            return res.json();
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["merchants"] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["allAnnouncements"] });
+            onClose();
+            reset();
+            alert("Announcement created successfully!");
+        },
+        onError: (error: any) => {
+             alert(`Failed to create announcement: ${error.message}`);
+        }
     });
 
     const watchType = watch("shedule_options");
     const audiencetype = watch("target_audience");
 
     const onSubmit = (data: FormData) => {
-        console.log(data);
-        addpackage.mutate(data);
-        reset();
+        addAnnouncement.mutate(data);
     };
 
     return (
