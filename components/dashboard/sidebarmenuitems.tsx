@@ -83,11 +83,11 @@ export const Sidemenuitems: Sidebarmenu[] =[
         icon: "/icons/sidebar.svg",
         submenu: true,
         submenuitems: [
-            {title: 'Setup & COA', path: "/dashboard/accounting/setup", icon: "/icons/green.png"},
+            {title: 'Analytics', path: "/dashboard/accounting/analytics", icon: "/icons/green.png"},
             {title: 'Journals', path: "/dashboard/accounting/journals", icon: "/icons/blue.png"},
             {title: 'Ledgers', path: "/dashboard/accounting/ledgers", icon: "/icons/Vector.png"},
             {title: 'Reports', path: "/dashboard/accounting/reports", icon: "/icons/brown.png"},
-            {title: 'Analytics', path: "/dashboard/accounting/analytics", icon: "/icons/green.png"},
+            {title: 'Setup & COA', path: "/dashboard/accounting/setup", icon: "/icons/green.png"},
            
         ]
 

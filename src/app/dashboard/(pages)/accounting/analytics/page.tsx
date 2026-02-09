@@ -1,77 +1,66 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, PieChart } from 'lucide-react';
+import { Eye, Calendar, FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { fetchBalanceSheet, fetchIncomeStatement } from '@/services/api';
+import { fetchJournalEntries } from '@/services/api';
 
-interface KPI {
-  label: string;
-  value: string;
-  change: number;
-  trend: 'up' | 'down';
+interface JournalEntry {
+  id: number;
+  reference: string;
+  date: string;
+  description: string;
+  totalDebit: number;
+  totalCredit: number;
+  status: string;
+  lines?: any[];
 }
 
 export default function AnalyticsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [kpis, setKpis] = useState<KPI[]>([]);
-  const [incomeData, setIncomeData] = useState<any>(null);
-  const [balanceData, setBalanceData] = useState<any>(null);
+  const [transactions, setTransactions] = useState<JournalEntry[]>([]);
+  const [kpis, setKpis] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    totalTransactions: 0
+  });
 
   useEffect(() => {
-    loadAnalytics();
+    loadTransactions();
   }, []);
 
-  const loadAnalytics = async () => {
+  const loadTransactions = async () => {
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-
-      const [balanceSheet, incomeStatement] = await Promise.all([
-        fetchBalanceSheet({ asOfDate: today }),
-        fetchIncomeStatement({ dateFrom: yearStart, dateTo: today })
-      ]);
-
-      setBalanceData(balanceSheet.balanceSheet);
-      setIncomeData(incomeStatement.incomeStatement);
-
-      // Calculate KPIs
-      const revenue = incomeStatement.incomeStatement.revenue.total;
-      const expenses = incomeStatement.incomeStatement.expenses.total;
-      const netProfit = incomeStatement.incomeStatement.netIncome;
-      const assets = balanceSheet.balanceSheet.assets.total;
-      const liabilities = balanceSheet.balanceSheet.liabilities.total;
-
-      setKpis([
-        {
-          label: 'Total Revenue',
-          value: formatCurrency(revenue),
-          change: 12.5,
-          trend: 'up'
-        },
-        {
-          label: 'Total Expenses',
-          value: formatCurrency(expenses),
-          change: 8.3,
-          trend: 'down'
-        },
-        {
-          label: 'Net Profit',
-          value: formatCurrency(netProfit),
-          change: netProfit >= 0 ? 15.2 : -15.2,
-          trend: netProfit >= 0 ? 'up' : 'down'
-        },
-        {
-          label: 'Total Assets',
-          value: formatCurrency(assets),
-          change: 10.1,
-          trend: 'up'
-        }
-      ]);
+      const response = await fetchJournalEntries();
+      // Sort by date descending, then by ID descending
+      const sorted = (response.journalEntries || []).sort((a: JournalEntry, b: JournalEntry) => {
+        const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateCompare !== 0) return dateCompare;
+        return b.id - a.id;
+      });
+      setTransactions(sorted);
+      
+      // Calculate KPIs from transactions - parse as numbers to avoid NaN
+      const totalDebits = sorted.reduce((sum: number, t: JournalEntry) => {
+        return sum + (parseFloat(String(t.totalDebit)) || 0);
+      }, 0);
+      const totalCredits = sorted.reduce((sum: number, t: JournalEntry) => {
+        return sum + (parseFloat(String(t.totalCredit)) || 0);
+      }, 0);
+      
+      setKpis({
+        totalRevenue: totalCredits,
+        totalExpenses: totalDebits,
+        netProfit: totalCredits - totalDebits,
+        totalTransactions: sorted.length
+      });
     } catch (error: any) {
-      console.error('Failed to load analytics:', error);
-      Swal.fire('Error', error.message || 'Failed to load analytics', 'error');
+      console.error('Failed to load transactions:', error);
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -79,216 +68,182 @@ export default function AnalyticsPage() {
 
   const formatCurrency = (amount: number) => `₦${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const calculateRatios = () => {
-    if (!balanceData || !incomeData) return null;
-
-    const currentAssets = balanceData.assets.current.reduce((sum: number, item: any) => sum + item.balance, 0);
-    const currentLiabilities = balanceData.liabilities.current.reduce((sum: number, item: any) => sum + item.balance, 0);
-    const totalAssets = balanceData.assets.total;
-    const totalLiabilities = balanceData.liabilities.total;
-    const totalEquity = balanceData.equity.total;
-    const netIncome = incomeData.netIncome;
-    const revenue = incomeData.revenue.total;
-
-    return {
-      currentRatio: currentLiabilities > 0 ? (currentAssets / currentLiabilities).toFixed(2) : 'N/A',
-      debtToEquity: totalEquity > 0 ? (totalLiabilities / totalEquity).toFixed(2) : 'N/A',
-      profitMargin: revenue > 0 ? ((netIncome / revenue) * 100).toFixed(2) : '0.00',
-      roe: totalEquity > 0 ? ((netIncome / totalEquity) * 100).toFixed(2) : '0.00'
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      draft: 'bg-yellow-100 text-yellow-800',
+      posted: 'bg-green-100 text-green-800',
+      reversed: 'bg-gray-100 text-gray-800'
     };
+    return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800';
   };
 
-  const ratios = calculateRatios();
+  const handleViewTransaction = (id: number) => {
+    router.push(`/dashboard/accounting/analytics/${id}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Financial Analytics</h1>
-          <p className="text-gray-600 mt-1">Comprehensive financial insights and key performance indicators</p>
+          <h1 className="text-3xl font-bold text-gray-900">Transaction History</h1>
+          <p className="text-gray-600 mt-1">View all accounting transactions in chronological order</p>
         </div>
+
+        {/* KPI Cards */}
+        {!loading && transactions.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Total Transactions</p>
+                <FileText className="text-indigo-500" size={20} />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{kpis.totalTransactions}</p>
+              <p className="text-xs text-gray-500 mt-1">All journal entries</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Total Debits</p>
+                <div className="text-green-500">↑</div>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(kpis.totalExpenses)}</p>
+              <p className="text-xs text-gray-500 mt-1">Total debit entries</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Total Credits</p>
+                <div className="text-red-500">↓</div>
+              </div>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(kpis.totalRevenue)}</p>
+              <p className="text-xs text-gray-500 mt-1">Total credit entries</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Net Balance</p>
+                <div className={kpis.netProfit >= 0 ? "text-green-500" : "text-red-500"}>
+                  {kpis.netProfit >= 0 ? "↑" : "↓"}
+                </div>
+              </div>
+              <p className={`text-2xl font-bold ${kpis.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(Math.abs(kpis.netProfit))}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {kpis.netProfit >= 0 ? 'Credit surplus' : 'Debit surplus'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <p className="mt-2 text-gray-600">Loading analytics...</p>
+            <p className="mt-2 text-gray-600">Loading transactions...</p>
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
+            <div className="text-gray-400 mb-4">
+              <FileText className="w-20 h-20 mx-auto" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No Transactions Found</h3>
+            <p className="text-gray-600 mb-6">
+              No journal entries have been created yet.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
+              <p className="text-sm text-blue-800 mb-4">
+                <strong>💡 To create transactions:</strong>
+              </p>
+              <ol className="text-left text-sm text-blue-800 space-y-2">
+                <li>1. Go to <a href="/dashboard/accounting/setup" className="text-indigo-600 hover:underline font-semibold">Setup & COA</a> to create accounts</li>
+                <li>2. Go to <a href="/dashboard/accounting/journals" className="text-indigo-600 hover:underline font-semibold">Journals</a> to record journal entries</li>
+                <li>3. Post your entries to make them official</li>
+                <li>4. Return here to view all transactions</li>
+              </ol>
+            </div>
           </div>
         ) : (
-          <>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-              {kpis.map((kpi, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-sm border p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-600">{kpi.label}</p>
-                    {kpi.trend === 'up' ? (
-                      <TrendingUp className="text-green-500" size={20} />
-                    ) : (
-                      <TrendingDown className="text-red-500" size={20} />
-                    )}
+          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {transactions.map((transaction) => (
+                  <tr key={transaction.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={16} className="text-gray-400" />
+                        {new Date(transaction.date).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
+                      {transaction.reference}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {transaction.description}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
+                      {formatCurrency(transaction.totalDebit)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-medium">
+                      {formatCurrency(transaction.totalCredit)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(transaction.status)}`}>
+                        {transaction.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => handleViewTransaction(transaction.id)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+                        title="View Details"
+                      >
+                        <Eye size={16} />
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Summary */}
+            <div className="bg-gray-50 px-6 py-4 border-t">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">
+                  Total Transactions: <span className="font-semibold text-gray-900">{transactions.length}</span>
+                </p>
+                <div className="flex gap-8">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Total Debits</p>
+                    <p className="text-lg font-bold text-green-600">
+                      {formatCurrency(transactions.reduce((sum: number, t: JournalEntry) => {
+                        return sum + (parseFloat(String(t.totalDebit)) || 0);
+                      }, 0))}
+                    </p>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-1">{kpi.value}</p>
-                  <p className={`text-sm ${kpi.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {kpi.change >= 0 ? '+' : ''}{kpi.change}% from last period
-                  </p>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Total Credits</p>
+                    <p className="text-lg font-bold text-red-600">
+                      {formatCurrency(transactions.reduce((sum: number, t: JournalEntry) => {
+                        return sum + (parseFloat(String(t.totalCredit)) || 0);
+                      }, 0))}
+                    </p>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
-
-            {/* Income vs Expenses */}
-            {incomeData && (
-              <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Income vs Expenses</h2>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-green-600">Revenue</h3>
-                      <p className="text-2xl font-bold text-green-600">{formatCurrency(incomeData.revenue.total)}</p>
-                    </div>
-                    <div className="space-y-2">
-                      {incomeData.revenue.items.slice(0, 5).map((item: any, index: number) => (
-                        <div key={index} className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">{item.name}</span>
-                          <span className="text-sm font-medium text-gray-900">{formatCurrency(item.amount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-red-600">Expenses</h3>
-                      <p className="text-2xl font-bold text-red-600">{formatCurrency(incomeData.expenses.total)}</p>
-                    </div>
-                    <div className="space-y-2">
-                      {incomeData.expenses.items.slice(0, 5).map((item: any, index: number) => (
-                        <div key={index} className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">{item.name}</span>
-                          <span className="text-sm font-medium text-gray-900">{formatCurrency(item.amount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Asset Distribution */}
-            {balanceData && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">Asset Distribution</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Current Assets</span>
-                        <span className="text-sm font-bold text-gray-900">
-                          {formatCurrency(balanceData.assets.current.reduce((sum: number, item: any) => sum + item.balance, 0))}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-indigo-600 h-2 rounded-full"
-                          style={{
-                            width: `${(balanceData.assets.current.reduce((sum: number, item: any) => sum + item.balance, 0) / balanceData.assets.total) * 100}%`
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium text-gray-700">Fixed Assets</span>
-                        <span className="text-sm font-bold text-gray-900">
-                          {formatCurrency(balanceData.assets.fixed.reduce((sum: number, item: any) => sum + item.balance, 0))}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-green-600 h-2 rounded-full"
-                          style={{
-                            width: `${(balanceData.assets.fixed.reduce((sum: number, item: any) => sum + item.balance, 0) / balanceData.assets.total) * 100}%`
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-6 border-t">
-                    <div className="flex justify-between">
-                      <span className="font-semibold text-gray-900">Total Assets</span>
-                      <span className="font-bold text-indigo-600">{formatCurrency(balanceData.assets.total)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Financial Ratios */}
-                {ratios && (
-                  <div className="bg-white rounded-lg shadow-sm border p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Financial Ratios</h2>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm text-gray-600">Current Ratio</p>
-                          <p className="text-xs text-gray-500 mt-1">Liquidity measure</p>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{ratios.currentRatio}</p>
-                      </div>
-                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm text-gray-600">Debt-to-Equity</p>
-                          <p className="text-xs text-gray-500 mt-1">Leverage measure</p>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{ratios.debtToEquity}</p>
-                      </div>
-                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm text-gray-600">Profit Margin</p>
-                          <p className="text-xs text-gray-500 mt-1">Profitability measure</p>
-                        </div>
-                        <p className="text-2xl font-bold text-green-600">{ratios.profitMargin}%</p>
-                      </div>
-                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm text-gray-600">Return on Equity</p>
-                          <p className="text-xs text-gray-500 mt-1">Efficiency measure</p>
-                        </div>
-                        <p className="text-2xl font-bold text-indigo-600">{ratios.roe}%</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Expense Breakdown */}
-            {incomeData && incomeData.expenses.items.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Top Expenses by Category</h2>
-                <div className="space-y-3">
-                  {incomeData.expenses.items
-                    .sort((a: any, b: any) => b.amount - a.amount)
-                    .slice(0, 8)
-                    .map((item: any, index: number) => {
-                      const percentage = (item.amount / incomeData.expenses.total) * 100;
-                      return (
-                        <div key={index}>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-700">{item.name}</span>
-                            <span className="text-sm font-bold text-gray-900">
-                              {formatCurrency(item.amount)} ({percentage.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-red-500 h-2 rounded-full"
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </div>

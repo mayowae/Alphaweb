@@ -48,8 +48,13 @@ export default function JournalsPage() {
   const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0]);
   const [entryDescription, setEntryDescription] = useState('');
   const [journalLines, setJournalLines] = useState<JournalLine[]>([
+    { accountId: '', debit: 0, credit: 0, description: '' },
     { accountId: '', debit: 0, credit: 0, description: '' }
   ]);
+
+  // Filter and search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     loadJournalEntries();
@@ -137,7 +142,10 @@ export default function JournalsPage() {
       // Reset form
       setEntryDate(new Date().toISOString().split('T')[0]);
       setEntryDescription('');
-      setJournalLines([{ accountId: '', debit: 0, credit: 0, description: '' }]);
+      setJournalLines([
+        { accountId: '', debit: 0, credit: 0, description: '' },
+        { accountId: '', debit: 0, credit: 0, description: '' }
+      ]);
     } catch (error: any) {
       Swal.fire('Error', error.message || 'Failed to create journal entry', 'error');
     }
@@ -215,6 +223,18 @@ export default function JournalsPage() {
 
   const formatCurrency = (amount: number) => `₦${Number(amount).toLocaleString()}`;
 
+  // Filter journal entries
+  const filteredEntries = journalEntries.filter(entry => {
+    const matchesSearch = 
+      entry.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || entry.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+
   const renderListView = () => (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -226,6 +246,44 @@ export default function JournalsPage() {
           <Plus size={18} />
           Create Entry
         </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search by reference or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="w-48">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="posted">Posted</option>
+              <option value="reversed">Reversed</option>
+            </select>
+          </div>
+          {(searchTerm || statusFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('all');
+              }}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -248,14 +306,16 @@ export default function JournalsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {journalEntries.length === 0 ? (
+              {filteredEntries.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    No journal entries found. Click "Create Entry" to add one.
+                    {journalEntries.length === 0 
+                      ? "No journal entries found. Click \"Create Entry\" to add one."
+                      : "No entries match your search criteria."}
                   </td>
                 </tr>
               ) : (
-                journalEntries.map((entry) => (
+                filteredEntries.map((entry) => (
                   <tr key={entry.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
                       {entry.reference}
@@ -354,7 +414,13 @@ export default function JournalsPage() {
             </div>
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Journal Lines</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Journal Lines</h3>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-800">
+              💡 <strong>Double-Entry Accounting:</strong> Total debits must equal total credits. 
+              Enter debits in one line and credits in another to balance the entry.
+            </p>
+          </div>
           
           <div className="space-y-4 mb-6">
             {journalLines.map((line, index) => (

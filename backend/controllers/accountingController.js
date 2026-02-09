@@ -500,6 +500,15 @@ const getGeneralLedger = async (req, res) => {
       return res.status(400).json({ message: 'Account ID is required' });
     }
 
+    // Fetch the account first
+    const account = await Account.findOne({
+      where: { id: accountId, merchantId }
+    });
+
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+
     const where = { accountId };
     
     // Build query for journal entries
@@ -516,8 +525,6 @@ const getGeneralLedger = async (req, res) => {
         model: JournalEntry,
         where: journalWhere,
         required: true
-      }, {
-        model: Account
       }],
       order: [[JournalEntry, 'date', 'ASC'], [JournalEntry, 'id', 'ASC']]
     });
@@ -529,7 +536,6 @@ const getGeneralLedger = async (req, res) => {
       const credit = parseFloat(line.credit || 0);
       
       // Calculate balance change based on account type
-      const account = line.Account;
       let balanceChange = 0;
       if (['Asset', 'Expense'].includes(account.type)) {
         balanceChange = debit - credit;
@@ -551,7 +557,14 @@ const getGeneralLedger = async (req, res) => {
 
     res.json({ 
       ledgerEntries,
-      account: journalLines[0]?.Account || null
+      account: {
+        id: account.id,
+        code: account.code,
+        name: account.name,
+        type: account.type,
+        category: account.category,
+        balance: account.balance
+      }
     });
   } catch (error) {
     console.error('Get general ledger error:', error);
