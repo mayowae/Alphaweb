@@ -31,6 +31,20 @@ export const Sidemenuitems: Sidebarmenu[] =[
 
     },
 
+    {
+        title:"Wallet parameters",
+        path: "/admin/dashboard/wallet-parameters",
+        icon: "/icons/wallet.svg",
+
+    },
+
+    {
+        title:"Verifications",
+        path: "/admin/dashboard/verifications",
+        icon: "/icons/verification.svg",
+
+    },
+
 
     {
         title:"Audit logs",

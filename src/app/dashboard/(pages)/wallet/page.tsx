@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from "next/navigation";
-import { ChevronDown, X, ChevronUp, ChevronRight, Menu } from 'lucide-react';
+import { ChevronDown, X, ChevronUp, ChevronRight, Menu, Calendar, Upload, Plus, CheckCircle } from 'lucide-react';
 import Link from "next/link";
 import '../../../../../global.css';
 import { 
@@ -10,7 +10,10 @@ import {
   fetchCustomerWallets, 
   transferToCustomer,
   fetchCustomers,
-  createCustomerWallet
+  createCustomerWallet,
+  fetchWalletTiers,
+  fetchUpgradeStatus,
+  fetchMerchantProfile
 } from 'services/api';
 import LoadingButton from '../../../../../components/LoadingButton';
 
@@ -23,6 +26,10 @@ export default function Wallet() {
   const filterCardRef = useRef<HTMLDivElement>(null);
   const filterButtonRef = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isTierModalOpen, setIsTierModalOpen] = useState(false);
+  const [isUpgradeFormOpen, setIsUpgradeFormOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [targetUpgradeTier, setTargetUpgradeTier] = useState(1);
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
   
   // State to manage which tab is currently active
@@ -42,8 +49,11 @@ export default function Wallet() {
   const [customers, setCustomers] = useState([]);
   const [merchantInfo, setMerchantInfo] = useState({
     accountNumber: '',
-    accountLevel: 'Tier 1'
+    accountLevel: 'Tier 0',
+    businessName: ''
   });
+  const [walletTiers, setWalletTiers] = useState<any[]>([]);
+  const [pendingUpgrade, setPendingUpgrade] = useState<any>(null);
 
   // Toggle the visibility of the filter card
   const toggleFilterCard = () => {
@@ -74,15 +84,22 @@ export default function Wallet() {
       setLoading(true);
       setError(null);
       
-      const [balanceResponse, transactionsResponse, customersResponse, customerWalletsResponse] = await Promise.all([
+      const [balanceResponse, transactionsResponse, customersResponse, customerWalletsResponse, tiersResponse, upgradeResponse, profileResponse] = await Promise.all([
         getWalletBalance(),
         fetchWalletTransactions(),
         fetchCustomers(),
-        fetchCustomerWallets({ page: 1, limit: 100 })
+        fetchCustomerWallets({ page: 1, limit: 100 }),
+        fetchWalletTiers(),
+        fetchUpgradeStatus(),
+        fetchMerchantProfile()
       ]);
 
       if (balanceResponse.success) {
         setWalletBalance(balanceResponse.balance);
+      }
+
+      if (tiersResponse.message.includes('successfully')) {
+        setWalletTiers(tiersResponse.tiers);
       }
       
       if (transactionsResponse.success) {
@@ -132,6 +149,20 @@ export default function Wallet() {
       } else {
         setCustomerWallets([]);
       }
+
+      if (upgradeResponse && upgradeResponse.success) {
+        setPendingUpgrade(upgradeResponse.request);
+      }
+
+      if (profileResponse && profileResponse.success) {
+        const merchant = profileResponse.merchant;
+        setMerchantInfo({
+          accountNumber: merchant.accountNumber || '0112435467',
+          accountLevel: merchant.accountLevel || 'Tier 0',
+          businessName: merchant.businessName || merchant.name || 'Merchant'
+        });
+      }
+
     } catch (error) {
       console.error('Error fetching wallet data:', error);
       setError('Failed to load wallet data. Please try again.');
@@ -143,6 +174,21 @@ export default function Wallet() {
   // Fetch data on component mount
   useEffect(() => {
     fetchData();
+    
+    // Load merchant info from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setMerchantInfo({
+          accountNumber: user.accountNumber || '0112435467',
+          accountLevel: user.accountLevel || 'Tier 3',
+          businessName: user.businessName || user.fullName || 'Gbenga daniel'
+        });
+      } catch (e) {
+        console.error('Error parsing user data', e);
+      }
+    }
   }, []);
 
   // Use dynamic data instead of mock data
@@ -364,27 +410,70 @@ export default function Wallet() {
         customers={customers} 
         setWalletBalance={setWalletBalance}
       />
+      <TierModal 
+        isOpen={isTierModalOpen} 
+        onClose={() => setIsTierModalOpen(false)} 
+        currentTier={merchantInfo.accountLevel.includes('3') ? 3 : (merchantInfo.accountLevel.includes('2') ? 2 : (merchantInfo.accountLevel.includes('1') ? 1 : 0))} 
+        onUpgradeSelect={(tier) => {
+          setTargetUpgradeTier(tier);
+          setIsTierModalOpen(false);
+          setIsUpgradeFormOpen(true);
+        }}
+        tiers={walletTiers}
+      />
+      <UpgradeFormModal 
+        isOpen={isUpgradeFormOpen}
+        onClose={() => setIsUpgradeFormOpen(false)}
+        tier={targetUpgradeTier}
+        tiers={walletTiers}
+        onSuccess={() => {
+          setIsUpgradeFormOpen(false);
+          setIsSuccessModalOpen(true);
+        }}
+      />
+       <SuccessModal 
+        isOpen={isSuccessModalOpen}
+        onClose={() => {
+          setIsSuccessModalOpen(false);
+          fetchData();
+        }}
+      />
       <div className="flex flex-col md:flex-row gap-4 mt-4">
         <div className="w-full">
-          <div className="dashboard-card bg-white flex items-center gap-4 flex-col md:flex-row">
-            <div className="w-full md:w-4/12">
-              <div className="balance-overview items-center">
-                <p className="text-sm">Live wallet balance</p>
-                <p className="text-md text-black">
+          <div className="flex flex-col md:flex-row gap-4 mt-4">
+            <div className="w-full md:w-3/12">
+              <div className="balance-overview flex flex-col justify-center min-h-[100px]">
+                <p className="text-xs text-gray-500 font-medium mb-2">Live wallet balance</p>
+                <p className="text-xl font-bold text-black">
                   {loading ? 'Loading...' : `₦${walletBalance.total.toLocaleString()}`}
                 </p>
               </div>
             </div>
-            <div className="w-full md:w-6/12">
-              <div className="balance-overview flex items-center">
-                <div>
-                  <p className="text-sm">Available Balance</p>
-                  <p className="text-md text-black">
-                    {loading ? 'Loading...' : `₦${walletBalance.available.toLocaleString()}`}
-                  </p>
+            <div className="w-full md:w-5/12">
+              <div className="balance-overview flex flex-col justify-between min-h-[100px]">
+                <div className="flex justify-between items-start">
+                  <p className="text-xs text-gray-500 font-medium">Paga - {merchantInfo.businessName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] text-gray-500 font-medium">Live account: {merchantInfo.accountLevel}</p>
+                    {pendingUpgrade?.status === 'pending' ? (
+                      <span className="bg-[#1A06C5] text-white text-[9px] px-2 py-0.5 rounded-full font-medium">validating</span>
+                    ) : pendingUpgrade?.status === 'rejected' ? (
+                      <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-medium">declined</span>
+                    ) : (
+                      <span className="bg-[#12B76A] text-white text-[9px] px-2 py-0.5 rounded-full font-medium">active</span>
+                    )}
+                  </div>
                 </div>
-                <div className="ml-auto">
-                  <p className="live-text">Live account: Tier 3</p>
+                <div className="flex justify-between items-end mt-2">
+                  <p className="text-xl font-bold text-black">
+                    {merchantInfo.accountNumber}
+                  </p>
+                  <button 
+                    onClick={() => setIsTierModalOpen(true)}
+                    className="text-[#4E37FB] text-sm font-semibold hover:underline"
+                  >
+                    Upgrade wallet
+                  </button>
                 </div>
               </div>
             </div>
@@ -1234,5 +1323,558 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
         </div>
       </aside>
     </>
+  );
+};
+
+// Tier Modal Component
+interface TierModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentTier: number;
+  onUpgradeSelect: (tier: number) => void;
+}
+
+const TierModal = ({ isOpen, onClose, currentTier, onUpgradeSelect, tiers: dynamicTiers }: TierModalProps & { tiers: any[] }) => {
+  const tiers = useMemo(() => {
+    if (dynamicTiers && dynamicTiers.length > 0) {
+      return dynamicTiers.map(t => ({
+        level: t.level,
+        title: `${t.name}`,
+        badge: t.level === currentTier ? 'Current' : (t.level === currentTier + 1 ? 'Next level' : ''),
+        dailyLimit: t.dailyLimit || 'NO',
+        maxBalance: t.maxBalance || 'NO',
+        requirements: t.requirements || [],
+        bgColor: t.level === currentTier ? 'bg-[#4E37FB]' : 'bg-[#FAF9FF]',
+        textColor: t.level === currentTier ? 'text-white' : 'text-gray-900',
+        badgeColor: t.level === currentTier ? 'bg-white/20 text-white' : 'bg-[#E0E7FF] text-[#4E37FB]'
+      }));
+    }
+    
+    // Fallback static tiers if API fails or empty
+    return [
+      {
+        level: 0,
+        title: 'Starter',
+        badge: currentTier === 0 ? 'Current' : '',
+        dailyLimit: 'NO',
+        maxBalance: 'NO',
+        requirements: ['Register'],
+        bgColor: currentTier === 0 ? 'bg-[#4E37FB]' : 'bg-[#FAF9FF]',
+        textColor: currentTier === 0 ? 'text-white' : 'text-gray-900',
+        badgeColor: 'bg-white/20 text-white'
+      },
+      {
+        level: 1,
+        title: 'Basic verification',
+        badge: currentTier === 1 ? 'Current' : (currentTier === 0 ? 'Next level' : ''),
+        dailyLimit: '₦50,000',
+        maxBalance: '₦100,000',
+        requirements: ['Name', 'Phone number', 'Email'],
+        bgColor: currentTier === 1 ? 'bg-[#4E37FB]' : 'bg-[#FAF9FF]',
+        textColor: currentTier === 1 ? 'text-white' : 'text-gray-900',
+        badgeColor: 'bg-white/20 text-white'
+      },
+      {
+        level: 2,
+        title: 'KYC verification',
+        badge: currentTier === 2 ? 'Current' : (currentTier === 1 ? 'Next level' : ''),
+        dailyLimit: '₦500,000',
+        maxBalance: '₦2,000,000',
+        requirements: ['Government ID', 'Selfie/face match', 'Date of birth'],
+        bgColor: currentTier === 2 ? 'bg-[#4E37FB]' : 'bg-[#FAF9FF]',
+        textColor: currentTier === 2 ? 'text-white' : 'text-gray-900',
+        badgeColor: 'bg-white/20 text-white'
+      },
+      {
+        level: 3,
+        title: 'Business/Merchant',
+        badge: currentTier === 3 ? 'Current' : (currentTier === 2 ? 'Next level' : ''),
+        dailyLimit: '₦2,500,000',
+        maxBalance: '₦4,000,000',
+        requirements: ['Business registration', 'Director details', 'Proof of address'],
+        bgColor: currentTier === 3 ? 'bg-[#4E37FB]' : 'bg-[#FAF9FF]',
+        textColor: currentTier === 3 ? 'text-white' : 'text-gray-900',
+        badgeColor: 'bg-white/20 text-white'
+      }
+    ];
+  }, [dynamicTiers, currentTier]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+        onClick={onClose} 
+      />
+      <div className="relative bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <h2 className="text-xl font-bold text-gray-900">Wallet account Tiers</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X className="h-6 w-6 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-6 overflow-y-auto max-h-[70vh] space-y-4 hide-scrollbar">
+          {tiers.map((tier, idx) => (
+            <div 
+              key={idx} 
+              className={`p-5 rounded-xl border ${tier.bgColor} ${tier.textColor} transition-all duration-200 hover:shadow-md cursor-pointer ${tier.level > currentTier ? 'border-transparent' : 'border-indigo-100'}`}
+              onClick={() => tier.level > currentTier && onUpgradeSelect(tier.level)}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg">{tier.title}</h3>
+                {tier.badge && (
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-semibold ${tier.badgeColor}`}>
+                    {tier.badge}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className={`text-[10px] ${tier.level === 0 ? 'text-white/70' : 'text-gray-500'}`}>Daily transaction limit</p>
+                  <p className="font-bold text-base">{tier.dailyLimit}</p>
+                </div>
+                <div>
+                  <p className={`text-[10px] ${tier.level === 0 ? 'text-white/70' : 'text-gray-500'}`}>Maximum balance</p>
+                  <p className="font-bold text-base">{tier.maxBalance}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className={`text-[10px] mb-2 ${tier.level === 0 ? 'text-white/70' : 'text-gray-500'}`}>Requirements</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  {tier.requirements.map((req, ridx) => (
+                    <div key={ridx} className="flex items-center text-xs font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-current mr-2 opacity-60" />
+                      {req}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-6 border-t bg-white flex justify-center">
+          <button 
+            className="w-full max-w-xs bg-[#4E37FB] text-white py-4 rounded-lg font-bold text-sm tracking-wide hover:bg-[#3d2dd8] transition-all transform active:scale-95 shadow-lg shadow-indigo-200"
+            onClick={() => onUpgradeSelect(currentTier + 1)}
+          >
+            Upgrade for ₦20,000
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Upgrade Form Modal Component
+interface UpgradeFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  tier: number;
+  tiers?: any[];
+  onSuccess: () => void;
+}
+
+const UpgradeFormModal = ({ isOpen, onClose, tier, tiers = [], onSuccess }: UpgradeFormModalProps) => {
+  const [formData, setFormData] = useState<any>({});
+  const [loading, setLoading] = useState(false);
+  const [files, setFiles] = useState<any>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  if (!isOpen) return null;
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (tier === 1) {
+      if (!formData.fullName) newErrors.fullName = 'Full name is required';
+      if (!formData.phone) newErrors.phone = 'Phone number is required';
+      if (!formData.email) newErrors.email = 'Email address is required';
+      else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Invalid email format';
+    } 
+    else if (tier === 2) {
+      if (!formData.dob) newErrors.dob = 'Date of birth is required';
+      if (!formData.idType) newErrors.idType = 'ID type is required';
+      if (!files.governmentId) newErrors.governmentId = 'Government ID is required';
+      if (!files.selfie) newErrors.selfie = 'Selfie is required';
+    } 
+    else if (tier === 3) {
+      if (!formData.rcNumber) newErrors.rcNumber = 'Registration number is required';
+      if (!formData.directorName) newErrors.directorName = 'Director name is required';
+      if (!files.proofOfAddress) newErrors.proofOfAddress = 'Proof of address is required';
+      if (!files.businessCert) newErrors.businessCert = 'Business certificate is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const renderFields = () => {
+    switch(tier) {
+      case 1:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+              <input 
+                type="text" 
+                className={`w-full border rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ${errors.fullName ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`} 
+                placeholder="Enter full name"
+                value={formData.fullName || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, fullName: e.target.value });
+                  if (errors.fullName) setErrors({ ...errors, fullName: '' });
+                }}
+              />
+              {errors.fullName && <p className="text-[10px] text-red-500 mt-1">{errors.fullName}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Phone Number</label>
+              <input 
+                type="tel" 
+                className={`w-full border rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ${errors.phone ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`} 
+                placeholder="Enter phone number" 
+                value={formData.phone || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value });
+                  if (errors.phone) setErrors({ ...errors, phone: '' });
+                }}
+              />
+              {errors.phone && <p className="text-[10px] text-red-500 mt-1">{errors.phone}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Email Address</label>
+              <input 
+                type="email" 
+                className={`w-full border rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ${errors.email ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`} 
+                placeholder="Enter email address" 
+                value={formData.email || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  if (errors.email) setErrors({ ...errors, email: '' });
+                }}
+              />
+              {errors.email && <p className="text-[10px] text-red-500 mt-1">{errors.email}</p>}
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Date of birth</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className={`w-full border rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ${errors.dob ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`} 
+                  placeholder="DD/MM/YYYY" 
+                  value={formData.dob || ''}
+                  onChange={(e) => {
+                    setFormData({ ...formData, dob: e.target.value });
+                    if (errors.dob) setErrors({ ...errors, dob: '' });
+                  }}
+                />
+                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              </div>
+              {errors.dob && <p className="text-[10px] text-red-500 mt-1">{errors.dob}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Government ID type</label>
+              <div className="relative">
+                <select 
+                  className={`w-full border rounded-lg px-4 py-3 text-sm outline-none appearance-none bg-white focus:ring-1 ${errors.idType ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`}
+                  value={formData.idType || ''}
+                  onChange={(e) => {
+                    setFormData({ ...formData, idType: e.target.value });
+                    if (errors.idType) setErrors({ ...errors, idType: '' });
+                  }}
+                >
+                  <option value="">Select type</option>
+                  <option value="National ID">National ID Card</option>
+                  <option value="Driver License">Driver's License</option>
+                  <option value="International Passport">International Passport</option>
+                  <option value="Voters Card">Voter's Card</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
+              {errors.idType && <p className="text-[10px] text-red-500 mt-1">{errors.idType}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <label className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-gray-50/30 cursor-pointer hover:bg-gray-50 transition-colors ${errors.governmentId ? 'border-red-300' : 'border-gray-200'}`}>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFiles({ ...files, governmentId: file });
+                      if (errors.governmentId) setErrors({ ...errors, governmentId: '' });
+                    }
+                  }}
+                />
+                <div className={`p-2 rounded-full mb-2 ${files.governmentId ? 'bg-green-500' : 'bg-[#4E37FB]'}`}>
+                  {files.governmentId ? <CheckCircle className="h-4 w-4 text-white" /> : <Plus className="h-4 w-4 text-white" />}
+                </div>
+                <p className="text-[#4E37FB] font-bold text-[10px] mb-1 text-center">
+                  {files.governmentId ? 'ID Uploaded' : 'Government ID'}
+                </p>
+                <p className="text-[8px] text-gray-400 line-clamp-1 text-center">
+                  {files.governmentId ? files.governmentId.name : 'Click to upload'}
+                </p>
+              </label>
+
+              <label className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-gray-50/30 cursor-pointer hover:bg-gray-50 transition-colors ${errors.selfie ? 'border-red-300' : 'border-gray-200'}`}>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFiles({ ...files, selfie: file });
+                      if (errors.selfie) setErrors({ ...errors, selfie: '' });
+                    }
+                  }}
+                />
+                <div className={`p-2 rounded-full mb-2 ${files.selfie ? 'bg-green-500' : 'bg-[#4E37FB]'}`}>
+                  {files.selfie ? <CheckCircle className="h-4 w-4 text-white" /> : <Plus className="h-4 w-4 text-white" />}
+                </div>
+                <p className="text-[#4E37FB] font-bold text-[10px] mb-1 text-center">
+                  {files.selfie ? 'Selfie Uploaded' : 'Selfie / Face Match'}
+                </p>
+                <p className="text-[8px] text-gray-400 line-clamp-1 text-center">
+                  {files.selfie ? files.selfie.name : 'Click to upload'}
+                </p>
+              </label>
+            </div>
+            {(errors.governmentId || errors.selfie) && (
+              <p className="text-[10px] text-red-500 text-center">Please upload both required documents</p>
+            )}
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Business registration number (RC/BN)</label>
+              <input 
+                type="text" 
+                className={`w-full border rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ${errors.rcNumber ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`} 
+                placeholder="Enter registration number" 
+                value={formData.rcNumber || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, rcNumber: e.target.value });
+                  if (errors.rcNumber) setErrors({ ...errors, rcNumber: '' });
+                }}
+              />
+              {errors.rcNumber && <p className="text-[10px] text-red-500 mt-1">{errors.rcNumber}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Director's Full Name</label>
+              <input 
+                type="text" 
+                className={`w-full border rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 ${errors.directorName ? 'border-red-500 ring-red-500' : 'focus:ring-indigo-500'}`} 
+                placeholder="Enter director's name" 
+                value={formData.directorName || ''}
+                onChange={(e) => {
+                  setFormData({ ...formData, directorName: e.target.value });
+                  if (errors.directorName) setErrors({ ...errors, directorName: '' });
+                }}
+              />
+              {errors.directorName && <p className="text-[10px] text-red-500 mt-1">{errors.directorName}</p>}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <label className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-gray-50/30 cursor-pointer hover:bg-gray-50 transition-colors ${errors.proofOfAddress ? 'border-red-300' : 'border-gray-200'}`}>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFiles({ ...files, proofOfAddress: file });
+                      if (errors.proofOfAddress) setErrors({ ...errors, proofOfAddress: '' });
+                    }
+                  }}
+                />
+                <div className={`p-2 rounded-full mb-2 ${files.proofOfAddress ? 'bg-green-500' : 'bg-[#4E37FB]'}`}>
+                  {files.proofOfAddress ? <CheckCircle className="h-4 w-4 text-white" /> : <Upload className="h-4 w-4 text-white" />}
+                </div>
+                <p className="text-[#4E37FB] font-bold text-[10px] mb-1 text-center">
+                  {files.proofOfAddress ? 'Address Proof' : 'Proof of Address'}
+                </p>
+                <p className="text-[8px] text-gray-400 line-clamp-1 text-center">
+                  {files.proofOfAddress ? files.proofOfAddress.name : 'Utility bill/Bank statement'}
+                </p>
+              </label>
+
+              <label className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-gray-50/30 cursor-pointer hover:bg-gray-50 transition-colors ${errors.businessCert ? 'border-red-300' : 'border-gray-200'}`}>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFiles({ ...files, businessCert: file });
+                      if (errors.businessCert) setErrors({ ...errors, businessCert: '' });
+                    }
+                  }}
+                />
+                <div className={`p-2 rounded-full mb-2 ${files.businessCert ? 'bg-green-500' : 'bg-[#4E37FB]'}`}>
+                  {files.businessCert ? <CheckCircle className="h-4 w-4 text-white" /> : <Upload className="h-4 w-4 text-white" />}
+                </div>
+                <p className="text-[#4E37FB] font-bold text-[10px] mb-1 text-center">
+                  {files.businessCert ? 'Business Cert' : 'Business Certificate'}
+                </p>
+                <p className="text-[8px] text-gray-400 line-clamp-1 text-center">
+                  {files.businessCert ? files.businessCert.name : 'CAC Certificate / Registration'}
+                </p>
+              </label>
+            </div>
+            {(errors.proofOfAddress || errors.businessCert) && (
+              <p className="text-[10px] text-red-500 text-center">Please upload both required documents</p>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-[440px] rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b">
+          <h2 className="text-lg font-bold text-gray-900">
+            Upgrade wallet to {tiers.find(t => t.level === tier)?.title || `Tier ${tier}`}
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-6 space-y-6 max-h-[60vh] overflow-y-auto hide-scrollbar">
+          {renderFields()}
+
+          {/* Summary Section */}
+          <div className="bg-[#FAF9FF] rounded-lg p-5 space-y-3">
+            {(() => {
+              const selectedTier = tiers.find(t => t.level === tier);
+              const feeStr = selectedTier?.level === 1 ? '₦1,000' : (selectedTier?.level === 2 ? '₦5,000' : '₦20,000');
+              const fee = parseInt(feeStr.replace(/[^0-9]/g, '')) || 0;
+              const gatewayFee = 50;
+              const total = fee + gatewayFee;
+              
+              return (
+                <>
+                  <h4 className="text-xs font-bold text-gray-900 mb-1">Summary</h4>
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-gray-500">Upgrade fee ({selectedTier?.title})</span>
+                    <span className="text-gray-900 font-bold">₦{fee.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-gray-500">Gateway fee</span>
+                    <span className="text-gray-900 font-bold">₦{gatewayFee.toLocaleString()}</span>
+                  </div>
+                  <div className="border-t pt-3 flex justify-between text-xs font-medium">
+                    <span className="text-gray-500">Total to pay</span>
+                    <span className="text-[#000000] font-black text-sm">₦{total.toLocaleString()}</span>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-6 border-t flex flex-col items-center gap-2 mt-2 bg-white">
+          <button 
+            className="w-full max-w-[200px] bg-[#4E37FB] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#3d2dd8] transition-all transform active:scale-95 shadow-md disabled:opacity-50"
+            onClick={async () => {
+              if (!validateForm()) return;
+              
+              try {
+                setLoading(true);
+                const apiFormData = new FormData();
+                apiFormData.append('targetLevel', String(tier));
+                apiFormData.append('metadata', JSON.stringify(formData));
+                
+                Object.keys(files).forEach(key => {
+                  apiFormData.append(key, files[key]);
+                });
+
+                const token = localStorage.getItem('token') || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}').token : null);
+                
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/wallet/upgrade`, {
+                  method: 'POST',
+                  headers: {
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                  },
+                  body: apiFormData
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Submission failed');
+                
+                onSuccess();
+              } catch (err: any) {
+                alert(err.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Submitting...' : 'Confirm Upgrade'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Success Modal Component
+interface SuccessModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const SuccessModal = ({ isOpen, onClose }: SuccessModalProps) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center animate-in fade-in zoom-in duration-300">
+        <div className="w-16 h-16 bg-[#E7F9F0] rounded-full flex items-center justify-center mb-6">
+          <div className="w-12 h-12 bg-[#F1FCF6] rounded-full flex items-center justify-center">
+            <CheckCircle className="h-8 w-8 text-[#12B76A]" />
+          </div>
+        </div>
+        
+        <h2 className="text-xl font-bold text-[#101828] mb-3">Your upgrade request submitted</h2>
+        <p className="text-sm text-[#475467] leading-relaxed mb-8 px-4">
+          You have submitted an upgrade request, it will be reviewed and feedback would be given in 48 hours
+        </p>
+        
+        <button 
+          onClick={onClose}
+          className="w-full py-3 px-4 border border-[#D0D5DD] rounded-xl text-sm font-bold text-[#344054] hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
+        >
+          Close
+        </button>
+      </div>
+    </div>
   );
 };

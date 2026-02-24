@@ -142,10 +142,10 @@ export const adminAPI = {
   getAllAdminStaff: () => makeRequest('/superadmin/getAllAdminStaff'),
 
   // Logs
-  getAllAdminLogs: () => makeRequest('/superAdmin/logs'),
+  getAllAdminLogs: () => makeRequest('/superadmin/logs'),
 
   getAdminLogsByStaff: (staffId: number) => 
-    makeRequest(`/superAdmin/logs/${staffId}`),
+    makeRequest(`/superadmin/logs/${staffId}`),
 
   // Merchant Management
   updateMerchant: (id: number, merchantData: any) =>
@@ -225,6 +225,37 @@ export const adminAPI = {
   deleteFaq: (id: number | string) => 
     makeRequest(`/superadmin/faqs/${id}`, {
       method: 'DELETE',
+    }),
+
+  // Wallet Tiers
+  getWalletTiers: () => makeRequest('/superadmin/wallet-tiers'),
+
+  createWalletTier: (tierData: any) => 
+    makeRequest('/superadmin/wallet-tiers', {
+      method: 'POST',
+      body: JSON.stringify(tierData),
+    }),
+
+  updateWalletTier: (tierData: any) => 
+    makeRequest('/superadmin/wallet-tiers', {
+      method: 'PUT',
+      body: JSON.stringify(tierData),
+    }),
+
+  deleteWalletTier: (id: number | string) => 
+    makeRequest(`/superadmin/wallet-tiers/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Verifications
+  getVerifications: () => makeRequest('/superadmin/verifications'),
+
+  getVerificationDetails: (id: number | string) => makeRequest(`/superadmin/verifications/${id}`),
+
+  updateVerificationStatus: (id: number | string, status: 'approved' | 'rejected', rejectionReason?: string) => 
+    makeRequest('/superadmin/verifications/status', {
+      method: 'PUT',
+      body: JSON.stringify({ id, status, rejectionReason }),
     }),
 };
 

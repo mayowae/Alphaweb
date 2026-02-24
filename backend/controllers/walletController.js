@@ -378,6 +378,30 @@ const { Op } = require('sequelize');
 const getWalletBalance = async (req, res) => {
   try {
     const merchantId = req.user.id;
+    const { Merchant } = require('../models');
+    const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
+
+    const merchant = await Merchant.findByPk(merchantId);
+    
+    // If merchant has a TransactPay account number, fetch balance from there
+    if (merchant && merchant.accountNumber) {
+        const tpBalanceData = await fetchTpBalance(merchant.accountNumber);
+        if (tpBalanceData) {
+            return res.json({
+                success: true,
+                balance: {
+                    total: parseFloat(tpBalanceData.availableBalance || tpBalanceData.balance || 0),
+                    available: parseFloat(tpBalanceData.availableBalance || tpBalanceData.balance || 0),
+                    pending: parseFloat(tpBalanceData.pendingBalance || 0),
+                    currency: 'NGN',
+                    fromWallet: true,
+                    accountNumber: merchant.accountNumber,
+                    bankName: merchant.bankName,
+                    accountName: merchant.accountName
+                }
+            });
+        }
+    }
 
     // Calculate balance from all transactions
     const transactions = await WalletTransaction.findAll({
@@ -426,7 +450,8 @@ const getWalletBalance = async (req, res) => {
         total: totalBalance,
         available: availableBalance,
         pending: pendingAmount,
-        currency: 'NGN'
+        currency: 'NGN',
+        fromWallet: false
       }
     });
   } catch (error) {
@@ -475,6 +500,41 @@ const getWalletTransactions = async (req, res) => {
   try {
     const merchantId = req.user.id;
     const { page = 1, limit = 10, type, status } = req.query;
+    const { Merchant } = require('../models');
+    const { getWalletTransactions: fetchTpTransactions } = require('../utils/transactPay');
+
+    const merchant = await Merchant.findByPk(merchantId);
+    
+    // If merchant has a TransactPay account number, fetch transactions from there
+    if (merchant && merchant.accountNumber) {
+        const tpTransactions = await fetchTpTransactions(merchant.accountNumber);
+        if (tpTransactions && tpTransactions.length > 0) {
+            // Map TP transactions to our local format for consistency
+            const mappedTransactions = tpTransactions.map(txn => ({
+                id: txn.id || txn.reference,
+                type: txn.type || (txn.amount > 0 ? 'credit' : 'debit'),
+                transactionType: txn.transactionType || (txn.amount > 0 ? 'credit' : 'debit'),
+                amount: Math.abs(parseFloat(txn.amount)),
+                status: txn.status || 'Completed',
+                reference: txn.reference,
+                description: txn.description || txn.narration || '',
+                date: txn.date || txn.createdAt,
+                createdAt: txn.createdAt || txn.date,
+                fromWallet: true
+            }));
+
+            return res.json({
+                success: true,
+                transactions: mappedTransactions.slice((page - 1) * limit, page * limit),
+                pagination: {
+                    total: mappedTransactions.length,
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalPages: Math.ceil(mappedTransactions.length / parseInt(limit))
+                }
+            });
+        }
+    }
 
     const whereClause = { merchantId };
     

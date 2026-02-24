@@ -49,30 +49,28 @@ const encryptPayload = (payload) => {
     }
 };
 
-const createVirtualAccount = async (customerData) => {
+const createVirtualAccount = async (userData) => {
     try {
-        console.log('Creating virtual account for:', customerData.email);
+        console.log('Creating virtual account for:', userData.email);
 
         const payload = {
-            firstname: customerData.firstname,
-            lastname: customerData.lastname,
-            email: customerData.email,
-            phonenumber: customerData.phoneNumber,
-            dob: "1990-01-01", // Default DOB if not provided, required by some providers
-            bvn: "22222222222", // Mock BVN for test if not provided
-            gender: "M", // Default
-            address: customerData.address || "Lagos, Nigeria",
+            firstname: userData.firstname || userData.businessName || 'Merchant',
+            lastname: userData.lastname || 'User',
+            email: userData.email,
+            phonenumber: userData.phoneNumber || userData.phone,
+            dob: "1990-01-01",
+            bvn: userData.bvn || "22222222222",
+            gender: "M",
+            address: userData.address || "Lagos, Nigeria",
             title: "Mr",
             state: "Lagos",
             lga: "Ikeja",
-            tx_ref: `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}` // Unique reference
+            tx_ref: `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`
         };
         
         console.log('Payload before encryption:', payload);
 
         const encryptedData = encryptPayload(payload);
-
-        // console.log('Encrypted Data:', encryptedData);
 
         const apiUrl = process.env.TRANSACTPAY_API_URL || 'https://payment-api-service.transactpay.ai/payment/virtual-account/create';
         const response = await fetch(apiUrl, { 
@@ -85,9 +83,8 @@ const createVirtualAccount = async (customerData) => {
              body: JSON.stringify({
                  data: encryptedData
              })
-        });
+         });
 
-        // const result = await response.json();
         const text = await response.text();
         console.log('TransactPay Raw Response:', response.status, text);
 
@@ -96,20 +93,78 @@ const createVirtualAccount = async (customerData) => {
             result = JSON.parse(text);
         } catch (e) {
             console.error('Failed to parse JSON response:', e);
-            // result = { status: response.ok ? 'success' : 'failed', message: text };
-            if (response.ok) return { status: 'success', data: {} }; // Assume success if 2xx?
+            if (response.ok) return { status: 'success', data: {} };
             throw new Error(`API Error ${response.status}: ${text}`);
         }
         
         console.log('TransactPay API Response:', JSON.stringify(result, null, 2));
 
+        if (result.status === 'success' || result.status === true || result.message === 'Success') {
+            const data = result.data || result;
+            return {
+                status: 'success',
+                accountNumber: data.accountNumber || data.account_number,
+                bankName: data.bankName || data.bank_name,
+                accountName: data.accountName || data.account_name,
+                bankCode: data.bankCode || data.bank_code,
+                data: data
+            };
+        }
+
+        return result;
+
     } catch (error) {
         console.error('createVirtualAccount Error:', error);
-        // Don't throw, just return null so we don't break customer creation locally
         return null;
     }
 };
 
+const getWalletBalance = async (accountNumber) => {
+    try {
+        const apiUrl = `https://payment-api-service.transactpay.ai/payment/virtual-account/balance/${accountNumber}`;
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'api-key': PUBLIC_KEY,
+                'Authorization': `Bearer ${SECRET_KEY}`
+            }
+        });
+
+        const result = await response.json();
+        if (result.status === 'success' || result.status === true) {
+            return result.data || result;
+        }
+        return null;
+    } catch (error) {
+        console.error('getWalletBalance Error:', error);
+        return null;
+    }
+};
+
+const getWalletTransactions = async (accountNumber) => {
+    try {
+        const apiUrl = `https://payment-api-service.transactpay.ai/payment/virtual-account/transactions/${accountNumber}`;
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'api-key': PUBLIC_KEY,
+                'Authorization': `Bearer ${SECRET_KEY}`
+            }
+        });
+
+        const result = await response.json();
+        if (result.status === 'success' || result.status === true) {
+            return result.data || result.transactions || [];
+        }
+        return [];
+    } catch (error) {
+        console.error('getWalletTransactions Error:', error);
+        return [];
+    }
+};
+
 module.exports = {
-    createVirtualAccount
+    createVirtualAccount,
+    getWalletBalance,
+    getWalletTransactions
 };

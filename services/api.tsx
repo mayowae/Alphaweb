@@ -139,6 +139,30 @@ export async function collaboratorForgotPassword(email: string) {
   return data;
 }
 
+export async function fetchMerchantProfile() {
+  const response = await fetch(BASE_URL + '/merchant/profile', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch profile');
+  }
+  return data;
+}
+
+export async function fetchUpgradeStatus() {
+  const response = await fetch(BASE_URL + '/wallet/upgrade-status', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch upgrade status');
+  }
+  return data;
+}
+
 export async function collaboratorResendOtp(email: string) {
   const response = await fetch(BASE_URL + '/collaborator/resend-otp', {
     method: 'POST',
@@ -1212,6 +1236,18 @@ export async function transferToCustomer(transferData: { customerId: number; amo
     throw new Error(data.message || 'Failed to complete transfer');
   }
 
+  return data;
+}
+
+export async function fetchWalletTiers() {
+  const response = await fetch(BASE_URL + '/wallet-tiers', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch wallet tiers');
+  }
   return data;
 }
 

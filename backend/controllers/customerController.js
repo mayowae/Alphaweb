@@ -364,18 +364,32 @@ const createCustomer = async (req, res) => {
             address: address || 'Lagos, Nigeria'
         });
 
-        if (tpResult && (tpResult.status === 'success' || tpResult.status === true)) {
-            const accNum = tpResult.accountNumber || (tpResult.data && tpResult.data.account_number);
+        if (tpResult && tpResult.status === 'success') {
+            const accNum = tpResult.accountNumber;
             
             if (accNum) {
                 console.log(`Updating customer ${customer.id} with account number: ${accNum}`);
                 await customer.update({ accountNumber: accNum });
-                customer.accountNumber = accNum; // Update object for response
+                customer.accountNumber = accNum; 
             }
         }
     } catch (tpError) {
         console.error('TransactPay Integration Error:', tpError);
-        // Continue without failing the request ideally, or maybe fail? keeping it non-blocking for now but logging
+    }
+
+    // Create Customer Wallet entry
+    try {
+        const { CustomerWallet } = require('../models');
+        await CustomerWallet.create({
+            customerId: customer.id,
+            merchantId: merchantId,
+            accountNumber: customer.accountNumber || `CW${Date.now()}`,
+            balance: 0.00,
+            status: 'Active'
+        });
+        console.log(`Created wallet for customer ${customer.id}`);
+    } catch (walletError) {
+        console.error('Error creating customer wallet:', walletError);
     }
 
     res.status(201).json({

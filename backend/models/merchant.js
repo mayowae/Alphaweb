@@ -46,6 +46,27 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+    accountLevel: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'Tier 0',
+    },
+    accountNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    bankName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    accountName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    bankCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

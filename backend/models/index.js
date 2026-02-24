@@ -97,6 +97,8 @@ db.SupportTicket = require('./supportTicket')(sequelize, Sequelize.DataTypes);
 db.TicketMessage = require('./ticketMessage')(sequelize, Sequelize.DataTypes);
 db.Announcement = require('./announcement')(sequelize, Sequelize.DataTypes);
 db.Faq = require('./faq')(sequelize, Sequelize.DataTypes);
+db.WalletTier = require('./walletTier')(sequelize, Sequelize.DataTypes);
+db.WalletUpgradeRequest = require('./walletUpgradeRequest')(sequelize, Sequelize.DataTypes);
 
 // Accounting models
 db.Account = require('./account')(sequelize, Sequelize.DataTypes);
@@ -179,6 +181,11 @@ db.Collection.belongsTo(db.Customer, { foreignKey: 'customerId' });
 // Wallet Transaction associations
 db.Merchant.hasMany(db.WalletTransaction, { foreignKey: 'merchantId' });
 db.WalletTransaction.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
+
+// Wallet Upgrade Request associations
+db.Merchant.hasMany(db.WalletUpgradeRequest, { foreignKey: 'merchantId' });
+db.WalletUpgradeRequest.belongsTo(db.Merchant, { foreignKey: 'merchantId', as: 'Merchant' });
+db.WalletUpgradeRequest.belongsTo(db.AdminStaff, { foreignKey: 'reviewedBy', as: 'Reviewer' });
 
 // Customer Wallet associations - defined in individual model files
 

@@ -54,6 +54,9 @@ const dashboardController = require('./controllers/dashboardController');
 const superAdminController = require('./controllers/superAdminController');
 const merchantManagementController = require('./controllers/merchantManagementController');
 const accountingController = require('./controllers/accountingController');
+const walletTierController = require('./controllers/walletTierController');
+const verificationController = require('./controllers/verificationController');
+const webhookController = require('./controllers/webhookController');
 
 
 // Import middleware
@@ -128,12 +131,16 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// Webhooks
+app.post('/api/webhooks/transactpay', webhookController.handleTransactPayWebhook);
+
 app.post('/merchant/signup', authController.registerMerchant);
 app.post('/merchant/login', authController.loginMerchant);
 app.post('/merchant/forgot-password', authController.forgotPassword);
 app.post('/merchant/resend-otp', authController.resendOTP);
 app.post('/merchant/verify-otp', authController.verifyOTP);
 app.post('/merchant/change-password', authController.changePassword);
+app.get('/merchant/profile', verifyToken, authController.getMerchantProfile);
 
 // Collaborator authentication routes
 app.post('/collaborator/signup', collaboratorController.registerCollaborator);
@@ -164,8 +171,8 @@ app.get('/superadmin/getAllRoles', verifyToken, requireSuperAdmin, superAdminCon
 app.post('/superadmin/createAdminStaff', verifyToken, requireSuperAdmin, superAdminController.createAdminStaff);
 app.put('/superadmin/updateAdminStaff/:id', verifyToken, requireSuperAdmin, superAdminController.updateAdminStaff);
 app.get('/superadmin/getAllAdminStaff', verifyToken, requireSuperAdmin, superAdminController.getAllAdminStaff);
-app.get('/superAdmin/logs', verifyToken, requireSuperAdmin, superAdminController.getAllAdminLogs);
-app.get('/superAdmin/logs/:staffId', verifyToken, requireSuperAdmin, superAdminController.getAdminLogsByStaff);
+app.get('/superadmin/logs', verifyToken, requireSuperAdmin, superAdminController.getAllAdminLogs);
+app.get('/superadmin/logs/:staffId', verifyToken, requireSuperAdmin, superAdminController.getAdminLogsByStaff);
 
 // Support Tickets
 app.get('/superadmin/tickets', verifyToken, requireSuperAdmin, superAdminController.getAllTickets);
@@ -193,6 +200,18 @@ app.delete('/superadmin/merchants/:id', verifyToken, requireSuperAdmin, merchant
 app.get('/superadmin/merchants/:id/transactions', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantTransactions);
 app.get('/superadmin/merchants/:id/subscriptions', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantSubscriptions);
 app.get('/superadmin/merchants/:id/logs', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantLogs);
+
+// Wallet Tier routes (Super Admin)
+app.get('/superadmin/wallet-tiers', verifyToken, requireSuperAdmin, walletTierController.listTiers);
+app.post('/superadmin/wallet-tiers', upload.none(), verifyToken, requireSuperAdmin, walletTierController.createTier);
+app.put('/superadmin/wallet-tiers', upload.none(), verifyToken, requireSuperAdmin, walletTierController.updateTier);
+app.get('/superadmin/wallet-tiers/:id', verifyToken, requireSuperAdmin, walletTierController.getTierById);
+app.delete('/superadmin/wallet-tiers/:id', verifyToken, requireSuperAdmin, walletTierController.deleteTier);
+
+// Verifications / Upgrade Requests (Super Admin)
+app.get('/superadmin/verifications', verifyToken, requireSuperAdmin, verificationController.listUpgradeRequests);
+app.put('/superadmin/verifications/status', verifyToken, requireSuperAdmin, verificationController.updateRequestStatus);
+app.get('/superadmin/verifications/:id', verifyToken, requireSuperAdmin, verificationController.getRequestDetails);
 
 // Mobile endpoints removed
 
@@ -313,6 +332,28 @@ app.get('/wallet/transactions/:id', verifyToken, requireAuthenticated, walletCon
 app.put('/wallet/transactions/:id/status', upload.none(), verifyToken, requireAuthenticated, walletController.updateTransactionStatus);
 app.get('/wallet/stats', verifyToken, requireAuthenticated, walletController.getWalletStats);
 app.post('/wallet/transfer', upload.none(), verifyToken, requireAuthenticated, walletController.transferToCustomer);
+
+// Public/Authenticated Wallet Tier list
+app.get('/wallet-tiers', verifyToken, requireAuthenticated, walletTierController.listTiers);
+
+// Merchant Upgrade Requests
+app.post('/wallet/upgrade', upload.fields([
+  { name: 'governmentId', maxCount: 1 },
+  { name: 'selfie', maxCount: 1 },
+  { name: 'proofOfAddress', maxCount: 1 },
+  { name: 'businessCert', maxCount: 1 }
+]), verifyToken, requireAuthenticated, verificationController.submitUpgradeRequest);
+app.get('/wallet/upgrade-status', verifyToken, requireAuthenticated, async (req, res) => {
+  try {
+    const request = await db.WalletUpgradeRequest.findOne({
+      where: { merchantId: req.user.id },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json({ success: true, request });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Remittance routes
 app.post('/remittances', upload.none(), verifyToken, requireAuthenticated, remittanceController.createRemittance);

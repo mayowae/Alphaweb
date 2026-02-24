@@ -107,42 +107,42 @@ const getDashboardStats = async (req, res) => {
     ]);
 
     // Calculate wallet balance from transactions
-    const walletTransactions = await WalletTransaction.findAll({
-      where: { merchantId },
-      attributes: ['type', 'transactionType', 'amount', 'status']
-    });
-
+    const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
+    const merchant = await Merchant.findByPk(merchantId);
+    
     let walletBalance = 0;
     let allCollectionWallet = 0;
+    let fetchedFromWallet = false;
 
-    walletTransactions.forEach(transaction => {
-      if (transaction.status === 'Completed') {
-        // Use the same logic as getWalletBalance for consistency
-        // Always deduct debit transactions, add credit transactions
-        if (transaction.transactionType === 'credit') {
-          // Credit increases merchant's wallet balance
-          walletBalance += parseFloat(transaction.amount);
-          allCollectionWallet += parseFloat(transaction.amount);
-        } else if (transaction.transactionType === 'debit') {
-          // Debit decreases merchant's wallet balance
-          walletBalance -= parseFloat(transaction.amount);
-          allCollectionWallet -= parseFloat(transaction.amount);
-        } else if (transaction.transactionType === 'initial_balance') {
-          // Initial balance increases merchant's wallet
-          walletBalance += parseFloat(transaction.amount);
-          allCollectionWallet += parseFloat(transaction.amount);
-        } else {
-          // Fallback to old logic for transactions without transactionType
-          if (transaction.type === 'credit') {
-            walletBalance += parseFloat(transaction.amount);
-            allCollectionWallet += parseFloat(transaction.amount);
-          } else if (transaction.type === 'debit') {
-            walletBalance -= parseFloat(transaction.amount);
-            allCollectionWallet -= parseFloat(transaction.amount);
-          }
+    if (merchant && merchant.accountNumber) {
+        const tpBalanceData = await fetchTpBalance(merchant.accountNumber);
+        if (tpBalanceData) {
+            walletBalance = parseFloat(tpBalanceData.availableBalance || tpBalanceData.balance || 0);
+            allCollectionWallet = walletBalance; // Or calculate differently if needed
+            fetchedFromWallet = true;
         }
-      }
-    });
+    }
+
+    if (!fetchedFromWallet) {
+        const walletTransactions = await WalletTransaction.findAll({
+          where: { merchantId },
+          attributes: ['type', 'transactionType', 'amount', 'status']
+        });
+
+        walletTransactions.forEach(transaction => {
+          if (transaction.status === 'Completed') {
+            const amount = parseFloat(transaction.amount);
+            const tt = transaction.transactionType || transaction.type;
+            if (tt === 'credit' || tt === 'initial_balance') {
+              walletBalance += amount;
+              allCollectionWallet += amount;
+            } else if (tt === 'debit') {
+              walletBalance -= amount;
+              allCollectionWallet -= amount;
+            }
+          }
+        });
+    }
 
     res.json({
       success: true,

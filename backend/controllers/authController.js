@@ -119,6 +119,28 @@ const registerMerchant = async (req, res) => {
 
     console.log('Merchant created with ID:', merchant.id);
 
+    // Create Virtual Account via TransactPay
+    try {
+        const { createVirtualAccount } = require('../utils/transactPay');
+        const tpResult = await createVirtualAccount({
+            businessName,
+            email,
+            phone
+        });
+
+        if (tpResult && tpResult.status === 'success') {
+            await merchant.update({
+                accountNumber: tpResult.accountNumber,
+                bankName: tpResult.bankName,
+                accountName: tpResult.accountName,
+                bankCode: tpResult.bankCode
+            });
+            console.log(`Updated merchant ${merchant.id} with account: ${tpResult.accountNumber}`);
+        }
+    } catch (tpError) {
+        console.error('Merchant TransactPay Integration Error:', tpError);
+    }
+
     // Try to send OTP email, but don't fail registration if email fails
     const emailResult = await sendOTPEmail(email, otp);
     res.status(201).json({
@@ -401,9 +423,27 @@ const changePassword = async (req, res) => {
   }
 };
 
+// Get merchant profile
+const getMerchantProfile = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+    const merchant = await Merchant.findByPk(merchantId, {
+      attributes: { exclude: ["password", "otp", "otpExpires"] },
+    });
+    if (!merchant) {
+      return res.status(404).json({ message: "Merchant not found" });
+    }
+    res.json({ success: true, merchant });
+  } catch (error) {
+    console.error("Get merchant profile error:", error);
+    res.status(500).json({ message: "Failed to fetch merchant profile", error: error.message });
+  }
+};
+
 module.exports = {
   registerMerchant,
   loginMerchant,
+  getMerchantProfile,
   forgotPassword,
   resendOTP,
   verifyOTP,
