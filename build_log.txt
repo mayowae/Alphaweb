@@ -1,0 +1,100 @@
+
+> alphaweb@0.1.0 build
+> set NODE_OPTIONS=--max-old-space-size=4096 && next build
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.production, .env
+   - Experiments (use with caution):
+     ✓ memoryBasedWorkersCount
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 32.8s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/63) ...
+The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(0) or minHeight(undefined) or use aspect(undefined) to control the
+       height and width.
+   Generating static pages (15/63) 
+   Generating static pages (31/63) 
+   Generating static pages (47/63) 
+ ✓ Generating static pages (63/63)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                      Size  First Load JS
+┌ ○ /                                         5.08 kB         152 kB
+├ ○ /_not-found                                  1 kB         103 kB
+├ ○ /admin                                    4.76 kB         185 kB
+├ ○ /admin/dashboard                          3.77 kB         312 kB
+├ ○ /admin/dashboard/auditlogs                5.15 kB         123 kB
+├ ○ /admin/dashboard/billings                 10.4 kB         197 kB
+├ ○ /admin/dashboard/merchants                5.68 kB         199 kB
+├ ƒ /admin/dashboard/merchants/[id]           5.04 kB         195 kB
+├ ○ /admin/dashboard/settings                 5.09 kB         187 kB
+├ ○ /admin/dashboard/staffs                   8.34 kB         195 kB
+├ ○ /admin/dashboard/support                  10.1 kB         197 kB
+├ ○ /admin/dashboard/transactions             5.36 kB         123 kB
+├ ○ /admin/dashboard/verifications            9.91 kB         125 kB
+├ ○ /admin/dashboard/wallet-parameters        6.49 kB         124 kB
+├ ○ /agents                                   2.07 kB         149 kB
+├ ○ /change-password                          1.26 kB         103 kB
+├ ○ /collaborator/change-password             1.26 kB         103 kB
+├ ○ /collaborator/forgot-password             1.31 kB         107 kB
+├ ○ /collaborator/login                       1.59 kB         107 kB
+├ ○ /collaborator/verify-otp                  1.58 kB         107 kB
+├ ○ /contact                                  19.6 kB         166 kB
+├ ○ /customers                                1.94 kB         149 kB
+├ ○ /dashboard                                8.52 kB         233 kB
+├ ○ /dashboard/accounting                     4.19 kB         131 kB
+├ ○ /dashboard/accounting/accounting            131 B         102 kB
+├ ○ /dashboard/accounting/analytics           3.19 kB         110 kB
+├ ƒ /dashboard/accounting/analytics/[id]      3.11 kB         130 kB
+├ ○ /dashboard/accounting/journals            4.32 kB         131 kB
+├ ○ /dashboard/accounting/ledgers             3.08 kB         130 kB
+├ ○ /dashboard/accounting/reports             3.33 kB         130 kB
+├ ○ /dashboard/accounting/setup               4.69 kB         132 kB
+├ ○ /dashboard/agents                         6.84 kB         114 kB
+├ ○ /dashboard/branchManagement                  7 kB         134 kB
+├ ○ /dashboard/charges                        5.56 kB         133 kB
+├ ○ /dashboard/collection                     5.03 kB         132 kB
+├ ○ /dashboard/collection/collections         6.36 kB         176 kB
+├ ○ /dashboard/collection/remittance          5.23 kB         174 kB
+├ ○ /dashboard/customer                       5.89 kB         137 kB
+├ ƒ /dashboard/customer/[id]                  3.96 kB         111 kB
+├ ○ /dashboard/investment                     4.37 kB         132 kB
+├ ○ /dashboard/investment/applications        5.98 kB         140 kB
+├ ○ /dashboard/investment/investments         3.97 kB         173 kB
+├ ○ /dashboard/investment/investments/create  1.35 kB         129 kB
+├ ○ /dashboard/investment/transactions        6.16 kB         175 kB
+├ ○ /dashboard/loan                           4.39 kB         132 kB
+├ ○ /dashboard/loan/applications              6.42 kB         176 kB
+├ ○ /dashboard/loan/loans                     6.07 kB         175 kB
+├ ○ /dashboard/loan/repayments                6.18 kB         175 kB
+├ ○ /dashboard/package                        4.54 kB         132 kB
+├ ○ /dashboard/package/collection             6.08 kB         155 kB
+├ ○ /dashboard/package/investment             6.48 kB         155 kB
+├ ○ /dashboard/package/loan                   6.19 kB         155 kB
+├ ○ /dashboard/settings                       3.92 kB         126 kB
+├ ○ /dashboard/staffManagement                7.14 kB         134 kB
+├ ○ /dashboard/view-agent                     5.46 kB         112 kB
+├ ƒ /dashboard/view-agent/[id]                4.88 kB         112 kB
+├ ○ /dashboard/wallet                         12.3 kB         119 kB
+├ ○ /financial                                2.57 kB         149 kB
+├ ○ /forgot-password                          1.31 kB         106 kB
+├ ○ /help                                     4.22 kB         153 kB
+├ ƒ /help/[id]                                 2.2 kB         149 kB
+├ ○ /login                                    1.82 kB         132 kB
+├ ○ /pricing                                  3.26 kB         150 kB
+├ ○ /signup                                   2.34 kB         133 kB
+└ ○ /verify-otp                               1.74 kB         129 kB
++ First Load JS shared by all                  102 kB
+  ├ chunks/1255-8befde0980f5cba9.js           45.7 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js       54.2 kB
+  └ other shared chunks (total)               2.01 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
