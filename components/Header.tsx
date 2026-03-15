@@ -51,7 +51,7 @@ const Header = () => {
           </div>
           <div className="flex items-center gap-2">
             <Image src="/icons/Vector.svg" alt="phone" width={15} height={15} />
-            <p className="font-semibold text-white text-sm">+2347032343467</p>
+            <p className="font-semibold text-white text-sm">+2349050226306</p>
           </div>
         </div>
         <Link href="/login" className="text-sm text-white font-semibold">Admin Login</Link>

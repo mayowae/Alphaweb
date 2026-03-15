@@ -25,44 +25,44 @@ const Page = () => {
 
 
     const faqs = [
-        {
-            question: "What is Alphakolect?",
-            answer: "Go to settings → security → reset password and follow the steps.",
-        },
-        {
-            question: "Who can use Alphakolect?",
-            answer: "Delivery takes between 2–5 business days depending on your location.",
-        },
-        {
-            question: "How does Alphakolect help financial institutions?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        },
-        {
-            question: "What can agents do with the Alphakolect app?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        },
-        {
-            question: "What benefits do end-user customers get?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        }, {
-            question: "Is Alphakolect secure?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        },
-        {
-            question: "How does pricing work?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        },
+    {
+      question: "What is Alphakolect?",
+      answer: " Alphakolect is a Daily Contribution, Loans (Microcredit) and Target Savings management solution. It comprises of Web part (for Administration, support and reports), Agent Mobile App (for Agents to interface with customers) and Customer App (for Customers to engage and follow up transactions with their respective merchant).",
+    },
+    {
+      question: "Who can use Alphakolect?",
+      answer: "Any microfinance institution that engages in the traditional Daily Contribution system with customers.",
+    },
+    {
+      question: "How does Alphakolect help financial institutions?",
+      answer: "Transparently monitoring of transactions by customers, and Microfinance Institution owners",
+    },
+    {
+      question: "What can agents do with the Alphakolect app?",
+      answer: "Agents can process and track transactions via the Agent mobile app..",
+    },
+    {
+      question: "What benefits do end-user customers get?",
+      answer: "Customers can track transactions, make requests to their respective merchants and get support via the Customer Mobile App.",
+    }, {
+      question: "Is Alphakolect secure?",
+      answer: "Alphakolect is hosted or secured dedicated servers with encrypted connections.",
+    },
+    {
+      question: "How does pricing work?",
+      answer: "There are 5 plans available; Starter, Growth, Mid-Level, Large and Enterprise plans. All newly registered merchants are however automatically placed in Starter level while upgrading to other levels flexibly as the business grows. Details in the Pricing section.",
+    },
 
-        {
-            question: "How long does it take to get started?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        },
+    {
+      question: "How long does it take to get started?",
+      answer: "Register and start using Alphakolect instantly. User guides are available for further understanding while online and physical (onsite) training can be arranged for the staff.",
+    },
 
-        {
-            question: "Where can I get support?",
-            answer: "Yes, you can track your order from the orders section of your dashboard.",
-        },
-    ];
+    {
+      question: "Where can I get support?",
+      answer: "For support and enquiries, Send email to support@alphakolect.com or WhatsApp and calls via (234-9050226306)",
+    },
+  ];
 
 
     const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -72,7 +72,6 @@ const Page = () => {
     };
     return (
         <>
-
             <div className='bg-custom-143'>
                 <motion.div
                     className="w-full max-w-3xl px-4 sm:px-6 flex flex-col gap-6 items-center m-auto pt-12 text-white"
@@ -89,11 +88,11 @@ const Page = () => {
                 </motion.div>
 
 
-                <div className=' mt-14 pb-20 flex items-center justify-center px-12 max-lg:flex-col gap-4 max-lg:gap-12 '>
+                <div className=' mt-14 pb-20 flex items-center flex-wrap justify-center px-12 max-lg:flex-col gap-4 max-lg:gap-12 '>
 
 
                     <motion.div
-                        className="text-white border w-[90%] lg:max-w-[250px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
+                        className="text-white border w-[90%] lg:max-w-[250px] h-[320px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
                         variants={fadeLeft}
                         initial="hidden"
                         whileInView="visible"
@@ -101,10 +100,10 @@ const Page = () => {
                         transition={{ duration: 0.9 }}
                     >
 
-                        <h1 className='text-xl font-inter font-semibold'>Pro</h1>
+                        <h1 className='text-xl font-inter font-semibold'>Starter pack</h1>
                         <p>Small financial institutions starting digital collections</p>
-                        <h1 className='font-inter text-3xl font-semibold'>$50 <sub>/mo</sub></h1>
-                        <p>Billed annually</p>
+                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>5,000 <sub>/mo</sub></h1>
+                        
                         <button
                             className="bg-[#4E37FB] inline-flex h-[44px] items-center gap-3 justify-center text-white font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"
                             aria-label="Get started"
@@ -114,12 +113,8 @@ const Page = () => {
 
                         <div className="">
                             <ul className='flex flex-col gap-2 list-disc list-inside'>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
+                                <li> 1-3 Agents </li>
+                               
                             </ul>
                         </div>
                     </motion.div>
@@ -127,17 +122,17 @@ const Page = () => {
 
 
                     <motion.div
-                        className="text-white border w-[90%] lg:max-w-[250px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
+                        className="text-white border w-[90%] lg:max-w-[250px] h-[320px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
                         variants={fadeUp}
                         initial="hidden"
                         whileInView="visible"
                         viewport={{ once: true }}
                         transition={{ duration: 0.9 }}
                     >
-                        <h1 className='text-xl font-inter font-semibold'>Pro</h1>
-                        <p>Small financial institutions starting digital collections</p>
-                        <h1 className='font-inter text-3xl font-semibold'>$50 <sub>/mo</sub></h1>
-                        <p>Billed annually</p>
+                        <h1 className='text-xl font-inter font-semibold'>Growth Pack </h1>
+                        <p>Medium-sized financial institutions looking to expand their digital footprint</p>
+                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>10,000 <sub>/mo</sub></h1>
+                        
                         <button
                             className="bg-[#4E37FB] inline-flex h-[44px] items-center gap-3 justify-center text-white font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"
                             aria-label="Get started"
@@ -147,19 +142,15 @@ const Page = () => {
 
                         <div className="">
                             <ul className='flex flex-col gap-2 list-disc list-inside'>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
+                                <li>4-6 Agents</li>
+                               
                             </ul>
                         </div>
                     </motion.div>
 
                     
                     <motion.div
-                        className="text-white border w-[90%] lg:max-w-[250px] border-[#E9E6FF} bg-[#4E37FB] rounded-md flex flex-col gap-3 px-6 py-6 relative"
+                        className="text-white border w-[90%] lg:max-w-[250px] h-[320px] border-[#E9E6FF} bg-[#4E37FB] rounded-md flex flex-col gap-3 px-6 py-6 relative"
                         variants={fadeScale}
                         initial="hidden"
                         whileInView="visible"
@@ -168,10 +159,10 @@ const Page = () => {
                     >
                         <h1 className="w-[70%] lg:max-w-[200px] absolute top-[-29px] left-1/2 -translate-x-1/2 bg-[#7A69FC] text-white px-3 py-1 text-center font-inter text-sm font-medium">MOST POPULAR</h1>
 
-                        <h1 className='text-xl font-inter font-semibold'>Pro</h1>
-                        <p>Small financial institutions starting digital collections</p>
-                        <h1 className='font-inter text-3xl font-semibold'>$50 <sub>/mo</sub></h1>
-                        <p>Billed annually</p>
+                        <h1 className='text-xl font-inter font-semibold'>Mid-level </h1>
+                        <p>Mid-level financial institutions with extensive operations</p>
+                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>15,000 <sub>/mo</sub></h1>
+                       
                         <button
                             className="bg-white inline-flex h-[44px] items-center gap-3 justify-center text-[#4E37FB] font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"
                             aria-label="Get started"
@@ -181,12 +172,8 @@ const Page = () => {
 
                         <div className="">
                             <ul className='flex flex-col gap-2 list-disc list-inside'>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
+                                <li>7-10 Agents</li>
+                               
                             </ul>
                         </div>
                     </motion.div>
@@ -195,7 +182,7 @@ const Page = () => {
 
 
                     <motion.div
-                        className="text-white border w-[90%] lg:max-w-[250px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
+                        className="text-white border w-[90%] lg:max-w-[250px] h-[320px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
                         variants={fadeUp}
                         initial="hidden"
                         whileInView="visible"
@@ -203,10 +190,10 @@ const Page = () => {
                         transition={{ duration: 0.9 }}
                     >
 
-                        <h1 className='text-xl font-inter font-semibold'>Pro</h1>
-                        <p>Small financial institutions starting digital collections</p>
-                        <h1 className='font-inter text-3xl font-semibold'>$50 <sub>/mo</sub></h1>
-                        <p>Billed annually</p>
+                        <h1 className='text-xl font-inter font-semibold'>Large</h1>
+                        <p>large organizations with complex needs</p>
+                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>45,000 <sub>/mo</sub></h1>
+                        
                         <button
                             className="bg-[#4E37FB] inline-flex h-[44px] items-center gap-3 justify-center text-white font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"
                             aria-label="Get started"
@@ -216,12 +203,36 @@ const Page = () => {
 
                         <div className="">
                             <ul className='flex flex-col gap-2 list-disc list-inside'>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
-                                <li>List item</li>
+                                <li>10 to 20 Agents</li>
+                                
+                            </ul>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        className="text-white border w-[90%] lg:max-w-[250px] h-[320px] border-[#E9E6FF} bg-[#150E46] rounded-md flex flex-col gap-3 px-6 py-6"
+                        variants={fadeUp}
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.9 }}
+                    >
+
+                        <h1 className='text-xl font-inter font-semibold'>Enterprise</h1>
+                        <p>Enterprise-level organizations (To be fully determined by Super Admin)</p>
+                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>45,000 <sub>/mo</sub></h1>
+                        
+                        <button
+                            className="bg-[#4E37FB] inline-flex h-[44px] items-center gap-3 justify-center text-white font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"
+                            aria-label="Get started"
+                        >
+                            <Link href="/signup" className="text-sm md:text-base">Get started</Link>
+                        </button>
+
+                        <div className="">
+                            <ul className='flex flex-col gap-2 list-disc list-inside'>
+                                <li>More than 20 </li>
+                                
                             </ul>
                         </div>
                     </motion.div>

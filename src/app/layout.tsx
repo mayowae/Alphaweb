@@ -42,9 +42,9 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "AlphaWeb",
-  keywords: ["finance", "app", "nextjs", "react"],
-  description: "A modern web finance application",
+  title: "Alphakolect",
+  keywords: ["finance", "Loans", "Savings", "Microfinance"],
+  description: "A Daily Contribution, Loans and Target Savings Mgt. solution for Microfinance Institutions.",
 };
 
 export const viewport: Viewport = {
