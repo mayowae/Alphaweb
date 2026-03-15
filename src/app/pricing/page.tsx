@@ -192,7 +192,7 @@ const Page = () => {
 
                         <h1 className='text-xl font-inter font-semibold'>Large</h1>
                         <p>large organizations with complex needs</p>
-                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>45,000 <sub>/mo</sub></h1>
+                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>40,000 <sub>/mo</sub></h1>
                         
                         <button
                             className="bg-[#4E37FB] inline-flex h-[44px] items-center gap-3 justify-center text-white font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"
@@ -220,7 +220,7 @@ const Page = () => {
 
                         <h1 className='text-xl font-inter font-semibold'>Enterprise</h1>
                         <p>Enterprise-level organizations (To be fully determined by Super Admin)</p>
-                        <h1 className='font-inter text-xl font-semibold'><span>&#8358;</span>45,000 <sub>/mo</sub></h1>
+                  
                         
                         <button
                             className="bg-[#4E37FB] inline-flex h-[44px] items-center gap-3 justify-center text-white font-medium rounded-md w-[90%] m-auto lg:max-w-[250px] px-3 transition-colors duration-200 hover:brightness-90"

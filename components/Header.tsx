@@ -62,10 +62,11 @@ const Header = () => {
 
         <div className="flex items-center gap-8">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+         <Link href="/"><div className="flex items-center gap-2">
             <Image src="/images/logo.png" alt="Logo" width={40} height={40} />
             <h1 className="font-inter text-lg">Alphakolect</h1>
           </div>
+          </Link>
 
           {/* Desktop Nav */}
           <div className="hidden lg:flex gap-6 items-center relative">

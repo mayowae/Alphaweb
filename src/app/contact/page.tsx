@@ -14,21 +14,21 @@ const Page = () => {
         {
             image: "/icons/hotline.svg",
             text1: "Hotline:",
-            text2: "+234 6655 9090"
+            text2: "+234-9050226306"
         },
 
 
         {
             image: "/icons/email.svg",
             text1: "Email",
-            text2: "random@gmail.com"
+            text2: "support@alphakolect.com"
         },
 
 
         {
             image: "/icons/message square.svg",
             text1: "SMS / Whatsapp",
-            text2: "+234 6655 9090"
+            text2: "+2349050226306"
         },
 
     ]
