@@ -1,0 +1,174 @@
+=PORTS_APACHE=
+tcp   LISTEN 0      511                            0.0.0.0:8080      0.0.0.0:*    users:(("nginx",pid=277208,fd=10),("nginx",pid=277207,fd=10),("nginx",pid=277206,fd=10))                                                                                                                             
+tcp   LISTEN 0      511                                  *:8082            *:*    users:(("httpd",pid=210330,fd=6),("httpd",pid=209890,fd=6),("httpd",pid=206427,fd=6),("httpd",pid=206426,fd=6),("httpd",pid=206425,fd=6),("httpd",pid=206409,fd=6),("httpd",pid=206408,fd=6),("httpd",pid=4502,fd=6))
+tcp   LISTEN 0      511                                  *:8081            *:*    users:(("httpd",pid=210330,fd=4),("httpd",pid=209890,fd=4),("httpd",pid=206427,fd=4),("httpd",pid=206426,fd=4),("httpd",pid=206425,fd=4),("httpd",pid=206409,fd=4),("httpd",pid=206408,fd=4),("httpd",pid=4502,fd=4))
+tcp   LISTEN 0      511                               [::]:8080         [::]:*    users:(("nginx",pid=277208,fd=11),("nginx",pid=277207,fd=11),("nginx",pid=277206,fd=11))                                                                                                                             
+
+=PORT_8083_8084_TEST=
+8083 HTTP: 000
+8084 HTTPS: 000
+
+=NGINX_ERROR_LOG_LAST50=
+2026/03/11 12:16:13 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-admin/maint/ HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-admin/maint/", host: "thepeopleimpact.com"
+2026/03/11 12:16:14 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-admin/ HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-admin/", host: "thepeopleimpact.com"
+2026/03/11 12:16:14 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-content/themes/ HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-content/themes/", host: "thepeopleimpact.com"
+2026/03/11 12:16:14 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-content/themes/admin.php HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-content/themes/admin.php", host: "thepeopleimpact.com"
+2026/03/11 12:16:14 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-content/uploads/ HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-content/uploads/", host: "thepeopleimpact.com"
+2026/03/11 12:16:14 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-content/uploads/admin.php HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-content/uploads/admin.php", host: "thepeopleimpact.com"
+2026/03/11 12:16:15 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-includes/ HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-includes/", host: "thepeopleimpact.com"
+2026/03/11 12:16:15 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-includes/js/crop/ HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-includes/js/crop/", host: "thepeopleimpact.com"
+2026/03/11 12:16:15 [error] 277207#277207: *1379 connect() failed (111: Connection refused) while connecting to upstream, client: 20.219.8.79, server: thepeopleimpact.com, request: "GET /wp-links-opml.php HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-links-opml.php", host: "thepeopleimpact.com"
+2026/03/11 12:18:09 [error] 277207#277207: *1429 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "bhislass.com"
+2026/03/11 12:18:09 [error] 277207#277207: *1429 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:18:18 [error] 277207#277207: *1429 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:19:39 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "godproposescollege.com"
+2026/03/11 12:19:41 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "godproposescollege.com"
+2026/03/11 12:19:41 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "godproposescollege.com", referrer: "https://godproposescollege.com/"
+2026/03/11 12:19:43 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "godproposescollege.com"
+2026/03/11 12:19:43 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "godproposescollege.com", referrer: "https://godproposescollege.com/"
+2026/03/11 12:19:44 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "godproposescollege.com"
+2026/03/11 12:19:45 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "godproposescollege.com", referrer: "https://godproposescollege.com/"
+2026/03/11 12:19:46 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "godproposescollege.com"
+2026/03/11 12:19:55 [error] 277207#277207: *1434 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: godproposescollege.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "godproposescollege.com", referrer: "https://godproposescollege.com/"
+2026/03/11 12:20:02 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:20:12 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:20:18 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/"
+2026/03/11 12:20:22 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:20:23 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/"
+2026/03/11 12:20:24 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:20:24 [error] 277207#277207: *1447 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/"
+2026/03/11 12:20:54 [error] 277207#277207: *1541 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:20:56 [error] 277207#277207: *1541 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:20:56 [error] 277207#277207: *1541 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/"
+2026/03/11 12:21:01 [error] 277207#277207: *1541 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:21:01 [error] 277207#277207: *1541 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/"
+2026/03/11 12:21:19 [error] 277207#277207: *1561 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "bhislass.com"
+2026/03/11 12:21:21 [error] 277207#277207: *1561 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:21:29 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "bhislass.com"
+2026/03/11 12:21:29 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:21:35 [error] 277207#277207: *1570 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "paxalphaltd.com"
+2026/03/11 12:21:35 [error] 277207#277207: *1570 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: paxalphaltd.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/"
+2026/03/11 12:21:44 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "bhislass.com"
+2026/03/11 12:21:45 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:21:46 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET / HTTP/2.0", upstream: "https://127.0.0.1:8084/", host: "bhislass.com"
+2026/03/11 12:21:51 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:23:00 [error] 277207#277207: *1579 connect() failed (111: Connection refused) while connecting to upstream, client: 27.49.16.1, server: godproposescollege.com, request: "GET /read/important-cbt-update HTTP/1.1", upstream: "https://127.0.0.1:8084/read/important-cbt-update", host: "godproposescollege.com"
+2026/03/11 12:23:06 [error] 277207#277207: *1581 connect() failed (111: Connection refused) while connecting to upstream, client: 123.16.18.22, server: godproposescollege.com, request: "GET /read/important-cbt-update HTTP/1.1", upstream: "https://127.0.0.1:8084/read/important-cbt-update", host: "godproposescollege.com"
+2026/03/11 12:23:13 [error] 277207#277207: *1583 connect() failed (111: Connection refused) while connecting to upstream, client: 14.166.25.179, server: godproposescollege.com, request: "GET /read/important-cbt-update HTTP/1.1", upstream: "https://127.0.0.1:8084/read/important-cbt-update", host: "godproposescollege.com"
+2026/03/11 12:24:48 [error] 277207#277207: *1585 connect() failed (111: Connection refused) while connecting to upstream, client: 203.201.164.142, server: paxalphaltd.com, request: "GET /wp-login.php HTTP/2.0", upstream: "https://127.0.0.1:8084/wp-login.php", host: "paxalphaltd.com"
+2026/03/11 12:24:51 [error] 277207#277207: *1585 connect() failed (111: Connection refused) while connecting to upstream, client: 203.201.164.142, server: paxalphaltd.com, request: "POST /wp-login.php HTTP/2.0", upstream: "https://127.0.0.1:8084/wp-login.php", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/wp-login.php"
+2026/03/11 12:24:57 [error] 277207#277207: *1592 connect() failed (111: Connection refused) while connecting to upstream, client: 95.164.128.108, server: vinemorrisgroup.com, request: "POST /2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/trackback HTTP/1.1", upstream: "https://127.0.0.1:8084/2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/trackback", host: "vinemorrisgroup.com"
+2026/03/11 12:24:58 [error] 277207#277207: *1594 connect() failed (111: Connection refused) while connecting to upstream, client: 95.164.128.108, server: vinemorrisgroup.com, request: "GET /2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/ HTTP/1.1", upstream: "https://127.0.0.1:8084/2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/", host: "vinemorrisgroup.com"
+
+=PAXALPHA_CONF=
+# paxalphaltd.com - managed by system nginx, backend: Webuzo Apache (8084)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name paxalphaltd.com www.paxalphaltd.com;
+
+    # Allow ACME challenges
+    location /.well-known/acme-challenge/ {
+        root /var/webuzo-data/www;
+    }
+
+    # Redirect all other HTTP to HTTPS
+    location / {
+        return 301 https://paxalphaltd.com$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name paxalphaltd.com www.paxalphaltd.com;
+
+    ssl_certificate      /var/webuzo/users/mayowae/ssl/paxalphaltd.com-combined.pem;
+    ssl_certificate_key  /var/webuzo/users/mayowae/ssl/paxalphaltd.com.key;
+    ssl_dhparam          /etc/ssl/private/dhparam.pem;
+    ssl_protocols        TLSv1.2 TLSv1.3;
+    ssl_ciphers          HIGH:!aNULL:!MD5;
+
+    # Proxy to Webuzo Apache HTTPS backend
+    location / {
+        include /etc/nginx/proxy_params;
+        proxy_ssl_verify off;
+        proxy_ssl_server_name on;
+        proxy_ssl_name paxalphaltd.com;
+        proxy_pass https://127.0.0.1:8084;
+    }
+
+    # ACME challenges
+    location /.well-known/ {
+        root /var/webuzo-data/www;
+    }
+}
+
+
+=WEBUZO_PROXY_CONF=
+# Always upgrade to HTTP/1.1
+proxy_hide_header Upgrade;
+proxy_http_version 1.1;
+
+# Headers
+proxy_set_header Accept-Encoding "";  # Optimize encoding
+proxy_set_header Connection "";  # Enable keepalives
+proxy_set_header Host $host;
+proxy_set_header Proxy "";
+proxy_set_header Referer $http_referer;
+
+
+# X headers
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Port $server_port;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Server $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+proxy_set_header CF-Visitor $http_cf_visitor;
+
+# non-headers
+proxy_connect_timeout 300s;
+proxy_read_timeout 300s;
+proxy_send_timeout 300s;
+proxy_buffers 256 16k;
+proxy_buffer_size 128k;
+proxy_busy_buffers_size 256k;
+proxy_temp_file_write_size 256k;
+
+proxy_cache_key "$CACHE_KEY_PREFIX$scheme://$host$request_uri";
+proxy_ssl_name $host;
+
+=APACHE_STATUS=
+● httpd.service - LSB: httpd web server
+     Loaded: loaded (/etc/rc.d/init.d/httpd; generated)
+     Active: active (running) since Tue 2026-03-10 13:28:05 UTC; 22h ago
+       Docs: man:systemd-sysv-generator(8)
+    Process: 117724 ExecStart=/etc/rc.d/init.d/httpd start (code=exited, status=0/SUCCESS)
+   Main PID: 4502 (httpd)
+      Tasks: 0 (limit: 12300)
+     Memory: 12.0K (peak: 4.4M)
+        CPU: 17ms
+     CGroup: /system.slice/httpd.service
+             ‣ 4502 /usr/local/apps/apache2/bin/httpd -k start
+
+Mar 10 13:28:05 server1.alphakolect.com systemd[1]: Starting LSB: httpd web server...
+Mar 10 13:28:05 server1.alphakolect.com httpd[117726]: httpd (pid 4502) already running
+Mar 10 13:28:05 server1.alphakolect.com systemd[1]: Started LSB: httpd web server.
+
+=CURL_PAXALPHA_HTTP=
+*   Trying 127.0.0.1:8083...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* connect to 127.0.0.1 port 8083 failed: Connection refused
+* Failed to connect to 127.0.0.1 port 8083: Connection refused
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+* Closing connection 0
+curl: (7) Failed to connect to 127.0.0.1 port 8083: Connection refused
+
+=CURL_PAXALPHA_HTTPS=
+*   Trying 127.0.0.1:8084...
+* connect to 127.0.0.1 port 8084 failed: Connection refused
+* Failed to connect to 127.0.0.1 port 8084: Connection refused
+* Closing connection 0

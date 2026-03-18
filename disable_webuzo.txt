@@ -1,0 +1,214 @@
+Connected
+
+============================================================
+  STEP 1: Discover all Webuzo services
+============================================================
+=== systemctl services with 'webuzo' ===
+run-webuzo.mount
+webuzo-onboot.service
+
+=== systemctl unit files with 'webuzo' ===
+webuzo-onboot.service                      enabled         disabled
+webuzo.service                             disabled        disabled
+
+=== init.d scripts with 'webuzo' ===
+webuzo
+webuzo-onboot
+
+=== rc*.d symlinks for webuzo ===
+/etc/rc.d/init.d/webuzo-onboot
+/etc/rc.d/init.d/webuzo
+/etc/rc.d/rc5.d/K90webuzo
+/etc/rc.d/rc5.d/S99webuzo-onboot
+/etc/rc.d/rc2.d/K90webuzo
+/etc/rc.d/rc2.d/S99webuzo-onboot
+/etc/rc.d/rc6.d/K90webuzo
+/etc/rc.d/rc6.d/K90webuzo-onboot
+/etc/rc.d/rc4.d/K90webuzo
+/etc/rc.d/rc4.d/S99webuzo-onboot
+/etc/rc.d/rc1.d/K90webuzo
+/etc/rc.d/rc1.d/K90webuzo-onboot
+/etc/rc.d/rc0.d/K90webuzo
+/etc/rc.d/rc0.d/K90webuzo-onboot
+/etc/rc.d/rc3.d/K90webuzo
+/etc/rc.d/rc3.d/S99webuzo-onboot
+/etc/rc0.d/K90webuzo
+/etc/rc0.d/K90webuzo-onboot
+/etc/rc1.d/K90webuzo
+/etc/rc1.d/K90webuzo-onboot
+/etc/rc2.d/K90webuzo
+/etc/rc2.d/S99webuzo-onboot
+/etc/rc3.d/K90webuzo
+/etc/rc3.d/S99webuzo-onboot
+/etc/rc4.d/K90webuzo
+/etc/rc4.d/S99webuzo-onboot
+/etc/rc5.d/K90webuzo
+/etc/rc5.d/S99webuzo-onboot
+/etc/rc6.d/K90webuzo
+/etc/rc6.d/K90webuzo-onboot
+
+=== /usr/local/emps services ===
+  run-webuzo.mount                                                                            loaded    active   mounted   /run/webuzo
+  webuzo-onboot.service                                                                       loaded    inactive dead      Webuzo Onboot Service
+
+============================================================
+  STEP 2: Stop and disable all Webuzo systemd services
+============================================================
+--- Stopping & disabling: webuzo-onboot.service ---
+  stopped OK
+Synchronizing state of webuzo-onboot.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install disable webuzo-onboot
+Removed "/etc/systemd/system/multi-user.target.wants/webuzo-onboot.service".
+  disabled OK
+Failed to mask unit: File /etc/systemd/system/webuzo-onboot.service already exists.
+  mask failed
+--- Stopping & disabling: webuzo.service ---
+  stopped OK
+Synchronizing state of webuzo.service with SysV service script with /usr/lib/systemd/systemd-sysv-install.
+Executing: /usr/lib/systemd/systemd-sysv-install disable webuzo
+  disabled OK
+Failed to mask unit: File /etc/systemd/system/webuzo.service already exists.
+  mask failed
+
+============================================================
+  STEP 3: Kill Webuzo nginx process (/usr/local/emps/sbin/nginx)
+============================================================
+=== Webuzo nginx pids ===
+PIDs: 117666
+Killing Webuzo nginx processes...
+Sent QUIT signal
+
+=== Remaining nginx processes ===
+nobody      1169  0.0  0.3  99068  6552 ?        S    Mar09   0:00 nginx: cache manager process
+nobody    121181  0.0  0.2  97032  4612 ?        S    Mar10   0:00 nginx: cache manager process
+root      277206  0.0  0.4  25432  9596 ?        Ss   09:46   0:00 nginx: master process /usr/sbin/nginx
+nginx     284772  0.0  0.5  29296 11648 ?        S    12:50   0:00 nginx: worker process
+nginx     284773  0.0  0.6  29264 12528 ?        S    12:50   0:01 nginx: worker process
+
+============================================================
+  STEP 4: Kill all remaining Webuzo processes
+============================================================
+=== All webuzo-related processes ===
+root      117656  0.0  0.1 129476  3984 ?        Ss   Mar10   0:06 php-fpm: master process (/usr/local/emps/etc/php-fpm.conf)
+webuzo    117660  0.0  0.7 133176 14228 ?        S    Mar10   0:00 php-fpm: pool regular
+webuzo    117661  0.0  0.7 133176 14260 ?        S    Mar10   0:00 php-fpm: pool regular
+webuzo    117662  0.0  0.7 133176 14188 ?        S    Mar10   0:00 php-fpm: pool regular
+
+Killing webuzo processes...
+
+============================================================
+  STEP 5: Disable Webuzo init.d scripts
+============================================================
+--- Disabling init.d: webuzo ---
+Stopping php-fpm: Done...
+Stopping nginx: nginx is stopped
+  done
+--- Disabling init.d: webuzo-onboot ---
+Stop not implemented. In order to revert the changes execute service network restart
+  done
+
+============================================================
+  STEP 6: Find and remove all Webuzo cron jobs
+============================================================
+=== System crontab (/etc/crontab) ===
+  none
+
+=== /etc/cron.d/ directory ===
+0hourly
+backuply
+backuply2
+emps
+fstrim-weekly
+lets_encrypt
+softaculous
+softaculous2
+webuzo
+webuzo2
+/etc/cron.d/webuzo:#56 18 * * * root /usr/local/emps/bin/php /usr/local/webuzo/cron.php >> /var/webuzo/logs/cron 2>&1
+/etc/cron.d/webuzo:#1 * * * * root /usr/local/emps/bin/php /usr/local/webuzo/cronh.php >> /var/webuzo/logs/cronh 2>&1
+/etc/cron.d/webuzo:#*/5 * * * * root /usr/local/emps/bin/php /usr/local/webuzo/cronm.php >> /var/webuzo/logs/cronm 2>&1
+/etc/cron.d/webuzo:#* * * * * root /usr/local/emps/bin/php /usr/local/webuzo/crons.php >> /var/webuzo/logs/crons 2>&1
+/etc/cron.d/lets_encrypt:#0 0 * * * root /usr/local/emps/bin/php /usr/local/webuzo/cli.php --lets_encrypt --action=renew_all --force=1 >> /dev/null 2>&1
+/etc/cron.d/webuzo2:#7 20 */2 * * root /usr/local/emps/bin/php /usr/local/webuzo/cron2.php >> /dev/null 2>&1
+/etc/cron.d/emps:#48 0 * * 6 root /usr/local/emps/bin/php /usr/local/webuzo/cli.php --emps update >> /dev/null 2>&1
+
+=== Root crontab ===
+
+=== Webuzo user crontab ===
+  no webuzo crontab
+
+=== All user crontabs with webuzo references ===
+-- crontab for root --
+  none
+-- crontab for webuzo --
+  none
+-- crontab for mayowae --
+  none
+
+=== /var/spool/cron/ ===
+root
+  none
+
+============================================================
+  STEP 7: Remove Webuzo cron entries from all crontabs
+============================================================
+Removing /etc/cron.d/webuzo
+Removing /etc/cron.d/webuzo2
+No webuzo entries in root crontab
+No webuzo user crontab to remove
+
+=== Verify: remaining webuzo cron entries ===
+/etc/cron.d/lets_encrypt:#0 0 * * * root /usr/local/emps/bin/php /usr/local/webuzo/cli.php --lets_encrypt --action=renew_all --force=1 >> /dev/null 2>&1
+/etc/cron.d/emps:#48 0 * * 6 root /usr/local/emps/bin/php /usr/local/webuzo/cli.php --emps update >> /dev/null 2>&1
+
+============================================================
+  STEP 8: Prevent Webuzo nginx from auto-starting on boot
+============================================================
+Renaming Webuzo nginx binary to prevent auto-start...
+Renamed: /usr/local/emps/sbin/nginx -> /usr/local/emps/sbin/nginx.disabled
+
+=== Webuzo systemd unit files found ===
+/etc/systemd/system/webuzo-onboot.service
+/etc/systemd/system/webuzo.service
+Masking: /etc/systemd/system/webuzo-onboot.service
+  could not mask webuzo-onboot.service
+Masking: /etc/systemd/system/webuzo.service
+  could not mask webuzo.service
+
+=== Check if /etc/rc.local runs webuzo ===
+  none in rc.local
+
+============================================================
+  STEP 9: Final verification — no Webuzo running
+============================================================
+=== Running processes (webuzo/emps) ===
+  CLEAN - no webuzo/emps processes
+
+=== Ports still in use ===
+LISTEN 0      511                            0.0.0.0:8080      0.0.0.0:*    users:(("nginx",pid=284773,fd=10),("nginx",pid=284772,fd=10),("nginx",pid=277206,fd=10))                                                                                                   
+LISTEN 0      511                            0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=284773,fd=8),("nginx",pid=284772,fd=8),("nginx",pid=277206,fd=8))                                                                                                      
+LISTEN 0      511                            0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=284773,fd=6),("nginx",pid=284772,fd=6),("nginx",pid=277206,fd=6))                                                                                                      
+LISTEN 0      80                             0.0.0.0:3306      0.0.0.0:*    users:(("mariadbd",pid=766,fd=282))                                                                                                                                                        
+LISTEN 0      511                                  *:8082            *:*    users:(("httpd",pid=467435,fd=6),("httpd",pid=467410,fd=6),("httpd",pid=467409,fd=6),("httpd",pid=467408,fd=6),("httpd",pid=467407,fd=6),("httpd",pid=467406,fd=6),("httpd",pid=4502,fd=6))
+LISTEN 0      511                                  *:8081            *:*    users:(("httpd",pid=467435,fd=4),("httpd",pid=467410,fd=4),("httpd",pid=467409,fd=4),("httpd",pid=467408,fd=4),("httpd",pid=467407,fd=4),("httpd",pid=467406,fd=4),("httpd",pid=4502,fd=4))
+LISTEN 0      511                               [::]:8080         [::]:*    users:(("nginx",pid=284773,fd=11),("nginx",pid=284772,fd=11),("nginx",pid=277206,fd=11))                                                                                                   
+LISTEN 0      511                               [::]:443          [::]:*    users:(("nginx",pid=284773,fd=9),("nginx",pid=284772,fd=9),("nginx",pid=277206,fd=9))                                                                                                      
+LISTEN 0      511                               [::]:80           [::]:*    users:(("nginx",pid=284773,fd=7),("nginx",pid=284772,fd=7),("nginx",pid=277206,fd=7))                                                                                                      
+LISTEN 0      10     [fe80::216:3cff:fe87:1c43]%eth0:53           [::]:*    users:(("named",pid=781,fd=48))                                                                                                                                                            
+LISTEN 0      10     [fe80::216:3cff:fe87:1c43]%eth0:53           [::]:*    users:(("named",pid=781,fd=49))                                                                                                                                                            
+LISTEN 0      80                                [::]:3306         [::]:*    users:(("mariadbd",pid=766,fd=283))                                                                                                                                                        
+
+=== Systemd webuzo services status ===
+  run-webuzo.mount                                                                            loaded    active   mounted   /run/webuzo
+
+=== Webuzo binary status ===
+-rwxr-xr-x 1 root root 10935488 Feb  6  2025 /usr/local/emps/sbin/nginx.disabled
+
+=== Remaining nginx instances ===
+nobody      1169  0.0  0.3  99068  6552 ?        S    Mar09   0:00 nginx: cache manager process
+nobody    121181  0.0  0.2  97032  4612 ?        S    Mar10   0:00 nginx: cache manager process
+root      277206  0.0  0.4  25432  9596 ?        Ss   09:46   0:00 nginx: master process /usr/sbin/nginx
+nginx     284772  0.0  0.5  29296 11648 ?        S    12:50   0:00 nginx: worker process
+nginx     284773  0.0  0.6  29264 12528 ?        S    12:50   0:01 nginx: worker process
+
+Done.

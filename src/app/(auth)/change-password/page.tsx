@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { updatePassword as updatePasswordApi } from "../../../../services/api";
 import '../../../../global.css';
 
 export default function ResetPassword() {
@@ -9,14 +11,50 @@ export default function ResetPassword() {
   const [retypePassword, setRetypePassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showRetypePassword, setShowRetypePassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleContinue = () => {
-    if (newPassword !== retypePassword) {
-      console.log("Passwords do not match!");
+  const handleContinue = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (!newPassword || !retypePassword) {
+      Swal.fire({ icon: "warning", title: "Required", text: "Please fill in all fields." });
       return;
     }
-    console.log("New password set successfully!");
+
+    if (newPassword !== retypePassword) {
+      Swal.fire({ icon: "error", title: "Mismatch", text: "Passwords do not match!" });
+      return;
+    }
+
+    const email = localStorage.getItem('email');
+    if (!email) {
+      Swal.fire({ icon: "error", title: "Session Expired", text: "Email not found. Please start over." });
+      router.push('/forgot-password');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await updatePasswordApi(email, newPassword);
+      
+      Swal.fire({ 
+        icon: "success", 
+        title: "Success", 
+        text: "Your password has been changed successfully!" 
+      });
+      
+      localStorage.removeItem('email'); // Clean up
+      router.push("/login");
+    } catch (err: any) {
+      Swal.fire({ 
+        icon: "error", 
+        title: "Update Failed", 
+        text: err?.message || "Unable to change password. Please try again." 
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -36,11 +74,6 @@ export default function ResetPassword() {
         document.body.style.backgroundColor = "";
     };
   }, []);
-
-  const updatePassword = ()=>{
-    console.log("Password updated successfully");
-    router.push("/login");
-  }
 
   return (
     <div className="w-full max-w-6xl mx-auto px-6">
@@ -104,8 +137,19 @@ export default function ResetPassword() {
                 </div>
 
                 <div className="mt-8">
-                  <button type="button" onClick={updatePassword}  className="w-full py-3 px-4 bg-[#4E37FB] text-white font-bold rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
-                    Continue
+                  <button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className={`w-full py-3 px-4 bg-[#4E37FB] text-white font-bold rounded-lg transition duration-200 shadow-md ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        Updating...
+                      </span>
+                    ) : (
+                      'Continue'
+                    )}
                   </button>
                 </div>
               </form>

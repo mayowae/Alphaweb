@@ -470,13 +470,24 @@ const createWalletTransaction = async (req, res) => {
     const { type, amount, description, reference } = req.body;
     const merchantId = req.user.id;
 
+    // Create any transaction after checking limits
+    try {
+        await checkMerchantTierLimits(merchantId, parseFloat(amount), type);
+    } catch (limitError) {
+        return res.status(400).json({
+            success: false,
+            message: limitError.message
+        });
+    }
+
     const transaction = await WalletTransaction.create({
       merchantId,
       type,
+      transactionType: type, // Ensure transactionType is set
       amount: parseFloat(amount),
       description: description || '',
       reference: reference || `TXN_${Date.now()}`,
-      status: 'Completed', // For now, all transactions are immediately completed
+      status: 'Completed',
       date: new Date()
     });
 
@@ -703,6 +714,91 @@ const getWalletStats = async (req, res) => {
   }
 };
 
+// Helper to check merchant tier limits
+const checkMerchantTierLimits = async (merchantId, amount, type) => {
+    const { Merchant, WalletTier, WalletTransaction } = require('../models');
+    
+    // 1. Get merchant and their tier
+    const merchant = await Merchant.findByPk(merchantId);
+    if (!merchant) throw new Error('Merchant not found');
+
+    const level = parseInt((merchant.accountLevel || 'Tier 0').replace(/[^0-9]/g, '')) || 0;
+    const tier = await WalletTier.findOne({ where: { level } });
+    if (!tier) return true; // If no tier definition, allow (or default to level 0)
+
+    // Helper to parse currency strings like "₦50,000" to number
+    const parseLimit = (limitStr) => {
+        if (!limitStr || limitStr.toUpperCase() === 'NO' || limitStr.toUpperCase() === 'NONE') return 0;
+        return parseFloat(limitStr.replace(/[^0-9.]/g, '')) || 0;
+    };
+
+    const dailyLimit = parseLimit(tier.dailyLimit);
+    const maxBalance = parseLimit(tier.maxBalance);
+
+    // 2. Check Daily Limit for debits
+    if (type === 'debit') {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const todayDebits = await WalletTransaction.sum('amount', {
+            where: {
+                merchantId,
+                type: 'debit',
+                status: 'Completed',
+                date: { [Op.gte]: startOfDay }
+            }
+        }) || 0;
+
+        if (dailyLimit > 0 && (todayDebits + amount) > dailyLimit) {
+            throw new Error(`Daily limit exceeded. Your current tier (${tier.name}) limit is ₦${dailyLimit.toLocaleString()}`);
+        }
+    }
+
+    // 3. Check Max Balance for credits
+    if (type === 'credit') {
+        let currentBalance = 0;
+        
+        // Try to get live balance first
+        if (merchant.accountNumber) {
+            const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
+            const tpBalanceData = await fetchTpBalance(merchant.accountNumber);
+            if (tpBalanceData) {
+                currentBalance = parseFloat(tpBalanceData.availableBalance || tpBalanceData.balance || 0);
+            } else {
+                // Fallback to local sum if TP fails
+                const txs = await WalletTransaction.findAll({
+                    where: { merchantId, status: 'Completed' },
+                    attributes: ['type', 'transactionType', 'amount']
+                });
+                txs.forEach(t => {
+                    const a = parseFloat(t.amount);
+                    const tt = t.transactionType || t.type;
+                    if (tt === 'credit' || tt === 'initial_balance') currentBalance += a;
+                    else if (tt === 'debit') currentBalance -= a;
+                });
+            }
+        } else {
+            // Local sum for merchants without virtual accounts
+            const txs = await WalletTransaction.findAll({
+                where: { merchantId, status: 'Completed' },
+                attributes: ['type', 'transactionType', 'amount']
+            });
+            txs.forEach(t => {
+                const a = parseFloat(t.amount);
+                const tt = t.transactionType || t.type;
+                if (tt === 'credit' || tt === 'initial_balance') currentBalance += a;
+                else if (tt === 'debit') currentBalance -= a;
+            });
+        }
+
+        if (maxBalance > 0 && (currentBalance + amount) > maxBalance) {
+            throw new Error(`Max balance exceeded. Your current tier (${tier.name}) limit is ₦${maxBalance.toLocaleString()}`);
+        }
+    }
+
+    return true;
+};
+
 // Transfer from merchant wallet to customer wallet
 const transferToCustomer = async (req, res) => {
   try {
@@ -739,8 +835,22 @@ const transferToCustomer = async (req, res) => {
       });
     }
 
+    // Determine merchant-side transaction type
+    const customerSideType = (type === 'credit' || type === 'debit') ? type : 'debit';
+    const merchantSideType = customerSideType === 'credit' ? 'debit' : 'credit';
+
+    // Enforce Tier Limits
+    try {
+        await checkMerchantTierLimits(merchantId, parseFloat(amount), merchantSideType);
+    } catch (limitError) {
+        return res.status(400).json({
+            success: false,
+            message: limitError.message
+        });
+    }
+
     // For merchant debit (payout) ensure sufficient merchant balance; skip for merchant credit (inflow)
-    if ((type === 'debit') || !type) {
+    if (merchantSideType === 'debit') {
       const merchantTransactions = await WalletTransaction.findAll({
         where: { merchantId },
         attributes: ['type', 'transactionType', 'amount', 'status']
@@ -780,9 +890,6 @@ const transferToCustomer = async (req, res) => {
     }
 
     // Create debit transaction for merchant wallet
-    const customerSideType = (type === 'credit' || type === 'debit') ? type : 'debit';
-    const merchantSideType = customerSideType === 'credit' ? 'debit' : 'credit';
-
     const merchantTransaction = await WalletTransaction.create({
       merchantId,
       type: merchantSideType,

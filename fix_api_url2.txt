@@ -1,0 +1,104 @@
+Connected
+
+============================================================
+  STEP 1: Find the project directory from PM2 config
+============================================================
+=== PM2 env for alphaweb-frontend ===
+│ entire log path   │ /home/mayowae/public_html/alphaweb/logs/frontend-combined-1.log │
+│ script path       │ /usr/bin/npm                                                    │
+│ script args       │ start                                                           │
+│ error log path    │ /home/mayowae/public_html/alphaweb/logs/frontend-error-1.log    │
+│ out log path      │ /home/mayowae/public_html/alphaweb/logs/frontend-out-1.log      │
+│ pid path          │ /root/.pm2/pids/alphaweb-frontend-1.pid                         │
+│ script id         │ 1                                                               │
+│ exec cwd          │ /home/mayowae/public_html/alphaweb                              │
+│ exec mode         │ cluster_mode                                                    │
+
+=== PM2 JSON config ===
+│ script path       │ /usr/bin/npm                                                    │
+│ exec cwd          │ /home/mayowae/public_html/alphaweb                              │
+
+=== Find all .env files with NEXT_PUBLIC on VPS ===
+/home/mayowae/public_html/alphaweb/.env
+
+=== Find all package.json with next dependency ===
+/home/mayowae/public_html/alphaweb/package.json
+
+============================================================
+  STEP 2: Fix .env in correct location and rebuild
+============================================================
+PM2 cwd: │
+Backend dir: │
+Frontend guess: .
+
+=== Using:  ===
+
+============================================================
+  STEP 3: Get exact paths from PM2 JSON
+============================================================
+Error: Expecting value: line 1 column 1 (char 0)
+
+============================================================
+  STEP 4: Fix .env and trigger Next.js rebuild
+============================================================
+Could not determine frontend dir from PM2
+Project directory: /home/mayowae/public_html/alphaweb
+
+=== Current .env API_URL ===
+NEXT_PUBLIC_API_URL=https://alphakolect.com:8082
+Fixed .env
+
+=== Updated .env (API_URL) ===
+NEXT_PUBLIC_API_URL=https://alphakolect.com
+
+=== Building Next.js (this may take 2-3 minutes) ===
+├ ○ /dashboard/view-agent                     5.46 kB         112 kB
+├ ƒ /dashboard/view-agent/[id]                4.89 kB         112 kB
+├ ○ /dashboard/wallet                         12.3 kB         119 kB
+├ ○ /financial                                2.58 kB         149 kB
+├ ○ /forgot-password                          1.31 kB         107 kB
+├ ○ /help                                     4.22 kB         153 kB
+├ ƒ /help/[id]                                 2.2 kB         149 kB
+├ ○ /login                                    1.82 kB         132 kB
+├ ○ /pricing                                  3.26 kB         150 kB
+├ ○ /signup                                   2.34 kB         133 kB
+└ ○ /verify-otp                               1.74 kB         129 kB
++ First Load JS shared by all                  102 kB
+  ├ chunks/1255-8befde0980f5cba9.js           45.7 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js       54.2 kB
+  └ other shared chunks (total)               2.02 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+Build exit code: 0
+
+============================================================
+  STEP 5: Restart alphaweb-frontend via PM2
+============================================================
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [alphaweb-frontend](ids: [ 1 ])
+[PM2] [alphaweb-frontend](1) ✓
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 122980   │ 33h    │ 1    │ online    │ 0%       │ 25.4mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 477344   │ 0s     │ 2    │ online    │ 0%       │ 39.6mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 122980   │ 33h    │ 1    │ online    │ 0%       │ 25.0mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 477344   │ 3s     │ 2    │ online    │ 0%       │ 59.6mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+============================================================
+  STEP 6: Test that /merchant/login works correctly (no port in URL)
+============================================================
+=== /health ===
+{"status":"OK","message":"Server is running"}
+=== /merchant/login (expect JSON error, NOT port 8082 redirect) ===
+{"message":"Invalid credentials"}
+
+Done.

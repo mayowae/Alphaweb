@@ -1,0 +1,84 @@
+=PORT80=
+tcp   LISTEN 0      511                            0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=284773,fd=6),("nginx",pid=284772,fd=6),("nginx",pid=277206,fd=6))                                                                                                      
+tcp   LISTEN 0      511                               [::]:80           [::]:*    users:(("nginx",pid=284773,fd=7),("nginx",pid=284772,fd=7),("nginx",pid=277206,fd=7))                                                                                                      
+
+=PORT443=
+tcp   LISTEN 0      511                            0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=284773,fd=8),("nginx",pid=284772,fd=8),("nginx",pid=277206,fd=8))                                                                                                      
+tcp   LISTEN 0      511                               [::]:443          [::]:*    users:(("nginx",pid=284773,fd=9),("nginx",pid=284772,fd=9),("nginx",pid=277206,fd=9))                                                                                                      
+
+=NGINX_PROCS=
+nobody      1169  0.0  0.3  99068  6552 ?        S    Mar09   0:00 nginx: cache manager process
+root      117666  0.0  0.3  14808  6648 ?        Ss   Mar10   0:00 nginx: master process /usr/local/emps/sbin/nginx -c /usr/local/emps/etc/nginx/nginx.conf
+nobody    121181  0.0  0.2  97032  4612 ?        S    Mar10   0:00 nginx: cache manager process
+webuzo    274252  0.0  0.6  24908 12180 ?        S    09:33   0:00 nginx: worker process
+root      277206  0.0  0.4  25432  9720 ?        Ss   09:46   0:00 nginx: master process /usr/sbin/nginx
+nginx     284772  0.0  0.5  29296 10304 ?        S    12:50   0:00 nginx: worker process
+nginx     284773  0.0  0.6  29620 12684 ?        S    12:50   0:00 nginx: worker process
+
+=CONF_D=
+00-catchall.conf
+alphaweb.conf
+bhislass.conf
+godproposescollege.com.conf
+kosheglobal.com.conf
+modoniteintegrated.com.ng.conf
+paxalphaltd.com.conf
+suppakash.com.conf
+thepeopleimpact.com.conf
+vinemorrisgroup.com.conf
+
+=DOMAIN_CHECK=
+  alphakolect.com HTTP=301
+  bhislass.com HTTP=301
+  paxalphaltd.com HTTP=301
+  kosheglobal.com HTTP=301
+  vinemorrisgroup.com HTTP=301
+  modoniteintegrated.com.ng HTTP=301
+  suppakash.com HTTP=301
+  godproposescollege.com HTTP=301
+  thepeopleimpact.com HTTP=301
+  unknown-xyz-test.com HTTP=000ERR
+
+=ALPHAWEB_CONF=
+server {
+    listen 80;
+    server_name alphakolect.com www.alphakolect.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name alphakolect.com www.alphakolect.com;
+
+    ssl_certificate /etc/nginx/ssl/alphakolect.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/alphakolect.com.key;
+
+    client_max_body_size 50M;
+
+    # Backend API: Only match /api, /health, /api-docs, /uploads
+    location ~ ^/(api|health|api-docs|uploads)(/|$) {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+
+    # Everything else goes to the Frontend (Next.js)
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}

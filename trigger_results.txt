@@ -1,0 +1,31 @@
+--- Triggering Forgot Password (Merchant) ---
+Response:
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Content-Type: application/json; charset=utf-8
+Content-Length: 68
+ETag: W/"44-fooVtI0mH/kpQh1CrSomRnJY0Uw"
+Date: Sat, 14 Mar 2026 11:12:22 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"message":"OTP sent to your email","otp":"730947","emailSent":true}  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100    95  100    68  100    27    459    182 --:--:-- --:--:-- --:--:--   637100    95  100    68  100    27    459    182 --:--:-- --:--:-- --:--:--   637
+
+--- Triggering Forgot Password (Collaborator) ---
+Response:
+HTTP/1.1 404 Not Found
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Content-Type: application/json; charset=utf-8
+Content-Length: 29
+ETag: W/"1d-/IKct1ZOuGiJ5juOz++sS1tf5R0"
+Date: Sat, 14 Mar 2026 11:12:24 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"message":"Email not found"}  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100    56  100    29  100    27   5800   5400 --:--:-- --:--:-- --:--:-- 11200

@@ -1,0 +1,1255 @@
+=== DIAGNOSTICS ===
+=== PORT 80 LISTENERS ===
+tcp   LISTEN 0      511                            0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=272628,fd=6),("nginx",pid=272627,fd=6),("nginx",pid=270627,fd=6))                                                                                                                                
+
+=== ALL NGINX PROCESSES ===
+nobody      1169  0.0  0.3  99068  7016 ?        S    Mar09   0:00 nginx: cache manager process
+root      117666  0.0  0.5  14808 10424 ?        Ss   Mar10   0:00 nginx: master process /usr/local/emps/sbin/nginx -c /usr/local/emps/etc/nginx/nginx.conf
+nobody    121181  0.0  0.3  97032  6340 ?        S    Mar10   0:00 nginx: cache manager process
+webuzo    206434  0.0  0.7  24908 15900 ?        S    00:00   0:00 nginx: worker process
+root      270627  0.0  0.4  13608  8316 ?        Ss   07:20   0:00 nginx: master process /usr/sbin/nginx
+nginx     272627  0.0  0.5  17876 11240 ?        S    08:29   0:00 nginx: worker process
+nginx     272628  0.0  0.6  19536 13112 ?        S    08:29   0:01 nginx: worker process
+
+=== WEBUZO SERVICES ===
+
+=== WEBUZO NGINX PID FILES ===
+/run/webuzo-onboot-success
+/run/webuzo
+
+=== MAIN NGINX SITES-ENABLED ===
+
+=== MAIN NGINX CONF.D ===
+total 16
+drwxr-xr-x 2 root root 4096 Mar  9 20:05 .
+drwxr-xr-x 5 root root 4096 Feb 28 14:51 ..
+-rw-r--r-- 1 root root 1425 Mar  9 20:05 alphaweb.conf
+-rw-r--r-- 1 root root  614 Mar  9 20:05 bhislass.conf
+
+=== DEFAULT_SERVER CHECK ===
+
+=== WEBUZO VH CONF PATH ===
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf
+/usr/local/apps/nginx/etc/conf.d/webuzoVH.conf
+
+=== APACHE/HTTPD STATUS ===
+tcp   LISTEN 0      511                            0.0.0.0:8080      0.0.0.0:*    users:(("nginx",pid=272628,fd=8),("nginx",pid=272627,fd=8),("nginx",pid=270627,fd=8))                                                                                                                                
+tcp   LISTEN 0      511                            0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=272628,fd=7),("nginx",pid=272627,fd=7),("nginx",pid=270627,fd=7))                                                                                                                                
+tcp   LISTEN 0      511                                  *:8082            *:*    users:(("httpd",pid=210330,fd=6),("httpd",pid=209890,fd=6),("httpd",pid=206427,fd=6),("httpd",pid=206426,fd=6),("httpd",pid=206425,fd=6),("httpd",pid=206409,fd=6),("httpd",pid=206408,fd=6),("httpd",pid=4502,fd=6))
+tcp   LISTEN 0      511                                  *:8081            *:*    users:(("httpd",pid=210330,fd=4),("httpd",pid=209890,fd=4),("httpd",pid=206427,fd=4),("httpd",pid=206426,fd=4),("httpd",pid=206425,fd=4),("httpd",pid=206409,fd=4),("httpd",pid=206408,fd=4),("httpd",pid=4502,fd=4))
+tcp   LISTEN 0      511                               [::]:8080         [::]:*    users:(("nginx",pid=272628,fd=9),("nginx",pid=272627,fd=9),("nginx",pid=270627,fd=9))                                                                                                                                
+
+=== NODE/PM2 PROCESSES ===
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 122980   │ 19h    │ 1    │ online    │ 0%       │ 86.3mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 122989   │ 19h    │ 1    │ online    │ 0%       │ 54.6mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+=== FIX OUTPUT ===
+>>> A. Stopping Webuzo services...
+Killing webuzo nginx PID =WEBUZO_NGINX_CONF=
+
+user  nobody;
+worker_processes  1;
+
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+pid		/var/run/nginx.pid;
+include /usr/local/apps/nginx/etc/modsecurity*.conf;
+
+events {
+	worker_connections  1024;
+}
+
+error_log /usr/local/apps/nginx/var/log/error_log debug;
+
+
+http {
+	include	   mime.types;
+	default_type  application/octet-stream;
+
+	log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+					  '$status $body_bytes_sent "$http_referer" '
+					  '"$http_user_agent" "$http_x_forwarded_for"';
+
+	access_log /usr/local/apps/nginx/var/log/web.access.log  main;
+
+	sendfile		on;
+	#tcp_nopush	 on;
+
+	#keepalive_timeout  0;
+	keepalive_timeout  65;
+
+	#gzip  on;
+	
+	client_max_body_size 200M;
+	
+	# If your domain names are long, increase this parameter.
+	server_names_hash_bucket_size 128;
+	
+	# To hide the version number in headers
+	server_tokens off;
+	
+	include /usr/local/apps/nginx/etc/conf.d/*.conf;
+}
+
+=WEBUZO_CONFD_FILES=
+total 112
+drwxr-xr-x 2 root root  4096 Mar  9 22:26 .
+drwxr-xr-x 5 root root  4096 Mar  9 07:07 ..
+-rw-r--r-- 1 root root   454 Mar  9 07:07 404.html
+-rw-r--r-- 1 root root   300 Mar  9 07:07 497.html
+-rw-r--r-- 1 root root   406 Mar  9 07:07 500.html
+-rw-r--r-- 1 root root   503 Mar  9 07:07 50x.html
+-rw-r--r-- 1 root root   702 Mar  9 21:51 common
+-rw-r--r-- 1 root root   273 Mar  9 07:09 gzip.conf
+-rw-r--r-- 1 root root  2968 Mar  9 07:07 noindex.html
+-rw-r--r-- 1 root root   984 Mar  9 07:08 proxy.conf
+-rw-r--r-- 1 root root   878 Mar  9 07:07 ssl.conf
+-rw-r--r-- 1 root root 33592 Mar  9 22:28 webuzoVH.conf
+-rw-r--r-- 1 root root 32646 Mar  9 22:26 webuzoVH.conf.last_bad
+
+=WEBUZO_VH_CONF=
+server {
+	listen 159.198.36.24:80;
+	server_name alphakolect.com www.alphakolect.com mail.alphakolect.com;
+	include /var/webuzo-data/nginx/custom/domains/alphakolect.com.conf;
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	paxalphaltd.com www.paxalphaltd.com mail.paxalphaltd.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://paxalphaltd.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/paxalphaltd.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/paxalphaltd.com.err;
+	access_log	/usr/local/apps/nginx/var/log/paxalphaltd.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/paxalphaltd.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	bhislass.com www.bhislass.com mail.bhislass.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://bhislass.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/bhislass.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/bhislass.com.err;
+	access_log	/usr/local/apps/nginx/var/log/bhislass.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	##set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/bhislass.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	kosheglobal.com www.kosheglobal.com mail.kosheglobal.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://kosheglobal.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/kosheglobal.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/kosheglobal.com.err;
+	access_log	/usr/local/apps/nginx/var/log/kosheglobal.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/kosheglobal.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	vinemorrisgroup.com www.vinemorrisgroup.com mail.vinemorrisgroup.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://vinemorrisgroup.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/vinemorrisgroup.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/vinemorrisgroup.com.err;
+	access_log	/usr/local/apps/nginx/var/log/vinemorrisgroup.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/vinemorrisgroup.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	modoniteintegrated.com.ng www.modoniteintegrated.com.ng mail.modoniteintegrated.com.ng;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://modoniteintegrated.com.ng$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/modoniteintegrated.com.ng;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/modoniteintegrated.com.ng.err;
+	access_log	/usr/local/apps/nginx/var/log/modoniteintegrated.com.ng.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/modoniteintegrated.com.ng.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	suppakash.com www.suppakash.com mail.suppakash.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://suppakash.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/suppakash.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/suppakash.com.err;
+	access_log	/usr/local/apps/nginx/var/log/suppakash.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/suppakash.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	godproposescollege.com www.godproposescollege.com mail.godproposescollege.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://godproposescollege.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/godproposescollege.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/godproposescollege.com.err;
+	access_log	/usr/local/apps/nginx/var/log/godproposescollege.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/godproposescollege.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:80;
+	server_name	thepeopleimpact.com www.thepeopleimpact.com mail.thepeopleimpact.com;
+	if ($request_uri !~ "^/.well-known/acme-challenge/"){
+		return 301 https://thepeopleimpact.com$request_uri;
+		
+	}
+	
+	
+	
+	# The Document Root
+	root		/home/mayowae/thepeopleimpact.com;
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	set $webuzoproxy http://127.0.0.1:8083;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}	
+	
+		
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+			
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/thepeopleimpact.com.err;
+	access_log	/usr/local/apps/nginx/var/log/thepeopleimpact.com.log main;
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/thepeopleimpact.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+
+server {
+	listen 159.198.36.24:443 ssl;
+	server_name alphakolect.com www.alphakolect.com mail.alphakolect.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/alphakolect.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/alphakolect.com.key;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/alphakolect.com.key;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/alphakolect.com.key;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/alphakolect.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	include /var/webuzo-data/nginx/custom/domains/alphakolect.com.conf;
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	paxalphaltd.com www.paxalphaltd.com mail.paxalphaltd.com;
+	# The Document Root
+	root		/home/mayowae/paxalphaltd.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/paxalphaltd.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/paxalphaltd.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/paxalphaltd.com.err;
+	access_log	/usr/local/apps/nginx/var/log/paxalphaltd.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/paxalphaltd.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	bhislass.com www.bhislass.com mail.bhislass.com;
+	# The Document Root
+	root		/home/mayowae/bhislass.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/bhislass.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/bhislass.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/bhislass.com.err;
+	access_log	/usr/local/apps/nginx/var/log/bhislass.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	##set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/bhislass.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	kosheglobal.com www.kosheglobal.com mail.kosheglobal.com;
+	# The Document Root
+	root		/home/mayowae/kosheglobal.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/kosheglobal.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/kosheglobal.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/kosheglobal.com.err;
+	access_log	/usr/local/apps/nginx/var/log/kosheglobal.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	##set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/kosheglobal.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	vinemorrisgroup.com www.vinemorrisgroup.com mail.vinemorrisgroup.com;
+	# The Document Root
+	root		/home/mayowae/vinemorrisgroup.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/vinemorrisgroup.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/vinemorrisgroup.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/vinemorrisgroup.com.err;
+	access_log	/usr/local/apps/nginx/var/log/vinemorrisgroup.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/vinemorrisgroup.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	modoniteintegrated.com.ng www.modoniteintegrated.com.ng mail.modoniteintegrated.com.ng;
+	# The Document Root
+	root		/home/mayowae/modoniteintegrated.com.ng;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/modoniteintegrated.com.ng-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/modoniteintegrated.com.ng.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/modoniteintegrated.com.ng.err;
+	access_log	/usr/local/apps/nginx/var/log/modoniteintegrated.com.ng.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/modoniteintegrated.com.ng.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	suppakash.com www.suppakash.com mail.suppakash.com;
+	# The Document Root
+	root		/home/mayowae/suppakash.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/suppakash.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/suppakash.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/suppakash.com.err;
+	access_log	/usr/local/apps/nginx/var/log/suppakash.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/suppakash.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	godproposescollege.com www.godproposescollege.com mail.godproposescollege.com;
+	# The Document Root
+	root		/home/mayowae/godproposescollege.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/godproposescollege.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/godproposescollege.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/godproposescollege.com.err;
+	access_log	/usr/local/apps/nginx/var/log/godproposescollege.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/godproposescollege.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	thepeopleimpact.com www.thepeopleimpact.com mail.thepeopleimpact.com;
+	# The Document Root
+	root		/home/mayowae/thepeopleimpact.com;
+	ssl_certificate				/var/webuzo/users/mayowae/ssl/thepeopleimpact.com-combined.pem;
+	ssl_certificate_key			/var/webuzo/users/mayowae/ssl/thepeopleimpact.com.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	set $fpmsocket /usr/local/apps/php82/var/fpm-mayowae.sock;
+	
+	
+	set $webuzoproxy https://127.0.0.1:8084;
+	
+	
+	location / {
+	 
+		proxy_cache mayowae;
+		proxy_no_cache 0;
+		proxy_cache_bypass 0;
+		proxy_cache_valid 200 301 302 60m;
+		proxy_cache_valid 404 1m;
+		proxy_cache_use_stale error timeout http_429 http_500 http_502 http_503 http_504;
+		proxy_cache_background_update on;
+		proxy_cache_revalidate on;
+		proxy_cache_min_uses 1;
+		proxy_cache_lock on;
+		add_header X-Cache-Status $upstream_cache_status;
+	
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	error_log	/usr/local/apps/nginx/var/log/thepeopleimpact.com.err;
+	access_log	/usr/local/apps/nginx/var/log/thepeopleimpact.com.log main;
+	
+	
+	
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass https://127.0.0.1:2003/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+	include /var/webuzo-data/nginx/custom/domains/thepeopleimpact.com.conf;
+
+	
+	# Stop proxy /.well-known folder
+	location /.well-known {
+		
+	}
+}
+
+# DO NOT EDIT. AUTOMATICALLY GENERATED BY WEBUZO.
+
+
+server{
+	listen		159.198.36.24:80;
+	server_name	server1.alphakolect.com;
+
+	root		/var/webuzo-data/www;
+	error_log	/usr/local/apps/nginx/var/log/server1.alphakolect.com.err;
+	access_log	/usr/local/apps/nginx/var/log/server1.alphakolect.com.log main;
+	set $webuzoproxy http://127.0.0.1:8081;
+	set $CACHE_KEY_PREFIX "";
+	#if ($http_user_agent ~* '(iPhone|iPod|iPad|Android|BlackBerry|webOS|Windows Phone)') {
+	#    set $CACHE_KEY_PREFIX "mobile_";
+	#}
+	location / {
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_pass $webuzoproxy;
+	}
+	
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;
+}
+
+
+server {
+	listen		159.198.36.24:443 ssl;
+	server_name	server1.alphakolect.com;
+
+	root		/var/webuzo-data/www;
+	set $webuzoproxy http://127.0.0.1:8081;
+	location / {
+		include /usr/local/apps/nginx/etc/conf.d/proxy.conf;
+		proxy_ssl_server_name on;
+		proxy_pass $webuzoproxy;
+	}
+	
+	# Add ssl cert
+	ssl_certificate				/var/webuzo/certs/webuzo-combined.pem;
+	ssl_certificate_key			/var/webuzo/certs/webuzo.key;
+	ssl_dhparam				    /etc/ssl/private/dhparam.pem;
+	
+	error_log	/usr/local/apps/nginx/var/log/server1.alphakolect.com.err;
+	access_log	/usr/local/apps/nginx/var/log/server1.alphakolect.com.log main;
+	
+	#webmail access from /webmail
+	location ^~ /webmail {
+		proxy_set_header Host $host;
+		proxy_set_header Connection keep-alive;
+		proxy_set_header X-Original-URI $request_uri;
+		rewrite ^/webmail$ /webmail/ permanent;
+		proxy_pass http://127.0.0.1:2002/mail/;
+	}
+	
+	#set $noindex ;
+	include		/usr/local/apps/nginx/etc/conf.d/common;	
+}
+proxy_cache_path /var/webuzo-data/nginx_proxy_cache/mayowae levels=1:2 keys_zone=mayowae:10m inactive=60m;
+
+
+=SSL_CERTS_CHECK=
+alphakolect.com.crt
+alphakolect.com.key
+no webuzo ssl dir
+/var/webuzo/users/mayowae/ssl/kosheglobal.com.crt
+/var/webuzo/users/mayowae/ssl/thepeopleimpact.com.crt
+/var/webuzo/users/mayowae/ssl/bhislass.com.crt
+/var/webuzo/users/mayowae/ssl/modoniteintegrated.com.ng.crt
+/var/webuzo/users/mayowae/ssl/alphakolect.com-ca.crt
+/var/webuzo/users/mayowae/ssl/paxalphaltd.com.crt
+/var/webuzo/users/mayowae/ssl/godproposescollege.com.crt
+/var/webuzo/users/mayowae/ssl/alphakolect.com.crt
+/var/webuzo/users/mayowae/ssl/thepeopleimpact.com-ca.crt
+/var/webuzo/users/mayowae/ssl/suppakash.com-ca.crt from /tmp/webuzo_nginx_conf.txt
+>>> B. Disabling Webuzo from auto-start...
+
+>>> C. Port 80 status after killing webuzo:
+tcp   LISTEN 0      511                            0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=272628,fd=6),("nginx",pid=272627,fd=6),("nginx",pid=270627,fd=6))                                                                                                                                
+
+>>> D. Fixing main Nginx configuration...
+  Backing up + clearing webuzoVH.conf: /usr/local/apps/apache2/etc/conf.d/webuzoVH.conf
+  Removing 'default_server' flags from all nginx configs...
+  Removed default_server from webuzoVH.conf
+bash: line 70: /etc/nginx/sites-enabled/00-default-catchall: No such file or directory
+
+=== VERIFICATION ===
+=== curl alphakolect.com ===
+alphakolect.com: HTTP 301
+=== curl bhislass.com ===
+bhislass.com: HTTP 301
+=== curl unknown domain (should be 444) ===
+unknown.com: HTTP 301
+=== nginx -t final check ===
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+=== PM2 / Node status ===
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 122980   │ 19h    │ 1    │ online    │ 0%       │ 85.9mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 122989   │ 19h    │ 1    │ online    │ 0%       │ 53.9mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘

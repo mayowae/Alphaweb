@@ -1,0 +1,282 @@
+Connected
+
+============================================================
+  STEP 1: Diagnose WordPress redirect issue for bhislass.com and paxalphaltd.com
+============================================================
+
+--- bhislass.com ---
+=== wp-config.php HTTPS/SSL settings ===
+ * @link https://wordpress.org/support/article/editing-wp-config-php/
+ * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.
+define( 'NONCE_KEY',        'raajekot8uv4ziqdetccggxmabcbgahehxp0lu16k8zwy1qqgjvccinsqodsssl6' );
+ * @link https://wordpress.org/support/article/debugging-in-wordpress/
+
+=== .htaccess ===
+# BEGIN LiteSpeed noabort
+<IfModule rewrite_module>
+RewriteEngine On
+RewriteRule .* - [E=noabort:1]
+</IfModule>
+# END liteSpeed noabort
+
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+DirectoryIndex index.php
+RewriteRule ^index.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+=== DB siteurl and home ===
+could not query DB directly
+
+=== Checking if WP_HOME/WP_SITEURL defined in wp-config ===
+WP_HOME/WP_SITEURL not set in wp-config
+
+--- paxalphaltd.com ---
+=== wp-config.php HTTPS/SSL settings ===
+ * @link https://wordpress.org/documentation/article/editing-wp-config-php/
+ * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.
+ * @link https://wordpress.org/documentation/article/debugging-in-wordpress/
+
+=== .htaccess ===
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+DirectoryIndex index.php
+RewriteRule ^index.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+=== DB siteurl and home ===
+could not query DB directly
+
+=== Checking if WP_HOME/WP_SITEURL defined in wp-config ===
+WP_HOME/WP_SITEURL not set in wp-config
+
+============================================================
+  STEP 2: Apache webuzo.conf - X-Forwarded-Proto setup
+============================================================
+Listen 8081
+
+# Trust nginx reverse proxy HTTPS header
+SetEnvIf X-Forwarded-Proto "https" HTTPS=on
+RequestHeader set HTTPS "on" env=HTTPS
+RequestHeader set X-Forwarded-Proto "https" env=HTTPS
+Listen 8082
+
+###############################
+######## Enable SSL ###########
+<IfModule ssl_module>
+
+============================================================
+  STEP 3: Apache VirtualHost configs for problem domains
+============================================================
+
+--- Apache VH for bhislass.com ---
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:279:	ServerName bhislass.com
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:280:	ServerAlias www.bhislass.com mail.bhislass.com
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:281:	DocumentRoot /home/mayowae/bhislass.com
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:317:		ScriptAlias /cgi-bin/ /home/mayowae/bhislass.com/cgi-bin/
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:329:		RewriteCond %{HTTP_HOST} =mail.bhislass.com [OR]
+
+--- Apache VH for paxalphaltd.com ---
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:151:	ServerName paxalphaltd.com
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:152:	ServerAlias www.paxalphaltd.com mail.paxalphaltd.com
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:153:	DocumentRoot /home/mayowae/paxalphaltd.com
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:189:		ScriptAlias /cgi-bin/ /home/mayowae/paxalphaltd.com/cgi-bin/
+/usr/local/apps/apache2/etc/conf.d/webuzoVH.conf:201:		RewriteCond %{HTTP_HOST} =mail.paxalphaltd.com [OR]
+
+============================================================
+  STEP 4: Test Apache directly on port 8081 for these domains
+============================================================
+
+--- Direct Apache test: bhislass.com ---
+> Host: bhislass.com
+< HTTP/1.1 200 OK
+
+--- Direct Apache test: paxalphaltd.com ---
+> Host: paxalphaltd.com
+< HTTP/1.1 200 OK
+
+============================================================
+  STEP 5: Fix 1 — Ensure Apache webuzo.conf properly sets HTTPS env var
+============================================================
+=== Current X-Forwarded lines ===
+20:# Trust nginx reverse proxy HTTPS header
+21:SetEnvIf X-Forwarded-Proto "https" HTTPS=on
+22:RequestHeader set HTTPS "on" env=HTTPS
+23:RequestHeader set X-Forwarded-Proto "https" env=HTTPS
+166:    RemoteIPHeader X-Forwarded-For
+
+=== First 50 lines of webuzo.conf ===
+
+# 
+# This configuration file enables the default "Welcome"
+# page if there is no default index page present for
+# the root URL.  To disable the Welcome page, comment
+# out all the lines below.
+#
+<LocationMatch "^/+$">
+	Options -Indexes
+	ErrorDocument 403 /error/noindex.html
+</LocationMatch>
+ErrorDocument 404 /error/404.html
+ErrorDocument 500 /error/500.html
+ErrorDocument 502 /error/50x.html
+ErrorDocument 503 /error/50x.html
+ErrorDocument 504 /error/50x.html
+
+Listen 8081
+
+# Trust nginx reverse proxy HTTPS header
+SetEnvIf X-Forwarded-Proto "https" HTTPS=on
+RequestHeader set HTTPS "on" env=HTTPS
+RequestHeader set X-Forwarded-Proto "https" env=HTTPS
+Listen 8082
+
+###############################
+######## Enable SSL ###########
+<IfModule ssl_module>
+
+AddType application/x-x509-ca-cert .crt
+AddType application/x-pkcs7-crl	.crl
+SSLPassPhraseDialog  builtin
+SSLSessionCache shmcb:/usr/local/apps/apache2/logs/ssl_gcache_data(512000) 
+SSLSessionCacheTimeout  300
+SSLProtocol All -SSLv2 -SSLv3 -TLSv1
+SSLCipherSuite ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS:!3DES:!RC4
+SSLHonorCipherOrder	 on
+SSLCompression		  off
+SSLSessionTickets	   off
+Mutex default
+</IfModule>
+
+<IfModule socache_shmcb_module>
+	SSLUseStapling On
+	SSLStaplingCache shmcb:/run/apache2/stapling_cache_shmcb(256000)
+
+	# Prevent browsers from failing if an OCSP server is temporarily broken.
+	SSLStaplingReturnResponderErrors off
+	SSLStaplingErrorCacheTimeout 60
+	SSLStaplingFakeTryLater off
+
+============================================================
+  STEP 6: Fix wp-config.php — add HTTPS detection before WP loads
+============================================================
+
+--- Fixing wp-config.php for bhislass.com ---
+HTTPS fix injected into wp-config.php
+
+=== First 20 lines of wp-config.php ===
+<?php
+// Fix HTTPS behind nginx reverse proxy
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    $_SERVER['HTTPS'] = 'on';
+    $_SERVER['SERVER_PORT'] = 443;
+}
+
+/**
+ * The base configuration for WordPress
+ *
+ * The wp-config.php creation script uses this file during the installation.
+ * You don't have to use the web site, you can copy this file to "wp-config.php"
+ * and fill in the values.
+ *
+ * This file contains the following configurations:
+ *
+ * * Database settings
+ * * Secret keys
+ * * Database table prefix
+ * * ABSPATH
+
+--- Fixing wp-config.php for paxalphaltd.com ---
+HTTPS fix injected into wp-config.php
+
+=== First 20 lines of wp-config.php ===
+<?php
+// Fix HTTPS behind nginx reverse proxy
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    $_SERVER['HTTPS'] = 'on';
+    $_SERVER['SERVER_PORT'] = 443;
+}
+
+/**
+ * The base configuration for WordPress
+ *
+ * The wp-config.php creation script uses this file during the installation.
+ * You don't have to use the web site, you can copy this file to "wp-config.php"
+ * and fill in the values.
+ *
+ * This file contains the following configurations:
+ *
+ * * Database settings
+ * * Secret keys
+ * * Database table prefix
+ * * ABSPATH
+
+============================================================
+  STEP 7: Check .htaccess — remove any duplicate HTTPS redirect rules
+============================================================
+
+--- .htaccess for bhislass.com ---
+=== Current .htaccess ===
+# BEGIN LiteSpeed noabort
+<IfModule rewrite_module>
+RewriteEngine On
+RewriteRule .* - [E=noabort:1]
+</IfModule>
+# END liteSpeed noabort
+
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+DirectoryIndex index.php
+RewriteRule ^index.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+=== Does it have HTTPS redirect? ===
+No HTTPS rules in .htaccess
+
+--- .htaccess for paxalphaltd.com ---
+=== Current .htaccess ===
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+DirectoryIndex index.php
+RewriteRule ^index.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+=== Does it have HTTPS redirect? ===
+No HTTPS rules in .htaccess
+
+============================================================
+  STEP 8: Reload Apache to apply wp-config changes
+============================================================
+Syntax OK
+
+Apache reloaded OK
+
+============================================================
+  STEP 9: Re-test the problem domains
+============================================================
+
+--- Testing bhislass.com ---
+FINAL_HTTP_CODE=200 REDIRECTS=0
+
+--- Testing paxalphaltd.com ---
+FINAL_HTTP_CODE=200 REDIRECTS=0
+
+Done.

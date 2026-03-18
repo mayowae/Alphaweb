@@ -1,0 +1,101 @@
+=== SSL cert files ===
+-rwxrwx--- 1 webuzo webuzo 1800 Mar  8 16:00 /var/webuzo/users/mayowae/ssl/godproposescollege.com-ca.crt
+-rwxrwx--- 1 webuzo webuzo 5345 Mar  8 16:00 /var/webuzo/users/mayowae/ssl/godproposescollege.com-combined.pem
+-rwxrwx--- 1 webuzo webuzo 1869 Mar  8 16:00 /var/webuzo/users/mayowae/ssl/godproposescollege.com.crt
+-rwxrwx--- 1 webuzo webuzo 1674 Mar  8 16:00 /var/webuzo/users/mayowae/ssl/godproposescollege.com.key
+
+=== Try creating combined PEM if missing ===
+Combined PEM exists.
+subject=CN=godproposescollege.com
+notAfter=Jun  6 15:01:33 2026 GMT
+
+=== nginx cert test for godproposescollege ===
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/godproposescollege.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/godproposescollege.com.key;
+
+=== WordPress siteurl for godproposescollege ===
+
+=== Check WP DB siteurl ===
+
+=== HTTPS redirect chain for godproposescollege ===
+*   Trying 127.0.0.1:443...
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+*  SSL certificate verify ok.
+* old SSL session ID is stale, removing
+< HTTP/2 301 
+< HTTP/2 301 
+< HTTP/2 301 
+< HTTP/2 301
+=== Directory listing ===
+total 8
+drwxr-xr-x  2 mayowae nobody 4096 Feb 22 21:21 .
+drwx--x--x 18 mayowae nobody 4096 Mar  1 22:09 ..
+
+=== Directory permissions ===
+Access: (0755/drwxr-xr-x)  Uid: ( 1003/ mayowae)   Gid: (65534/  nobody)
+Access: 2026-03-11 12:54:48.630815571 +0000
+Access: (0711/drwx--x--x)  Uid: ( 1003/ mayowae)   Gid: (65534/  nobody)
+Access: 2026-03-10 18:56:40.301556434 +0000
+
+=== Apache error log for thepeopleimpact ===
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 00:00:13.725251 2026] [ssl:error] [pid 4502:tid 4502] AH02604: Unable to configure certificate thepeopleimpact.com:443:0 for stapling
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:28:54.582788 2026] [autoindex:error] [pid 206426:tid 206426] [client 127.0.0.1:55856] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:34:10.367013 2026] [autoindex:error] [pid 206427:tid 206427] [client 127.0.0.1:54094] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive, referer: http://thepeopleimpact.com
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:35:37.378465 2026] [autoindex:error] [pid 206426:tid 206426] [client 127.0.0.1:47350] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:39:45.997175 2026] [autoindex:error] [pid 206409:tid 206409] [client 127.0.0.1:59862] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:50:17.563931 2026] [ssl:error] [pid 4502:tid 4502] AH02218: ssl_stapling_init_cert: no OCSP URI in certificate and no SSLStaplingForceURL set [subject: CN=thepeopleimpact.com / issuer: CN=R12,O=Let's Encrypt,C=US / serial: 062AEB4698FC86633AF596579B5C8FE9233C / notbefore: Feb 22 20:22:46 2026 GMT / notafter: May 23 20:22:45 2026 GMT]
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:50:17.563987 2026] [ssl:error] [pid 4502:tid 4502] AH02604: Unable to configure certificate thepeopleimpact.com:443:0 for stapling
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:51:13.259835 2026] [autoindex:error] [pid 284721:tid 284721] [client 127.0.0.1:56494] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:54:49.649575 2026] [autoindex:error] [pid 284774:tid 284774] [client 127.0.0.1:35532] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive
+/usr/local/apps/apache2/logs/thepeopleimpact.com.err:[Wed Mar 11 12:55:24.604176 2026] [autoindex:error] [pid 284774:tid 284774] [client 127.0.0.1:56314] AH01276: Cannot serve directory /home/mayowae/thepeopleimpact.com/: No matching DirectoryIndex (index.php,index.php8,index.php7,index.php5,index.perl,index.pl,index.plx,index.ppl,index.cgi,index.jsp,index.jp,index.phtml,index.shtml,index.xhtml,index.html,index.htm,index.js) found, and server-generated directory index forbidden by Options directive
+
+=== Apache VH config for thepeopleimpact ===
+	ServerName thepeopleimpact.com
+	ServerAlias www.thepeopleimpact.com mail.thepeopleimpact.com
+	DocumentRoot /home/mayowae/thepeopleimpact.com
+	
+	
+	<IfModule security2_module>
+		SecRuleEngine Off
+	</IfModule>
+	<IfModule suexec_module>
+		<IfModule !mod_ruid2.c>
+			SuexecUserGroup mayowae mayowae
+		</IfModule>
+	</IfModule>
+	<IfModule ruid2_module>
+		RMode config
+		RUidGid mayowae mayowae
+	</IfModule>
+	
+	<If "%{REQUEST_URI} !~ m#\.well-known\/.*m#">
+		
+		
+	</If>
+	<If "%{REQUEST_URI} =~ m#\.well-known\/.*m#">
+		RewriteCond %{REQUEST_URI} ^/\.well-known/ [NC]
+		RewriteRule ^ - [E=DISABLE_HTACCESS:1]
+
+=== HTTPS raw response ===
+HTTP/2 403 
+server: nginx/1.20.1
+date: Wed, 11 Mar 2026 12:57:05 GMT
+content-type: text/html
+content-length: 2968
+last-modified: Mon, 06 Oct 2025 15:36:51 GMT
+accept-ranges: bytes
+Fixing ownership and permissions...
+Permissions fixed
+
+=== Re-test after fix ===
+HTTPS: 403
+  ✅  alphakolect.com                             HTTPS=200
+  ✅  bhislass.com                                HTTPS=200
+  ✅  paxalphaltd.com                             HTTPS=200
+  ✅  kosheglobal.com                             HTTPS=200
+  ✅  vinemorrisgroup.com                         HTTPS=200
+  ✅  modoniteintegrated.com.ng                   HTTPS=200
+  ✅  suppakash.com                               HTTPS=200
+  ❌  godproposescollege.com                      HTTPS=301ERR
+  ⚠️   thepeopleimpact.com                         HTTPS=403
+  🔒 BLOCKED  unknown-xyz.com                             HTTPS=000ERR

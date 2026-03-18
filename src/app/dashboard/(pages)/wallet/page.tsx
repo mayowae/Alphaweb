@@ -1447,10 +1447,10 @@ const TierModal = ({ isOpen, onClose, currentTier, onUpgradeSelect, tiers: dynam
               <div>
                 <p className={`text-[10px] mb-2 ${tier.level === 0 ? 'text-white/70' : 'text-gray-500'}`}>Requirements</p>
                 <div className="flex flex-wrap gap-x-6 gap-y-1">
-                  {tier.requirements.map((req, ridx) => (
+                  {(tier.requirements || []).map((req: any, ridx: number) => (
                     <div key={ridx} className="flex items-center text-xs font-medium">
                       <span className="w-1.5 h-1.5 rounded-full bg-current mr-2 opacity-60" />
-                      {req}
+                      {String(req)}
                     </div>
                   ))}
                 </div>

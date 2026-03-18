@@ -1,0 +1,122 @@
+=== TRACE: bhislass.com HTTPS redirect chain ===
+*   Trying 127.0.0.1:443...
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+* Connected to bhislass.com (127.0.0.1) port 443 (#0)
+< HTTP/2 301 
+
+=== RAW 8082 response headers for bhislass.com ===
+HTTP/1.1 421 Misdirected Request
+Date: Wed, 11 Mar 2026 12:47:08 GMT
+Server: Apache
+Content-Length: 322
+Connection: close
+Content-Type: text/html; charset=iso-8859-1
+
+
+=== RAW 8081 response headers for bhislass.com ===
+HTTP/1.1 301 Moved Permanently
+Date: Wed, 11 Mar 2026 12:47:08 GMT
+Server: Apache
+Permissions-Policy: private-state-token-redemption=(self "https://www.google.com" "https://www.gstatic.com" "https://recaptcha.net" "https://challenges.cloudflare.com" "https://hcaptcha.com"), private-state-token-issuance=(self "https://www.google.com" "https://www.gstatic.com" "https://recaptcha.net" "https://challenges.cloudflare.com" "https://hcaptcha.com")
+X-Redirect-By: WordPress
+Location: https://bhislass.com/
+Content-Length: 0
+Connection: close
+Content-Type: text/html; charset=UTF-8
+
+
+=== Apache webuzoVH.conf bhislass section ===
+	ServerName bhislass.com
+	ServerAlias www.bhislass.com mail.bhislass.com
+	DocumentRoot /home/mayowae/bhislass.com
+	
+	
+	<IfModule security2_module>
+		SecRuleEngine Off
+	</IfModule>
+	<IfModule suexec_module>
+		<IfModule !mod_ruid2.c>
+			SuexecUserGroup mayowae mayowae
+		</IfModule>
+	</IfModule>
+	<IfModule ruid2_module>
+		RMode config
+		RUidGid mayowae mayowae
+	</IfModule>
+	
+	<If "%{REQUEST_URI} !~ m#\.well-known\/.*m#">
+		
+		
+	</If>
+	<If "%{REQUEST_URI} =~ m#\.well-known\/.*m#">
+		RewriteCond %{REQUEST_URI} ^/\.well-known/ [NC]
+		RewriteRule ^ - [E=DISABLE_HTACCESS:1]
+	</If>
+	<Directory "/home/mayowae/*">
+		<If "-n %{reqenv:DISABLE_HTACCESS}">
+			AllowOverride none
+		</If>
+	</Directory>
+	
+	<FilesMatch \.(php|phtml)$>
+		<If "-f %{REQUEST_FILENAME}">
+			SetHandler "proxy:unix:/usr/local/apps/php82/var/fpm-mayowae.sock|fcgi://localhost"	
+		</If>
+	</FilesMatch>
+	<IfModule alias_module>
+		ScriptAlias /cgi-bin/ /home/mayowae/bhislass.com/cgi-bin/
+	</IfModule>
+
+=== All ports Apache listens on ===
+/usr/local/apps/apache2/etc/original/httpd.conf:Listen 80
+/usr/local/apps/apache2/etc/original/httpd.conf.bak:Listen 80
+/usr/local/apps/apache2/etc/original/extra/httpd-ssl.conf:Listen 443
+/usr/local/apps/apache2/etc/extra/httpd-ssl.conf:Listen 443
+/usr/local/apps/apache2/etc/conf.d/webuzo.conf:Listen 8081
+/usr/local/apps/apache2/etc/conf.d/webuzo.conf:Listen 8082
+/usr/local/apps/apache2/etc/conf.d/webuzo.conf.bak:Listen 80
+/usr/local/apps/apache2/etc/conf.d/webuzo.conf.bak:Listen 443
+
+=== WordPress bhislass config location ===
+/home/mayowae/bhislass.com/wp-config.php
+/home/mayowae/bhislass.com/wp-content/uploads/ai-builder/.htaccess
+/home/mayowae/bhislass.com/wp-content/uploads/astra-sites/.htaccess
+
+=== bhislass .htaccess ===
+# BEGIN LiteSpeed noabort
+<IfModule rewrite_module>
+RewriteEngine On
+RewriteRule .* - [E=noabort:1]
+</IfModule>
+# END liteSpeed noabort
+
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+DirectoryIndex index.php
+RewriteRule ^index.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+=== bhislass wp-config.php relevant lines ===
+ * @link https://wordpress.org/support/article/editing-wp-config-php/
+ * the {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org secret-key service}.
+ * @link https://wordpress.org/support/article/debugging-in-wordpress/

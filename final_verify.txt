@@ -1,0 +1,10 @@
+  ✅  alphakolect.com                             HTTPS=200
+  ✅  bhislass.com                                HTTPS=200
+  ✅  paxalphaltd.com                             HTTPS=200
+  ✅  kosheglobal.com                             HTTPS=200
+  ✅  vinemorrisgroup.com                         HTTPS=200
+  ✅  modoniteintegrated.com.ng                   HTTPS=200
+  ✅  suppakash.com                               HTTPS=200
+  ❌  godproposescollege.com                      HTTPS=301ERR
+  ✅  thepeopleimpact.com                         HTTPS=200
+  🔒 BLOCKED  unknown-xyz.com                             HTTPS=000ERR

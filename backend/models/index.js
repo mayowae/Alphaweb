@@ -204,13 +204,7 @@ db.LoanApplication.belongsTo(db.Agent, { foreignKey: 'agentId' });
 db.Staff.hasMany(db.LoanApplication, { foreignKey: 'approvedBy' });
 db.LoanApplication.belongsTo(db.Staff, { foreignKey: 'approvedBy' });
 
-// Loan associations (updated)
-db.Merchant.hasMany(db.Loan, { foreignKey: 'merchantId' });
-db.Loan.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
-
-db.Customer.hasMany(db.Loan, { foreignKey: 'customerId' });
-db.Loan.belongsTo(db.Customer, { foreignKey: 'customerId' });
-
+// Additional Loan associations
 db.Agent.hasMany(db.Loan, { foreignKey: 'agentId' });
 db.Loan.belongsTo(db.Agent, { foreignKey: 'agentId' });
 

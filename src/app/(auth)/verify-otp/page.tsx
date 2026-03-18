@@ -27,7 +27,16 @@ export default function VerifyOtp() {
       setIsLoading(true);
       await verifyOtp(String(email).trim(), fullOtp);
       Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
-      router.push('/login');
+      
+      // Check if this is a forgot password flow
+      const urlParams = new URLSearchParams(window.location.search);
+      const isForgotPassword = urlParams.get('flow') === 'forgot-password';
+      
+      if (isForgotPassword) {
+        router.push('/change-password');
+      } else {
+        router.push('/login');
+      }
     } catch (err:any) {
       Swal.fire({ icon: "error", title: "Verification failed", text: err?.message || 'Unable to verify OTP' });
     } finally {

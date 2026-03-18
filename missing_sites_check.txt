@@ -1,0 +1,50 @@
+======= ALL SITE DOCUMENT ROOTS =======
+  alphakolect.com: 0 files, WordPress=no
+  bhislass.com: 22 files, WordPress=YES
+  paxalphaltd.com: 21 files, WordPress=YES
+  kosheglobal.com: 21 files, WordPress=YES
+  vinemorrisgroup.com: 20 files, WordPress=YES
+  modoniteintegrated.com.ng: 21 files, WordPress=YES
+  suppakash.com: 20 files, WordPress=YES
+  godproposescollege.com: 4 files, WordPress=no
+  thepeopleimpact.com: 1 files, WordPress=no
+
+======= SEARCHING FOR MISSING SITE FILES =======
+-- godproposescollege files in other locations --
+/home/mayowae/godproposescollege.com/backup/database_backup/db_ver_6.3.0_2022-03-11_21-02-15.sql
+/home/mayowae/godproposescollege.com/update/smart_school_update_6.3.0_to_6.4.0/step-1/migrate.sql
+/home/mayowae/godproposescollege.com/update/smart_school_src/application/controllers/install/database.sql
+
+-- thepeopleimpact files in other locations --
+
+======= WEBUZO DATA DIRECTORIES =======
+certs
+mail
+nginx
+nginx_proxy_cache
+php
+php-tmp
+roundcube
+www
+
+======= ALL WORDPRESS SITES FOUND ON SERVER =======
+/home/mayowae/paxalphaltd.com/wp-config.php
+/home/mayowae/vinemorrisgroup.com/wp-config.php
+/home/mayowae/suppakash.com/wp-config.php
+/home/mayowae/kosheglobal.com/wp-config.php
+/home/mayowae/modoniteintegrated.com.ng/wp-config.php
+/home/mayowae/bhislass.com/wp-config.php
+
+======= DATABASE — WordPress tables for missing sites =======
+Searching MySQL for godproposescollege and thepeopleimpact databases...
+
+All databases:
+Database
+mayowae_schoolgodpro
+mayowae_wp186
+mayowae_wp469
+mayowae_wp654
+mayowae_wp659
+mayowae_wp89
+mayowae_wp992
+test

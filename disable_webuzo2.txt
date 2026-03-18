@@ -1,0 +1,161 @@
+Connected
+
+============================================================
+  STEP 1: Force-mask Webuzo systemd services
+============================================================
+--- Masking /etc/systemd/system/webuzo.service ---
+  Masked: /etc/systemd/system/webuzo.service -> /dev/null
+--- Masking /etc/systemd/system/webuzo-onboot.service ---
+  Masked: /etc/systemd/system/webuzo-onboot.service -> /dev/null
+
+=== Verify mask ===
+○ webuzo.service
+     Loaded: masked (Reason: Unit webuzo.service is masked.)
+     Active: inactive (dead)
+○ webuzo-onboot.service
+     Loaded: masked (Reason: Unit webuzo-onboot.service is masked.)
+     Active: inactive (dead)
+
+============================================================
+  STEP 2: Dismount and mask run-webuzo.mount
+============================================================
+=== Current run-webuzo.mount status ===
+● run-webuzo.mount - /run/webuzo
+     Loaded: loaded (/proc/self/mountinfo)
+     Active: active (mounted) since Mon 2026-03-09 19:38:43 UTC; 1 day 18h ago
+      Until: Mon 2026-03-09 19:38:43 UTC; 1 day 18h ago
+      Where: /run/webuzo
+       What: tmpfs
+
+Notice: journal has been rotated since unit was started, output may be incomplete.
+
+Stopping run-webuzo.mount...
+Masking run-webuzo.mount...
+Unit run-webuzo.mount does not exist, proceeding anyway.
+Created symlink /etc/systemd/system/run-webuzo.mount → /dev/null.
+
+=== Verify ===
+○ run-webuzo.mount
+     Loaded: masked (Reason: Unit run-webuzo.mount is masked.)
+     Active: inactive (dead)
+
+Mar 11 14:09:58 server1.alphakolect.com systemd[1]: Unmounting /run/webuzo...
+
+============================================================
+  STEP 3: Kill orphan 'nobody' nginx cache manager processes
+============================================================
+=== Orphan nobody nginx processes ===
+nobody      1169  0.0  0.3  99068  6552 ?        S    Mar09   0:00 nginx: cache manager process
+nobody    121181  0.0  0.2  97032  4612 ?        S    Mar10   0:00 nginx: cache manager process
+root      468174  0.0  0.1   4744  3552 ?        Ss   14:09   0:00 bash -c  echo "=== Orphan nobody nginx processes ===" ps aux | grep 'nginx: cache manager' | grep nobody  echo "" echo "Killing orphan nginx cache managers..." pkill -9 -f 'nginx: cache manager' 2>/dev/null && echo "Killed" || echo "None to kill"  sleep 1 echo "" echo "=== Remaining nginx processes ===" ps aux | grep nginx | grep -v grep 
+
+Killing orphan nginx cache managers...
+
+============================================================
+  STEP 4: Remove ALL remaining Webuzo/Softaculous cron files
+============================================================
+=== Files to remove ===
+-rw-r--r-- 1 root root 276 Oct  6 15:54 /etc/cron.d/backuply
+-rw-r--r-- 1 root root  95 Oct  6 15:54 /etc/cron.d/backuply2
+-rw-r--r-- 1 root root 100 Mar 11 07:20 /etc/cron.d/emps
+-rw-r--r-- 1 root root 129 Mar 11 07:20 /etc/cron.d/lets_encrypt
+-rw-r--r-- 1 root root 115 Oct  6 15:53 /etc/cron.d/softaculous
+-rw-r--r-- 1 root root 119 Oct  6 15:53 /etc/cron.d/softaculous2
+
+Removing...
+  Removed: /etc/cron.d/emps
+  Removed: /etc/cron.d/lets_encrypt
+  Removed: /etc/cron.d/softaculous
+  Removed: /etc/cron.d/softaculous2
+  Removed: /etc/cron.d/backuply
+  Removed: /etc/cron.d/backuply2
+
+=== Remaining /etc/cron.d/ files ===
+total 24
+drwxr-xr-x.  2 root root  4096 Mar 11 14:10 .
+drwxr-xr-x. 95 root root 12288 Mar  9 07:09 ..
+-rw-r--r--.  1 root root   128 Sep 25 11:43 0hourly
+-rw-r--r--   1 root root    78 Feb 11 17:58 fstrim-weekly
+
+============================================================
+  STEP 5: Stop and disable Webuzo php-fpm (/usr/local/emps)
+============================================================
+=== Webuzo php-fpm processes ===
+
+Killing Webuzo php-fpm...
+
+============================================================
+  STEP 6: Remove Webuzo rc.d boot symlinks
+============================================================
+Removing rc.d webuzo symlinks...
+  Removing: /etc/rc.d/init.d/webuzo-onboot
+  Removing: /etc/rc.d/init.d/webuzo
+  Removing: /etc/rc.d/rc5.d/K90webuzo
+  Removing: /etc/rc.d/rc5.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc2.d/K90webuzo
+  Removing: /etc/rc.d/rc2.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc6.d/K90webuzo
+  Removing: /etc/rc.d/rc6.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc4.d/K90webuzo
+  Removing: /etc/rc.d/rc4.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc1.d/K90webuzo
+  Removing: /etc/rc.d/rc1.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc0.d/K90webuzo
+  Removing: /etc/rc.d/rc0.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc3.d/K90webuzo
+  Removing: /etc/rc.d/rc3.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc0.d/K90webuzo
+  Removing: /etc/rc.d/rc0.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc1.d/K90webuzo
+  Removing: /etc/rc.d/rc1.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc2.d/K90webuzo
+  Removing: /etc/rc.d/rc2.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc3.d/K90webuzo
+  Removing: /etc/rc.d/rc3.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc4.d/K90webuzo
+  Removing: /etc/rc.d/rc4.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc5.d/K90webuzo
+  Removing: /etc/rc.d/rc5.d/K90webuzo-onboot
+  Removing: /etc/rc.d/rc6.d/K90webuzo
+  Removing: /etc/rc.d/rc6.d/K90webuzo-onboot
+
+=== Verify - remaining webuzo rc.d links ===
+
+============================================================
+  STEP 7: Final verification — complete Webuzo shutdown
+============================================================
+=== 1. Running processes ===
+  CLEAN
+
+=== 2. Active systemd webuzo units ===
+  CLEAN
+
+=== 3. Webuzo cron entries ===
+  CLEAN
+
+=== 4. Webuzo rc.d boot links ===
+
+=== 5. Ports in use ===
+LISTEN 0      511                            0.0.0.0:8080      0.0.0.0:*    users:(("nginx",pid=284773,fd=10),("nginx",pid=284772,fd=10),("nginx",pid=277206,fd=10))                                                                                                   
+LISTEN 0      511                            0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=284773,fd=8),("nginx",pid=284772,fd=8),("nginx",pid=277206,fd=8))                                                                                                      
+LISTEN 0      511                            0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=284773,fd=6),("nginx",pid=284772,fd=6),("nginx",pid=277206,fd=6))                                                                                                      
+LISTEN 0      511                                  *:8081            *:*    users:(("httpd",pid=467435,fd=4),("httpd",pid=467410,fd=4),("httpd",pid=467409,fd=4),("httpd",pid=467408,fd=4),("httpd",pid=467407,fd=4),("httpd",pid=467406,fd=4),("httpd",pid=4502,fd=4))
+LISTEN 0      511                               [::]:8080         [::]:*    users:(("nginx",pid=284773,fd=11),("nginx",pid=284772,fd=11),("nginx",pid=277206,fd=11))                                                                                                   
+LISTEN 0      511                               [::]:443          [::]:*    users:(("nginx",pid=284773,fd=9),("nginx",pid=284772,fd=9),("nginx",pid=277206,fd=9))                                                                                                      
+LISTEN 0      511                               [::]:80           [::]:*    users:(("nginx",pid=284773,fd=7),("nginx",pid=284772,fd=7),("nginx",pid=277206,fd=7))                                                                                                      
+
+=== 6. Active nginx processes ===
+root      277206  0.0  0.4  25432  9596 ?        Ss   09:46   0:00 nginx: master process /usr/sbin/nginx
+nginx     284772  0.0  0.5  29296 11648 ?        S    12:50   0:00 nginx: worker process
+nginx     284773  0.0  0.6  29264 12528 ?        S    12:50   0:01 nginx: worker process
+
+=== 7. Webuzo disabled binaries ===
+/usr/local/emps/sbin/nginx.disabled
+  none
+
+=== 8. Systemd masked services ===
+run-webuzo.mount                           masked          disabled
+webuzo-onboot.service                      masked          disabled
+webuzo.service                             masked          disabled
+
+Done.

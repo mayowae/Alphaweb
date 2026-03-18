@@ -14,8 +14,8 @@ import { createPackage } from '../../../../../../../services/api'
 const Addpackage = ({ packag, onClose }: pack) => {
   const [form, setForm] = useState({
     name: '',
-    type: 'Flexible',
-    seedType: 'Percentage',
+    type: 'Fixed',
+    seedType: 'First Saving',
     seedAmount: '',
     period: '',
     collectionDays: 'Daily',

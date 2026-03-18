@@ -1,0 +1,28 @@
+--- Running command: systemctl stop httpd ---
+--- Running command: systemctl stop apache2 ---
+Error:
+Failed to stop apache2.service: Unit apache2.service not loaded.
+
+--- Running command: systemctl restart nginx ---
+--- Running command: systemctl status nginx --no-pager ---
+Output:
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; preset: disabled)
+     Active: active (running) since Sun 2026-03-01 22:51:05 UTC; 895ms ago
+    Process: 2484783 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    Process: 2484784 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+    Process: 2484785 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+   Main PID: 2484786 (nginx)
+      Tasks: 3 (limit: 12300)
+     Memory: 3.8M (peak: 3.9M)
+        CPU: 27ms
+     CGroup: /system.slice/nginx.service
+             ├─2484786 "nginx: master process /usr/sbin/nginx"
+             ├─2484787 "nginx: worker process"
+             └─2484788 "nginx: worker process"
+
+Mar 01 22:51:05 server1.alphakolect.com systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Mar 01 22:51:05 server1.alphakolect.com nginx[2484784]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Mar 01 22:51:05 server1.alphakolect.com nginx[2484784]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Mar 01 22:51:05 server1.alphakolect.com systemd[1]: Started The nginx HTTP and reverse proxy server.
+

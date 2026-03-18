@@ -1,10 +1,12 @@
-const { WalletUpgradeRequest, Merchant, AdminStaff, WalletTier } = require('../models');
+const { WalletUpgradeRequest, Merchant, AdminStaff, WalletTier, WalletTransaction } = require('../models');
 
 // Submit upgrade request (Merchant)
 const submitUpgradeRequest = async (req, res) => {
   try {
     const merchantId = req.user.id;
-    const { targetLevel, metadata } = req.body;
+    const { targetLevel, metadata: metadataRaw } = req.body;
+    
+    const targetLvl = parseInt(targetLevel);
     
     // Check if there's already a pending request
     const existingRequest = await WalletUpgradeRequest.findOne({
@@ -23,22 +25,138 @@ const submitUpgradeRequest = async (req, res) => {
     
     const currentLevelStr = merchant.accountLevel || 'Tier 0';
     const currentLevel = parseInt(currentLevelStr.replace(/[^0-9]/g, '')) || 0;
+
+    if (targetLvl <= currentLevel) {
+      return res.status(400).json({ message: `You are already at or above Tier ${targetLvl}` });
+    }
+
+    // Validate Required Documents based on Tier
+    const documents = {};
+    if (req.files) {
+      Object.keys(req.files).forEach(key => {
+         documents[key] = req.files[key][0].filename;
+      });
+    }
+
+    let metadata = {};
+    try {
+      metadata = typeof metadataRaw === 'string' ? JSON.parse(metadataRaw) : (metadataRaw || {});
+    } catch (e) {
+      metadata = { note: metadataRaw };
+    }
+
+    // Tier 2 Requirements: Selfie and Government ID and DOB
+    if (targetLvl === 2) {
+      if (!documents.selfie) {
+        return res.status(400).json({ message: 'Selfie is required for Tier 2 upgrade' });
+      }
+      if (!documents.governmentId) {
+        return res.status(400).json({ message: 'Government ID is required for Tier 2 upgrade' });
+      }
+      if (!metadata.dob) {
+        return res.status(400).json({ message: 'Date of Birth is required for Tier 2 upgrade' });
+      }
+    }
+
+    // Tier 3 Requirements: Business Cert and Proof of Address
+    if (targetLvl === 3) {
+      if (!documents.businessCert) {
+        return res.status(400).json({ message: 'Business Certificate is required for Tier 3 upgrade' });
+      }
+      if (!documents.proofOfAddress) {
+        return res.status(400).json({ message: 'Proof of Address is required for Tier 3 upgrade' });
+      }
+    }
+    
+    // Get Target Tier to find the fee
+    const targetTier = await WalletTier.findOne({ where: { level: targetLvl } });
+    if (!targetTier) {
+       return res.status(404).json({ message: 'Target tier not found' });
+    }
+
+    const parseAmount = (str) => {
+      if (!str) return 0;
+      return parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+    };
+
+    const upgradeFee = parseAmount(targetTier.fee);
+
+    // Calculate current balance
+    const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
+    let currentBalance = 0;
+
+    // Check TransactPay if available
+    if (merchant.accountNumber) {
+      try {
+        const tpBalanceData = await fetchTpBalance(merchant.accountNumber);
+        if (tpBalanceData) {
+          currentBalance = parseFloat(tpBalanceData.availableBalance || tpBalanceData.balance || 0);
+        }
+      } catch (tpError) {
+        console.warn('Failed to fetch TransactPay balance, falling back to local calculation');
+      }
+    }
+
+    // Fallback or Addition: local transaction calculation if currentBalance is still 0 
+    // (or just always use local for deduplication if that's the source of truth for fees)
+    if (currentBalance === 0) {
+      const transactions = await WalletTransaction.findAll({
+        where: { merchantId, status: 'Completed' }
+      });
+      
+      transactions.forEach(tx => {
+        const amt = parseFloat(tx.amount);
+        if (tx.transactionType === 'credit' || tx.type === 'credit' || tx.transactionType === 'initial_balance') {
+          currentBalance += amt;
+        } else if (tx.transactionType === 'debit' || tx.type === 'debit') {
+          currentBalance -= amt;
+        }
+      });
+    }
+
+    let feeDeducted = false;
+
+    // Deduct fee if balance is sufficient
+    if (upgradeFee > 0 && currentBalance >= upgradeFee) {
+      try {
+        await WalletTransaction.create({
+          merchantId,
+          type: 'debit',
+          transactionType: 'debit',
+          amount: upgradeFee,
+          status: 'Completed',
+          description: `Wallet Tier ${targetLvl} (${targetTier.name}) Upgrade Fee`,
+          reference: `FEE-UPG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          category: 'Service Fee',
+          date: new Date(),
+          balanceBefore: currentBalance,
+          balanceAfter: currentBalance - upgradeFee
+        });
+        feeDeducted = true;
+        metadata.upgradeFee = upgradeFee;
+        metadata.feeDeducted = true;
+        metadata.deductedAt = new Date().toISOString();
+      } catch (deductionError) {
+        console.error('Failed to deduct upgrade fee:', deductionError);
+        // We continue with the request but mention the failure
+      }
+    }
     
     // Create request
     const upgradeRequest = await WalletUpgradeRequest.create({
       merchantId,
       currentLevel,
-      targetLevel: parseInt(targetLevel),
-      metadata: typeof metadata === 'string' ? JSON.parse(metadata) : metadata,
-      documents: req.files ? Object.keys(req.files).reduce((acc, key) => {
-        acc[key] = req.files[key][0].filename;
-        return acc;
-      }, {}) : {},
+      targetLevel: targetLvl,
+      metadata,
+      documents,
     });
     
     res.status(201).json({
-      message: 'Upgrade request submitted successfully',
-      upgradeRequest
+      message: feeDeducted 
+        ? `Upgrade request submitted successfully. A fee of ${targetTier.fee} has been deducted from your wallet.`
+        : 'Upgrade request submitted successfully. Our team will review your selfie and documents.',
+      upgradeRequest,
+      feeDeducted
     });
   } catch (error) {
     console.error('Submit upgrade request error:', error);
@@ -90,7 +208,7 @@ const updateRequestStatus = async (req, res) => {
     await request.update({
       status,
       rejectionReason: status === 'rejected' ? rejectionReason : null,
-      // reviewedBy: adminId, // Temporarily commented out to fix potential FK constraint issue
+      reviewedBy: adminId, 
       reviewedAt: new Date()
     });
     

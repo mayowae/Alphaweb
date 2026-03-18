@@ -1,0 +1,91 @@
+Connected
+
+============================================================
+  STEP 1: HTTP/HTTPS status for all domains
+============================================================
+  [OK]  alphakolect.com                               HTTP=301  HTTPS=200
+  [OK]  bhislass.com                                  HTTP=301  HTTPS=200
+  [OK]  paxalphaltd.com                               HTTP=301  HTTPS=200
+  [OK]  kosheglobal.com                               HTTP=301  HTTPS=200
+  [OK]  vinemorrisgroup.com                           HTTP=301  HTTPS=200
+  [OK]  modoniteintegrated.com.ng                     HTTP=301  HTTPS=200
+  [OK]  suppakash.com                                 HTTP=301  HTTPS=200
+  [OK]  godproposescollege.com                        HTTP=301  HTTPS=200
+  [OK]  thepeopleimpact.com                           HTTP=301  HTTPS=200
+
+============================================================
+  STEP 2: Nginx config files in conf.d
+============================================================
+total 48
+drwxr-xr-x 2 root root 4096 Mar 11 09:33 .
+drwxr-xr-x 5 root root 4096 Mar 11 09:33 ..
+-rw-r--r-- 1 root root  402 Mar 11 09:33 00-catchall.conf
+-rw-r--r-- 1 root root 1425 Mar  9 20:05 alphaweb.conf
+-rw-r--r-- 1 root root 1246 Mar 11 12:49 bhislass.conf
+-rw-r--r-- 1 root root 1326 Mar 11 12:50 godproposescollege.com.conf
+-rw-r--r-- 1 root root 1270 Mar 11 12:49 kosheglobal.com.conf
+-rw-r--r-- 1 root root 1350 Mar 11 12:50 modoniteintegrated.com.ng.conf
+-rw-r--r-- 1 root root 1270 Mar 11 12:49 paxalphaltd.com.conf
+-rw-r--r-- 1 root root 1254 Mar 11 12:50 suppakash.com.conf
+-rw-r--r-- 1 root root 1302 Mar 11 12:50 thepeopleimpact.com.conf
+-rw-r--r-- 1 root root 1302 Mar 11 12:50 vinemorrisgroup.com.conf
+
+============================================================
+  STEP 3: Detailed trace for FAILING/WARN domains
+============================================================
+Problem domains: []
+
+============================================================
+  STEP 4: Nginx config for each problem domain
+============================================================
+
+============================================================
+  STEP 5: SSL cert files for problem domains
+============================================================
+
+============================================================
+  STEP 6: Apache VirtualHost for problem domains
+============================================================
+
+============================================================
+  STEP 7: Is Apache listening on 8081?
+============================================================
+LISTEN 0      511                                  *:8081            *:*    users:(("httpd",pid=284853,fd=4),("httpd",pid=284774,fd=4),("httpd",pid=284747,fd=4),("httpd",pid=284721,fd=4),("httpd",pid=284718,fd=4),("httpd",pid=284717,fd=4),("httpd",pid=4502,fd=4))
+LISTEN 0      511                            0.0.0.0:8080      0.0.0.0:*    users:(("nginx",pid=284773,fd=10),("nginx",pid=284772,fd=10),("nginx",pid=277206,fd=10))                                                                                                   
+LISTEN 0      511                            0.0.0.0:443       0.0.0.0:*    users:(("nginx",pid=284773,fd=8),("nginx",pid=284772,fd=8),("nginx",pid=277206,fd=8))                                                                                                      
+LISTEN 0      511                            0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=284773,fd=6),("nginx",pid=284772,fd=6),("nginx",pid=277206,fd=6))                                                                                                      
+LISTEN 0      80                             0.0.0.0:3306      0.0.0.0:*    users:(("mariadbd",pid=766,fd=282))                                                                                                                                                        
+LISTEN 0      511                                  *:8082            *:*    users:(("httpd",pid=284853,fd=6),("httpd",pid=284774,fd=6),("httpd",pid=284747,fd=6),("httpd",pid=284721,fd=6),("httpd",pid=284718,fd=6),("httpd",pid=284717,fd=6),("httpd",pid=4502,fd=6))
+LISTEN 0      511                                  *:8081            *:*    users:(("httpd",pid=284853,fd=4),("httpd",pid=284774,fd=4),("httpd",pid=284747,fd=4),("httpd",pid=284721,fd=4),("httpd",pid=284718,fd=4),("httpd",pid=284717,fd=4),("httpd",pid=4502,fd=4))
+LISTEN 0      511                               [::]:8080         [::]:*    users:(("nginx",pid=284773,fd=11),("nginx",pid=284772,fd=11),("nginx",pid=277206,fd=11))                                                                                                   
+LISTEN 0      511                               [::]:443          [::]:*    users:(("nginx",pid=284773,fd=9),("nginx",pid=284772,fd=9),("nginx",pid=277206,fd=9))                                                                                                      
+LISTEN 0      511                               [::]:80           [::]:*    users:(("nginx",pid=284773,fd=7),("nginx",pid=284772,fd=7),("nginx",pid=277206,fd=7))                                                                                                      
+LISTEN 0      10     [fe80::216:3cff:fe87:1c43]%eth0:53           [::]:*    users:(("named",pid=781,fd=48))                                                                                                                                                            
+LISTEN 0      10     [fe80::216:3cff:fe87:1c43]%eth0:53           [::]:*    users:(("named",pid=781,fd=49))                                                                                                                                                            
+LISTEN 0      80                                [::]:3306         [::]:*    users:(("mariadbd",pid=766,fd=283))
+
+============================================================
+  STEP 8: nginx error log (last 20 lines)
+============================================================
+2026/03/11 12:21:51 [error] 277208#277208: *1565 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.22.33, server: bhislass.com, request: "GET /favicon.ico HTTP/2.0", upstream: "https://127.0.0.1:8084/favicon.ico", host: "bhislass.com", referrer: "https://bhislass.com/"
+2026/03/11 12:23:00 [error] 277207#277207: *1579 connect() failed (111: Connection refused) while connecting to upstream, client: 27.49.16.1, server: godproposescollege.com, request: "GET /read/important-cbt-update HTTP/1.1", upstream: "https://127.0.0.1:8084/read/important-cbt-update", host: "godproposescollege.com"
+2026/03/11 12:23:06 [error] 277207#277207: *1581 connect() failed (111: Connection refused) while connecting to upstream, client: 123.16.18.22, server: godproposescollege.com, request: "GET /read/important-cbt-update HTTP/1.1", upstream: "https://127.0.0.1:8084/read/important-cbt-update", host: "godproposescollege.com"
+2026/03/11 12:23:13 [error] 277207#277207: *1583 connect() failed (111: Connection refused) while connecting to upstream, client: 14.166.25.179, server: godproposescollege.com, request: "GET /read/important-cbt-update HTTP/1.1", upstream: "https://127.0.0.1:8084/read/important-cbt-update", host: "godproposescollege.com"
+2026/03/11 12:24:48 [error] 277207#277207: *1585 connect() failed (111: Connection refused) while connecting to upstream, client: 203.201.164.142, server: paxalphaltd.com, request: "GET /wp-login.php HTTP/2.0", upstream: "https://127.0.0.1:8084/wp-login.php", host: "paxalphaltd.com"
+2026/03/11 12:24:51 [error] 277207#277207: *1585 connect() failed (111: Connection refused) while connecting to upstream, client: 203.201.164.142, server: paxalphaltd.com, request: "POST /wp-login.php HTTP/2.0", upstream: "https://127.0.0.1:8084/wp-login.php", host: "paxalphaltd.com", referrer: "https://paxalphaltd.com/wp-login.php"
+2026/03/11 12:24:57 [error] 277207#277207: *1592 connect() failed (111: Connection refused) while connecting to upstream, client: 95.164.128.108, server: vinemorrisgroup.com, request: "POST /2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/trackback HTTP/1.1", upstream: "https://127.0.0.1:8084/2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/trackback", host: "vinemorrisgroup.com"
+2026/03/11 12:24:58 [error] 277207#277207: *1594 connect() failed (111: Connection refused) while connecting to upstream, client: 95.164.128.108, server: vinemorrisgroup.com, request: "GET /2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/ HTTP/1.1", upstream: "https://127.0.0.1:8084/2025/10/19/unveiling-the-power-of-weight-loss-pills-a-comprehensive-guide/", host: "vinemorrisgroup.com"
+2026/03/11 12:26:46 [error] 277207#277207: *1596 connect() failed (111: Connection refused) while connecting to upstream, client: 113.171.162.147, server: kosheglobal.com, request: "GET /author/kosheglobal/ HTTP/1.1", upstream: "https://127.0.0.1:8084/author/kosheglobal/", host: "kosheglobal.com"
+2026/03/11 12:26:55 [error] 277207#277207: *1598 connect() failed (111: Connection refused) while connecting to upstream, client: 79.181.173.94, server: kosheglobal.com, request: "GET /author/kosheglobal/ HTTP/1.1", upstream: "https://127.0.0.1:8084/author/kosheglobal/", host: "kosheglobal.com"
+2026/03/11 12:27:07 [crit] 277208#277208: *1610 SSL_do_handshake() failed (SSL: error:0A00006C:SSL routines::bad key share) while SSL handshaking, client: 20.171.9.56, server: 0.0.0.0:443
+2026/03/11 12:27:07 [error] 277207#277207: *1604 connect() failed (111: Connection refused) while connecting to upstream, client: 85.165.121.113, server: kosheglobal.com, request: "GET /author/kosheglobal/ HTTP/1.1", upstream: "https://127.0.0.1:8084/author/kosheglobal/", host: "kosheglobal.com"
+2026/03/11 12:27:11 [error] 277207#277207: *1612 connect() failed (111: Connection refused) while connecting to upstream, client: 15.235.96.129, server: suppakash.com, request: "GET /robots.txt HTTP/2.0", upstream: "https://127.0.0.1:8084/robots.txt", host: "suppakash.com"
+2026/03/11 12:27:27 [error] 277207#277207: *1615 connect() failed (111: Connection refused) while connecting to upstream, client: 49.51.141.76, server: thepeopleimpact.com, request: "GET / HTTP/1.1", upstream: "https://127.0.0.1:8084/", host: "thepeopleimpact.com", referrer: "http://www.thepeopleimpact.com"
+2026/03/11 12:28:13 [error] 277207#277207: *1618 connect() failed (111: Connection refused) while connecting to upstream, client: 159.198.36.24, server: bhislass.com, request: "POST /wp-cron.php?doing_wp_cron=1773232093.1299920082092285156250 HTTP/1.1", upstream: "https://127.0.0.1:8084/wp-cron.php?doing_wp_cron=1773232093.1299920082092285156250", host: "bhislass.com"
+2026/03/11 12:28:21 [notice] 282561#282561: signal process started
+2026/03/11 12:39:26 [notice] 283750#283750: signal process started
+2026/03/11 12:50:19 [notice] 284771#284771: signal process started
+2026/03/11 13:09:49 [crit] 284773#284773: *2884 SSL_do_handshake() failed (SSL: error:0A00006C:SSL routines::bad key share) while SSL handshaking, client: 159.203.19.169, server: 0.0.0.0:443
+2026/03/11 13:09:59 [error] 284773#284773: *2917 open() "/var/webuzo-data/www/.well-known/logs233/index.php" failed (2: No such file or directory), client: 20.53.240.38, server: godproposescollege.com, request: "GET /.well-known/logs233/index.php?p= HTTP/1.1", host: "godproposescollege.com"
+
+Done.

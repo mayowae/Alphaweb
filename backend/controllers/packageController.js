@@ -323,6 +323,18 @@ const createPackage = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing merchantId', error: 'merchantId is required' });
     }
 
+    // Check for duplicate package name
+    const existingPackage = await Package.findOne({ 
+      where: { 
+        name, 
+        merchantId, 
+        status: { [Op.ne]: 'Deleted' } 
+      } 
+    });
+    if (existingPackage) {
+      return res.status(400).json({ success: false, message: 'A package with this name already exists' });
+    }
+
     const packageData = await Package.create({
       name,
       type: type || 'Fixed',
@@ -560,6 +572,16 @@ const deletePackage = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Package not found'
+      });
+    }
+
+    // Check if package is assigned to any customers
+    const { Customer } = require('../models');
+    const customerCount = await Customer.count({ where: { packageId: id } });
+    if (customerCount > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot delete package while it is assigned to customers. Please unassign customers first.' 
       });
     }
 
