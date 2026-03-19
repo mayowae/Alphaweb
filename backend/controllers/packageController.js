@@ -1,4 +1,4 @@
-const { Package } = require('../models');
+const { Package, Customer, Collection } = require('../models');
 const { Op } = require('sequelize');
 
 /**
@@ -323,6 +323,22 @@ const createPackage = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing merchantId', error: 'merchantId is required' });
     }
 
+    // Check for double creation
+    const existingPackage = await Package.findOne({
+      where: {
+        name,
+        merchantId,
+        status: { [Op.ne]: 'Deleted' }
+      }
+    });
+
+    if (existingPackage) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'A package with this name already exists for this merchant.' 
+      });
+    }
+
     const packageData = await Package.create({
       name,
       type: type || 'Fixed',
@@ -560,6 +576,24 @@ const deletePackage = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Package not found'
+      });
+    }
+
+    // Prevent deletion if used by customers
+    const customersCount = await Customer.count({ where: { packageId: id } });
+    if (customersCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete package as it is being used by ' + customersCount + ' customer(s). Please reassign them first.'
+      });
+    }
+
+    // Prevent deletion if associated with collection records
+    const collectionsCount = await Collection.count({ where: { packageId: id } });
+    if (collectionsCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete package as it has ' + collectionsCount + ' associated collection records.'
       });
     }
 

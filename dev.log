@@ -1,0 +1,47 @@
+
+> alphaweb@0.1.0 dev
+> set NODE_OPTIONS=--max-old-space-size=4096 && next dev
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+   - Environments: .env
+   - Experiments (use with caution):
+     ✓ memoryBasedWorkersCount
+
+ ✓ Starting...
+ ✓ Ready in 1583ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js
+ ○ Compiling /icon.png ...
+ ✓ Compiled /icon.png in 988ms (100 modules)
+ GET /icon.png?8f3090d34a9489a1 200 in 1169ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js
+ ○ Compiling / ...
+ ✓ Compiled / in 10.7s (1633 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js
+ GET / 200 in 11455ms
+ ✓ Compiled in 1150ms (702 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js
+ GET / 200 in 156ms
+ GET / 200 in 187ms
+ ⚠ Cross origin request detected from alphakolect.com to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ GET / 200 in 165ms
+ GET /icon.png?8f3090d34a9489a1 200 in 38ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 820ms (1562 modules)
+ GET /meta.json 404 in 1214ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js

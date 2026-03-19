@@ -8,9 +8,36 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const router = useRouter();
 
-  const proceed = () => {
-    console.log('email', email);
-    router.push("/collaborator/verify-otp");
+  const proceed = async () => {
+    if (!email) {
+        alert("Please enter a valid email");
+        return;
+    }
+    try {
+        const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alphakolect.com";
+        const res = await fetch(`${BASE_URL}/collaborator/forgot-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (res.ok || data.success) {
+            if (typeof window !== "undefined") {
+                localStorage.setItem("resetEmail", email);
+            }
+            router.push("/collaborator/verify-otp");
+        } else {
+            alert(data.message || data.error || "Failed to send OTP. Please try again.");
+            if (data.message === "Missing email; Email not found. Please sign-up again") {
+                alert("Missing email; Email not found. Please sign-up again");
+            }
+        }
+    } catch (err) {
+        console.error("Error sending OTP", err);
+        alert("An error occurred. Please try again.");
+    }
   };
 
   useEffect(() => {

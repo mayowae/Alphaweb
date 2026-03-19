@@ -6,14 +6,47 @@ import '../../../../../global.css';
 
 export default function VerifyOtp() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
-  const [email, setEmail] = useState("johndoe@gmail.com");
+  const [email, setEmail] = useState("");
   const router = useRouter();
   const inputRefs:any = useRef([]);
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const fullOtp = otp.join("");
-    // console.log("Verifying OTP:", fullOtp);
-    router.push('/collaborator/change-password');
+    try {
+      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alphakolect.com";
+      const res = await fetch(`${BASE_URL}/collaborator/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: fullOtp })
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        router.push('/collaborator/change-password');
+      } else {
+        alert(data.message || data.error || "Invalid OTP");
+      }
+    } catch (e) {
+      alert("Verification failed");
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alphakolect.com";
+      const res = await fetch(`${BASE_URL}/collaborator/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        alert("OTP sent to your email!");
+      } else {
+        alert(data.message || data.error || "Failed to resend OTP");
+      }
+    } catch (e) {
+      alert("Failed to resend");
+    }
   };
 
   const handleChange = (e:any, index:any) => {
@@ -37,6 +70,15 @@ export default function VerifyOtp() {
 
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedEmail = localStorage.getItem("resetEmail");
+      if (savedEmail) {
+        setEmail(savedEmail);
+      } else {
+        router.push("/collaborator/forgot-password");
+      }
+    }
+
     document.body.style.backgroundImage = "url('/images/body-bg.png')";
     document.body.style.backgroundRepeat = "no-repeat";
     document.body.style.backgroundSize = "cover";
@@ -50,7 +92,7 @@ export default function VerifyOtp() {
         document.body.style.backgroundPosition = "";
         document.body.style.backgroundColor = "";
     };
-  }, []);
+  }, [router]);
   
   return (
     <div className="w-full max-w-6xl mx-auto px-6">
@@ -93,9 +135,9 @@ export default function VerifyOtp() {
                 <div className="mt-6 text-center">
                   <span className="text-sm text-gray-600">Didn't receive OTP?</span>
                   &nbsp;&nbsp;
-                  <Link href="/forgot-password" className="text-[#4E37FB] hover:underline font-medium">
+                  <button type="button" onClick={handleResend} className="text-[#4E37FB] hover:underline font-medium">
                     Resend OTP
-                  </Link>
+                  </button>
                 </div>
               </form>
             </div>
