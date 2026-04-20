@@ -1,0 +1,23 @@
+=== Killing existing processes ===
+=== Port 3000 Status Before Start ===
+Port is FREE
+=== Starting Next.js ===
+=== Port 3000 Status After Start ===
+tcp6       0      0 :::3000                 :::*                    LISTEN      640623/next-server  
+=== DEV.LOG ===
+
+> alphaweb@0.1.0 dev
+> set NODE_OPTIONS=--max-old-space-size=4096 && next dev
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+   - Environments: .env
+   - Experiments (use with caution):
+     ✓ memoryBasedWorkersCount
+
+ ✓ Starting...
+ ✓ Ready in 1498ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js

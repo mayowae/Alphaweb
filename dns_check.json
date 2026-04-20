@@ -1,0 +1,5 @@
+{
+  "dig": "",
+  "nslookup": ";; Got SERVFAIL reply from 100.100.100.17, trying next server\nServer:\t\t100.100.100.16\nAddress:\t100.100.100.16#53\n\n** server can't find alphakolect.com: SERVFAIL\n\n",
+  "ping": ""
+}

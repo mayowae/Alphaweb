@@ -1,4 +1,4 @@
-const { Collection, Customer, Agent } = require('../models');
+const { Collection, Customer, Agent, Package, Remittance } = require('../models');
 const { Op, Sequelize } = require('sequelize');
 
 /**
@@ -339,6 +339,21 @@ const createCollection = async (req, res) => {
         message: 'Customer not found'
       });
     }
+    
+    // Find package by name to get its ID
+    let packageId = null;
+    if (packageName) {
+      const pkg = await Package.findOne({ 
+        where: { 
+          name: packageName,
+          merchantId: merchantId,
+          status: { [Op.ne]: 'Deleted' }
+        } 
+      });
+      if (pkg) {
+        packageId = pkg.id;
+      }
+    }
 
     const collection = await Collection.create({
       customerId: customer.id,
@@ -348,6 +363,7 @@ const createCollection = async (req, res) => {
       type,
       description: description || '',
       packageName: packageName || '',
+      packageId: packageId,
       packageAmount: packageAmount ? parseFloat(packageAmount) : null,
       cycle: cycle ? parseInt(cycle) : 31,
       cycleCounter: cycleCounter ? parseInt(cycleCounter) : 1,
@@ -356,6 +372,28 @@ const createCollection = async (req, res) => {
       merchantId,
       dateCreated: new Date()
     });
+
+    // Update customer's packgeId if not set
+    if (!customer.packageId && packageId) {
+        await customer.update({ packageId: packageId });
+    }
+
+    // Automatically place in a Remittance holding state per workflow rules
+    try {
+      await Remittance.create({
+        collectionId: collection.id,
+        customerId: customer.id,
+        customerName: customer.fullName,
+        accountNumber: customer.accountNumber || null,
+        amount: parseFloat(amount),
+        agentId: customer.agentId || null,
+        merchantId,
+        status: 'Pending',
+        notes: `Auto-created alongside Collection #${collection.id}`
+      });
+    } catch (remitError) {
+      console.error('Failed to auto-create holding Remittance:', remitError);
+    }
 
     res.status(201).json({
       success: true,
@@ -388,7 +426,7 @@ const getCollections = async (req, res) => {
             {
               model: Agent,
               as: 'Agent',
-              attributes: ['id', 'fullName']
+              attributes: ['id', 'fullName', 'branch']
             }
           ]
         }
@@ -493,6 +531,38 @@ const updateCollection = async (req, res) => {
       collectedDate: status === 'Collected' ? new Date() : collection.collectedDate
     });
 
+    // If marked as Collected, create a Remittance record
+    if (status === 'Collected') {
+      try {
+        // Check if remittance already exists for this collection to avoid duplicates
+        const existingRemittance = await Remittance.findOne({
+          where: { collectionId: collection.id }
+        });
+
+        if (!existingRemittance) {
+          // Fetch customer to get agent details for the remittance
+          const customer = await Customer.findByPk(collection.customerId);
+          
+          await Remittance.create({
+            collectionId: collection.id,
+            customerId: collection.customerId,
+            customerName: collection.customerName,
+            accountNumber: collection.accountNumber || (customer ? customer.accountNumber : null),
+            amount: collection.amount,
+            agentId: customer ? customer.agentId : null,
+            merchantId: merchantId,
+            status: 'Pending',
+            notes: `Auto-created from Collection #${collection.id}`
+          });
+          console.log(`Auto-created remittance for collection #${collection.id}`);
+        }
+      } catch (remitError) {
+        console.error('Failed to auto-create remittance:', remitError);
+        // We don't fail the whole request just because remittance creation failed, 
+        // but we log it for debugging.
+      }
+    }
+
     res.json({
       success: true,
       message: 'Collection updated successfully',
@@ -535,6 +605,30 @@ const markAsCollected = async (req, res) => {
       amountCollected: amountCollected ? parseFloat(amountCollected) : collection.amount,
       collectionNotes: collectionNotes || ''
     });
+
+    // Create a Remittance record
+    try {
+      const existingRemittance = await Remittance.findOne({
+        where: { collectionId: collection.id }
+      });
+
+      if (!existingRemittance) {
+        const customer = await Customer.findByPk(collection.customerId);
+        await Remittance.create({
+          collectionId: collection.id,
+          customerId: collection.customerId,
+          customerName: collection.customerName,
+          accountNumber: collection.accountNumber || (customer ? customer.accountNumber : null),
+          amount: parseFloat(amountCollected || collection.amount),
+          agentId: customer ? customer.agentId : null,
+          merchantId: merchantId,
+          status: 'Pending',
+          notes: collectionNotes || `Auto-created from Collection #${collection.id}`
+        });
+      }
+    } catch (remitError) {
+      console.error('Failed to auto-create remittance in markAsCollected:', remitError);
+    }
 
     res.json({
       success: true,
@@ -607,6 +701,21 @@ const createCollectionsBulk = async (req, res) => {
         const customer = await Customer.findOne({ where: { fullName: customerName, merchantId } });
         if (!customer) throw new Error('Customer not found');
 
+        // Find package by name to get its ID
+        let packageId = null;
+        if (packageName) {
+          const pkg = await Package.findOne({ 
+            where: { 
+              name: packageName,
+              merchantId: merchantId,
+              status: { [Op.ne]: 'Deleted' }
+            } 
+          });
+          if (pkg) {
+            packageId = pkg.id;
+          }
+        }
+
         const created = await Collection.create({
           customerId: customer.id,
           customerName,
@@ -615,6 +724,7 @@ const createCollectionsBulk = async (req, res) => {
           type,
           description: description || '',
           packageName: packageName || '',
+          packageId: packageId,
           packageAmount: packageAmount ? parseFloat(packageAmount) : null,
           cycle: cycle ? parseInt(cycle) : 31,
           cycleCounter: cycleCounter ? parseInt(cycleCounter) : 1,
@@ -623,6 +733,28 @@ const createCollectionsBulk = async (req, res) => {
           merchantId,
           dateCreated: new Date()
         });
+
+        // Update customer's packgeId if not set
+        if (!customer.packageId && packageId) {
+            await customer.update({ packageId: packageId });
+        }
+
+        // Automatically place in a Remittance holding state per workflow rules
+        try {
+          await Remittance.create({
+            collectionId: created.id,
+            customerId: customer.id,
+            customerName: customer.fullName,
+            accountNumber: customer.accountNumber || null,
+            amount: parseFloat(amount),
+            agentId: customer.agentId || null,
+            merchantId,
+            status: 'Pending',
+            notes: `Auto-created alongside Bulk Collection #${created.id}`
+          });
+        } catch (remitError) {
+          console.error('Failed to auto-create holding Remittance (Bulk):', remitError);
+        }
         results.push({ success: true, id: created.id });
       } catch (err) {
         results.push({ success: false, error: err.message || String(err) });

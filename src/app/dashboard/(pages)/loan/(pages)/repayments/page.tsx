@@ -105,7 +105,9 @@ const CreateRepaymentModal = ({
         outstandingAmount: String(out || 0),
         agentId: data.data?.agentId ? String(data.data.agentId) : prev.agentId,
         branch: data.data?.branch ? String(data.data.branch) : prev.branch,
-        accountNumber: data.data?.accountNumber ? String(data.data.accountNumber) : prev.accountNumber
+        accountNumber: data.data?.accountNumber ? String(data.data.accountNumber) : prev.accountNumber,
+        packageName: data.data?.packageName || prev.packageName,
+        packageAmount: data.data?.totalAmount ? String(data.data.totalAmount) : prev.packageAmount
       }));
     } catch {}
   };
@@ -168,63 +170,58 @@ const CreateRepaymentModal = ({
             </select>
           </div>
           <div>
-            <label className="block text-sm mb-1">Package name</label>
-            <select
+            <label className="block text-sm mb-1 font-medium">Package name</label>
+            <input
               value={form.packageName}
-              onChange={(e)=> setForm({ ...form, packageName: e.target.value })}
-              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
-              required
-            >
-              <option value="">Select package</option>
-              {loanPackages.map((p:any)=> (
-                <option key={p.id} value={p.name}>{p.name}</option>
-              ))}
-            </select>
+              readOnly
+              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed"
+              placeholder="Auto-filled from loan"
+            />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1">Package amount</label>
+              <label className="block text-sm mb-1 font-medium">Package amount</label>
               <input
                 type="number"
                 value={form.packageAmount}
-                onChange={(e)=> setForm({ ...form, packageAmount: e.target.value })}
-                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
+                readOnly
+                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed"
                 placeholder="Auto-filled"
               />
             </div>
             <div>
-              <label className="block text-sm mb-1">Outstanding amount</label>
+              <label className="block text-sm mb-1 font-medium">Outstanding amount</label>
               <input
                 type="number"
                 value={form.outstandingAmount}
-                onChange={(e)=> setForm({ ...form, outstandingAmount: e.target.value })}
-                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
+                readOnly
+                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed text-[#D92D20] font-semibold"
                 placeholder="Outstanding"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm mb-1">Amount to pay</label>
+            <label className="block text-sm mb-1 font-medium">Amount to pay</label>
             <input
               type="number"
               value={form.amountToPay}
               onChange={(e)=> setForm({ ...form, amountToPay: e.target.value })}
-              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
+              className="w-full h-[40px] border border-[#4E37FB] rounded-[4px] px-2 focus:ring-1 focus:ring-[#4E37FB] outline-none"
               required
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1">Account number</label>
+              <label className="block text-sm mb-1 font-medium">Account number</label>
               <input
                 value={form.accountNumber}
-                onChange={(e)=> setForm({ ...form, accountNumber: e.target.value })}
-                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
-                placeholder="Optional"
+                readOnly
+                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed"
+                placeholder="Auto-filled"
               />
             </div>
             <div>
-              <label className="block text-sm mb-1">Reference</label>
+              <label className="block text-sm mb-1 font-medium">Reference</label>
               <input
                 value={form.reference}
                 onChange={(e) => setForm({ ...form, reference: e.target.value })}
@@ -658,15 +655,6 @@ const Page = () => {
                       </td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
                         <div className="flex gap-2">
-                          {repayment.status === 'Pending' && (
-                            <button
-                              onClick={() => handleStatusUpdate(repayment.id, 'Completed')}
-                              className="text-green-600 hover:text-green-800"
-                              title="Mark as Completed"
-                            >
-                              <FaCheck className="w-4 h-4" />
-                            </button>
-                          )}
                           <button
                             onClick={() => handleDelete(repayment.id)}
                             className="text-red-600 hover:text-red-800"
@@ -701,15 +689,6 @@ const Page = () => {
                     </span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Actions:</span>
                       <div className="flex gap-2">
-                        {repayment.status === 'Pending' && (
-                          <button
-                            onClick={() => handleStatusUpdate(repayment.id, 'Completed')}
-                            className="text-green-600 hover:text-green-800"
-                            title="Mark as Completed"
-                          >
-                            <FaCheck className="w-4 h-4" />
-                          </button>
-                        )}
                         <button
                           onClick={() => handleDelete(repayment.id)}
                           className="text-red-600 hover:text-red-800"

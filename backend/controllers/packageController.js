@@ -397,6 +397,11 @@ const getPackages = async (req, res) => {
     // Add category filter if provided
     if (category) {
       whereClause.packageCategory = category;
+      
+      // Strict filtering for Collection category
+      if (category === 'Collection') {
+        whereClause.type = { [Op.in]: ['Fixed', 'Flexible', 'Variable'] };
+      }
     }
 
     // Add type filter if provided
@@ -489,6 +494,7 @@ const updatePackage = async (req, res) => {
       // Loan-specific fields
       loanAmount,
       loanInterestRate,
+      interestAmount,
       loanPeriod,
       defaultAmount,
       gracePeriod,
@@ -533,6 +539,7 @@ const updatePackage = async (req, res) => {
       // Loan-specific fields
       loanAmount: loanAmount ? parseFloat(loanAmount) : packageData.loanAmount,
       loanInterestRate: loanInterestRate ? parseFloat(loanInterestRate) : packageData.loanInterestRate,
+      interestAmount: interestAmount ? parseFloat(interestAmount) : packageData.interestAmount,
       loanPeriod: loanPeriod ? parseInt(loanPeriod) : packageData.loanPeriod,
       defaultAmount: defaultAmount ? parseFloat(defaultAmount) : packageData.defaultAmount,
       gracePeriod: gracePeriod ? parseInt(gracePeriod) : packageData.gracePeriod,

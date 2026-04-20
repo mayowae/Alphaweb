@@ -13,6 +13,11 @@ module.exports = (sequelize) => {
     merchantId: { type: DataTypes.INTEGER, allowNull: false, field: 'merchant_id' },
     status: { type: DataTypes.ENUM('Pending', 'Approved', 'Rejected'), defaultValue: 'Pending' },
     notes: { type: DataTypes.TEXT, allowNull: true },
+    source: { 
+      type: DataTypes.ENUM('Mobile', 'Web', 'API'), 
+      defaultValue: 'Web',
+      allowNull: false 
+    },
     approvedAt: { type: DataTypes.DATE, allowNull: true, field: 'approved_at' }
   }, {
     tableName: 'remittances',

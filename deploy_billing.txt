@@ -1,0 +1,50 @@
+=== 1. Deploy billingService_v2 ===
+OK: billingService.js deployed
+
+=== 2. Patch agentController.js ===
+Added import for updateMerchantPlan
+Hooked updateMerchantPlan after agent create
+
+=== 3. Fix authController signup - add planId=1 ===
+Added planId=1 to Merchant.create
+
+=== 4. Update getMerchantSubscriptions in merchantManagementController ===
+Found getMerchantSubscriptions at index 6633
+Current function snippet:
+getMerchantSubscriptions = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const merchant = await Merchant.findByPk(id);
+    if (!merchant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Merchant not found',
+      });
+    }
+
+    // For now, return basic subscription info
+    // You can expand this to include actual subscription/billin
+
+=== 5. Deploy Subscriptions&Billings admin tab ===
+OK: Subscriptions&Billings.tsx deployed
+
+=== 6. Fix getMerchantSubscriptions controller function ===
+Replaced getMerchantSubscriptions function
+merchantManagementController.js saved
+
+=== 7. Backfill planId=1 for existing merchants ===
+UPDATE 27
+
+
+=== 8. Restart backend ===
+Backend log:
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+Server is running on port 5000
+Database connection has been established successfully.
+Server is running on port 5000
+Database connection has been established successfully.
+
+
+=== 9. Triggering frontend build ===
+Build started. Run check_build.py in ~2 minutes.

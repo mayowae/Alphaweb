@@ -1,0 +1,15 @@
+SUCCESS: Added Subscription->Plan association to models/index.js
+Backend restarted.
+Subscription endpoint (no token): {"message":"Access token is required"}
+Backend out log tail:
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+Server is running on port 5000
+Database connection has been established successfully.
+Server is running on port 5000
+Database connection has been established successfully.
+

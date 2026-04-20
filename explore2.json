@@ -1,0 +1,11 @@
+{
+  "src_app_ls": "(auth)\nadmin\nagents\ncontact\ncustomers\ndashboard\nfavicon.ico\nfinancial\nglobals.css\nhelp\nlayout.tsx\nloading.tsx\npage.tsx\npricing\n",
+  "layout_path": "/home/mayowae/public_html/alphaweb/src/app/dashboard/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/collection/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/package/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/investment/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/loan/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/accounting/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/admin/dashboard/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/admin/layout.tsx\n/home/mayowae/public_html/alphaweb/src/app/layout.tsx\n",
+  "backend_ls": "package-lock.json\npackage.json\n",
+  "collab_files": "",
+  "faq_files": "/home/mayowae/public_html/alphaweb/src/app/help/[id]/page.tsx\n/home/mayowae/public_html/alphaweb/src/app/admin/dashboard/(pages)/support/page.tsx\n/home/mayowae/public_html/alphaweb/src/app/admin/utilis/adminApi.ts\n/home/mayowae/public_html/alphaweb/src/app/pricing/page.tsx\n/home/mayowae/public_html/alphaweb/src/app/page.tsx\n",
+  "package_ctrl": "",
+  "help_page": "/home/mayowae/public_html/alphaweb/src/app/help/search.tsx\n/home/mayowae/public_html/alphaweb/src/app/help/page.tsx\n/home/mayowae/public_html/alphaweb/src/app/help/[id]/page.tsx\n",
+  "contact_page": "/home/mayowae/public_html/alphaweb/src/app/contact/page.tsx\n",
+  "pricing_page": "/home/mayowae/public_html/alphaweb/src/app/pricing/page.tsx\n"
+}

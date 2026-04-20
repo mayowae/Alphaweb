@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react'
 import { FaPlus } from 'react-icons/fa'
 import { FaAngleDown } from 'react-icons/fa';
 import Image from 'next/image';
-import { fetchCollections, fetchAgents, updateCollection } from '@/services/api';
+import { fetchCollections, fetchAgents } from '@/services/api';
+import Swal from 'sweetalert2';
 import SingleCollectionForm from '@/components/SingleCollectionForm';
 import BulkCollectionForm from '@/components/BulkCollectionForm';
-import Swal from 'sweetalert2';
 import {
   Select,
   SelectContent,
@@ -25,6 +25,7 @@ interface Collection {
   status: 'Pending' | 'Collected' | 'Overdue';
   dateCreated: string;
   agentName?: string;
+  branch?: string;
   transactionId?: string;
   accountNumber?: string;
 }
@@ -76,6 +77,7 @@ const Page = () => {
           transactionId: collection.transactionId || `COL-${collection.id}-${String.fromCharCode(65 + (index % 26))}${(index % 100).toString().padStart(2, '0')}`,
           accountNumber: collection.accountNumber || customerAccountNumber || '',
           agentName,
+          branch: collection?.customer?.Agent?.branch || '—',
           dateCreated: created,
           customerName: collection.customerName || collection?.customer?.fullName || collection?.customer?.name || ''
         } as Collection;
@@ -141,6 +143,7 @@ const Page = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Collected':
+      case 'Completed':
         return 'text-green-600';
       case 'Pending':
         return 'text-yellow-600';
@@ -159,42 +162,29 @@ const Page = () => {
     );
   }
 
-  const handleApprove = async (id: number) => {
-    try {
-      await updateCollection({ id, status: 'Collected' });
-      await fetchData();
-      Swal.fire({ icon: 'success', title: 'Approved', text: 'Collection approved successfully' });
-    } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed to approve collection' });
-    }
-  };
-
-  const handleDisapprove = async (id: number) => {
-    try {
-      await updateCollection({ id, status: 'Pending' });
-      await fetchData();
-      Swal.fire({ icon: 'success', title: 'Disapproved', text: 'Collection disapproved successfully' });
-    } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: e?.message || 'Failed to disapprove collection' });
-    }
-  };
 
   return (
     <>
     <div className='w-full'>
       <div className='flex flex-wrap justify-between gap-4 md:gap-0 max-md:flex-col max-md:gap-[10px]'>
-        <div className='flex flex-col gap-[3px] min-w-0 w-full md:w-auto'>
+        <div className='flex flex-col gap-[3px] min-w-0'>
           <h1 className='font-inter font-semibold leading-[32px] text-[24px]'>Collections</h1>
-          <p className='leading-[24px] font-inter font-normal text-[#717680] text-[14px] '>Track daily collections from customers and manage agent collection activities.</p>
+          <p className='leading-[24px] font-inter font-normal text-[#717680] text-[14px] '>View historical daily collections from customers.</p>
         </div>
-        <div className='flex items-end mt-2 md:mt-0 w-full md:w-auto gap-2'>
-          <button onClick={() => setIsSingleFormOpen(true)} className='bg-orange-500 text-white px-4 h-[40px] rounded-[4px] flex items-center gap-2'>
-            <FaPlus className='w-[12px]' />
-            <span>Single Collection</span>
+        <div className='flex flex-wrap gap-3 items-center'>
+          <button
+            onClick={() => setIsSingleFormOpen(true)}
+            className='flex items-center gap-2 bg-white border border-[#D0D5DD] text-[#344054] font-inter font-semibold text-[14px] px-4 py-2 rounded-[8px] hover:bg-gray-50 transition-colors'
+          >
+            <FaPlus className='w-4 h-4' />
+            Create Collection
           </button>
-          <button onClick={() => setIsBulkFormOpen(true)} className='bg-green-600 text-white px-4 h-[40px] rounded-[4px] flex items-center gap-2'>
-            <FaPlus className='w-[12px]' />
-            <span>Bulk Collection</span>
+          <button
+            onClick={() => setIsBulkFormOpen(true)}
+            className='flex items-center gap-2 bg-[#4E37FB] text-white font-inter font-semibold text-[14px] px-4 py-2 rounded-[8px] hover:bg-[#3d2bd4] transition-colors'
+          >
+            <FaPlus className='w-4 h-4' />
+            Bulk Collections
           </button>
         </div>
       </div>
@@ -266,7 +256,7 @@ const Page = () => {
                 <SelectGroup>
                   <SelectItem value="all" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Status</SelectItem>
                   <SelectItem value="Pending" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Pending</SelectItem>
-                  <SelectItem value="Collected" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Collected</SelectItem>
+                  <SelectItem value="Collected" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Completed</SelectItem>
                   <SelectItem value="Overdue" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Overdue</SelectItem>
                 </SelectGroup>
               </SelectContent>
@@ -344,7 +334,7 @@ const Page = () => {
                   </div>
                 </th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Status</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Actions</th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Branch</th>
               </tr>
             </thead>
             <tbody className="border-b border-[#D9D4D4] w-full">
@@ -357,25 +347,8 @@ const Page = () => {
                   <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{collection.customerName}</td>
                   <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{collection.agentName}</td>
                   <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{formatDate(collection.dateCreated)}</td>
-                  <td className={`px-5 py-4 text-[14px] leading-[20px] font-lato font-normal ${getStatusColor(collection.status)}`}>{collection.status}</td>
-                  <td className="px-5 py-4 text-[14px] leading-[20px] font-lato font-normal">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleApprove(collection.id)}
-                        className="px-3 py-1 rounded bg-green-600 text-white text-xs"
-                        disabled={collection.status === 'Collected'}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleDisapprove(collection.id)}
-                        className="px-3 py-1 rounded bg-red-600 text-white text-xs"
-                        disabled={collection.status === 'Pending'}
-                      >
-                        Disapprove
-                      </button>
-                    </div>
-                  </td>
+                  <td className={`px-5 py-4 text-[14px] leading-[20px] font-lato font-normal ${getStatusColor(collection.status)}`}>{collection.status === 'Collected' ? 'Completed' : collection.status}</td>
+                  <td className="px-5 py-4 text-[14px] leading-[20px] font-lato font-normal text-gray-600">{collection.branch}</td>
                 </tr>
               ))}
               {paginatedCollections.length === 0 && (
@@ -400,7 +373,8 @@ const Page = () => {
                   <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">{collection.customerName}</span></div>
                   <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">{collection.agentName}</span></div>
                   <div className="flex justify-between text-sm text-gray-600"><span>Date:</span><span className="font-semibold">{formatDate(collection.dateCreated)}</span></div>
-                  <div className="flex justify-between text-sm text-gray-600"><span>Status:</span><span className={`font-semibold ${getStatusColor(collection.status)}`}>{collection.status}</span></div>
+                  <div className="flex justify-between text-sm text-gray-600"><span>Status:</span><span className={`font-semibold ${getStatusColor(collection.status)}`}>{collection.status === 'Collected' ? 'Completed' : collection.status}</span></div>
+                  <div className="flex justify-between text-sm text-gray-600"><span>Branch:</span><span className="font-semibold">{collection.branch}</span></div>
                 </div>
               </div>
             ))}
@@ -441,8 +415,17 @@ const Page = () => {
         </div>
       </div>
     </div>
-    <SingleCollectionForm isOpen={isSingleFormOpen} onClose={() => setIsSingleFormOpen(false)} onSuccess={fetchData} />
-    <BulkCollectionForm isOpen={isBulkFormOpen} onClose={() => setIsBulkFormOpen(false)} onSuccess={fetchData} />
+
+    <SingleCollectionForm
+      isOpen={isSingleFormOpen}
+      onClose={() => setIsSingleFormOpen(false)}
+      onSuccess={() => { setIsSingleFormOpen(false); fetchData(); }}
+    />
+    <BulkCollectionForm
+      isOpen={isBulkFormOpen}
+      onClose={() => setIsBulkFormOpen(false)}
+      onSuccess={() => { setIsBulkFormOpen(false); fetchData(); }}
+    />
     </>
   )
 }

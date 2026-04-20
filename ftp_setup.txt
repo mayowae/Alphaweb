@@ -1,0 +1,16 @@
+=== FTP server check ===
+/usr/sbin/pure-ftpd
+  pure-ftpd.service                  loaded active running LSB: Start and Stop pure-ftpd Server
+
+Service status:
+inactive
+inactive
+active
+
+Port 21:
+tcp        0      0 0.0.0.0:21              0.0.0.0:*               LISTEN      778/pure-ftpd (SERV 
+tcp6       0      0 :::21                   :::*                    LISTEN      778/pure-ftpd (SERV 
+tcp6       0      0 fe80::216:3cff:fe87::53 :::*                    LISTEN      781/named           
+udp6       0      0 fe80::216:3cff:fe87::53 :::*                                781/named           
+udp6       0      0 fe80::216:3cff:fe87::53 :::*                                781/named           
+

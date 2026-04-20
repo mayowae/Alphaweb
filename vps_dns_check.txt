@@ -1,0 +1,54 @@
+--- dig alphakolect.com ---
+
+; <<>> DiG 9.16.23-RH <<>> alphakolect.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 55963
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+; EDE: 22 (No Reachable Authority): (delegation alphakolect.com)
+;; QUESTION SECTION:
+;alphakolect.com.		IN	A
+
+;; Query time: 207 msec
+;; SERVER: 100.100.100.17#53(100.100.100.17)
+;; WHEN: Wed Apr 08 13:18:13 UTC 2026
+;; MSG SIZE  rcvd: 76
+
+
+
+--- dig NS alphakolect.com ---
+
+; <<>> DiG 9.16.23-RH <<>> NS alphakolect.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 49821
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+; EDE: 22 (No Reachable Authority): (delegation alphakolect.com)
+;; QUESTION SECTION:
+;alphakolect.com.		IN	NS
+
+;; Query time: 210 msec
+;; SERVER: 100.100.100.17#53(100.100.100.17)
+;; WHEN: Wed Apr 08 13:18:14 UTC 2026
+;; MSG SIZE  rcvd: 76
+
+
+
+--- whois alphakolect.com | grep 'Name Server' ---
+
+bash: line 1: whois: command not found
+
+--- ping -c 1 8.8.8.8 ---
+PING 8.8.8.8 (8.8.8.8) 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=60 time=10.3 ms
+
+--- 8.8.8.8 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 10.292/10.292/10.292/0.000 ms
+

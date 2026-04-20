@@ -1,0 +1,54 @@
+=== PM2 Status ===
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 570956   │ 37m    │ 21   │ online    │ 0%       │ 88.0mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 637465   │ 0s     │ 223… │ online    │ 0%       │ 51.4mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+
+=== Nginx Error Log ===
+2026/04/13 13:53:07 [error] 822#822: *120532 upstream prematurely closed connection while reading response header from upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /_next/static/chunks/app/dashboard/(pages)/collection/(pages)/collections/page.js HTTP/2.0", upstream: "http://127.0.0.1:3000/_next/static/chunks/app/dashboard/(pages)/collection/(pages)/collections/page.js", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 13:53:07 [error] 822#822: *120532 upstream prematurely closed connection while reading response header from upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /_next/static/chunks/app/dashboard/(pages)/collection/layout.js HTTP/2.0", upstream: "http://127.0.0.1:3000/_next/static/chunks/app/dashboard/(pages)/collection/layout.js", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 13:53:08 [error] 822#822: *120532 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /_next/static/chunks/app/loading.js HTTP/2.0", upstream: "http://127.0.0.1:3000/_next/static/chunks/app/loading.js", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 13:53:08 [error] 822#822: *120532 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /_next/image?url=%2Ficons%2Fsearch.png&w=48&q=75 HTTP/2.0", upstream: "http://127.0.0.1:3000/_next/image?url=%2Ficons%2Fsearch.png&w=48&q=75", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 13:53:08 [error] 822#822: *120532 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /icons/theme.svg HTTP/2.0", upstream: "http://127.0.0.1:3000/icons/theme.svg", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:15:28 [error] 822#822: *120839 upstream prematurely closed connection while reading response header from upstream, client: 77.90.53.110, server: alphakolect.com, request: "POST / HTTP/1.1", upstream: "http://127.0.0.1:3000/", host: "alphakolect.com"
+2026/04/13 14:21:08 [error] 822#822: *120897 upstream prematurely closed connection while reading response header from upstream, client: 64.23.198.171, server: alphakolect.com, request: "GET / HTTP/1.1", upstream: "http://127.0.0.1:3000/", host: "www.alphakolect.com"
+2026/04/13 14:21:09 [crit] 822#822: *120909 SSL_do_handshake() failed (SSL: error:0A00006C:SSL routines::bad key share) while SSL handshaking, client: 64.23.198.171, server: 0.0.0.0:443
+2026/04/13 14:21:09 [error] 822#822: *120910 upstream prematurely closed connection while reading response header from upstream, client: 64.23.198.171, server: alphakolect.com, request: "GET /favicon.ico HTTP/1.1", upstream: "http://127.0.0.1:3000/favicon.ico", host: "www.alphakolect.com", referrer: "https://www.alphakolect.com/"
+2026/04/13 14:23:30 [error] 822#822: *120977 upstream prematurely closed connection while reading response header from upstream, client: 31.13.127.6, server: alphakolect.com, request: "GET /meta.json HTTP/2.0", upstream: "http://127.0.0.1:3000/meta.json", host: "www.alphakolect.com"
+2026/04/13 14:30:46 [crit] 822#822: *121037 SSL_do_handshake() failed (SSL: error:0A00006C:SSL routines::bad key share) while SSL handshaking, client: 5.181.27.147, server: 0.0.0.0:443
+2026/04/13 14:31:27 [crit] 822#822: *121047 SSL_do_handshake() failed (SSL: error:0A00006C:SSL routines::bad key share) while SSL handshaking, client: 5.181.27.147, server: 0.0.0.0:443
+2026/04/13 14:36:46 [error] 822#822: *121069 recv() failed (104: Connection reset by peer) while reading response header from upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /dashboard/collection/collections HTTP/2.0", upstream: "http://127.0.0.1:3000/dashboard/collection/collections", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:36:46 [error] 822#822: *121069 upstream prematurely closed connection while reading response header from upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /_next/static/webpack/5c423a6926612738.webpack.hot-update.json HTTP/2.0", upstream: "http://127.0.0.1:3000/_next/static/webpack/5c423a6926612738.webpack.hot-update.json", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:36:46 [error] 822#822: *121069 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /dashboard/collection/collections HTTP/2.0", upstream: "http://127.0.0.1:3000/dashboard/collection/collections", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:36:46 [error] 822#822: *121069 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /dashboard/collection/collections HTTP/2.0", upstream: "http://127.0.0.1:3000/dashboard/collection/collections", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:36:47 [error] 822#822: *121069 upstream prematurely closed connection while reading response header from upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /favicon.ico HTTP/2.0", upstream: "http://127.0.0.1:3000/favicon.ico", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:36:49 [error] 822#822: *121069 connect() failed (111: Connection refused) while connecting to upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /dashboard/collection/collections HTTP/2.0", upstream: "http://127.0.0.1:3000/dashboard/collection/collections", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:36:50 [error] 822#822: *121069 recv() failed (104: Connection reset by peer) while reading response header from upstream, client: 102.89.44.120, server: alphakolect.com, request: "GET /favicon.ico HTTP/2.0", upstream: "http://127.0.0.1:3000/favicon.ico", host: "alphakolect.com", referrer: "https://alphakolect.com/dashboard/collection/collections"
+2026/04/13 14:49:28 [error] 822#822: *121137 connect() failed (111: Connection refused) while connecting to upstream, client: 31.215.119.164, server: alphakolect.com, request: "POST /xmlrpc.php HTTP/1.1", upstream: "http://127.0.0.1:3000/xmlrpc.php", host: "alphakolect.com"
+
+
+=== Next.js Process ===
+
+=== Next.js Logs ===
+
+> alphaweb@0.1.0 dev
+> set NODE_OPTIONS=--max-old-space-size=4096 && next dev
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3001
+   - Network:      http://159.198.36.24:3001
+   - Environments: .env
+   - Experiments (use with caution):
+     ✓ memoryBasedWorkersCount
+
+ ✓ Starting...
+ ✓ Ready in 1999ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: Can't resolve '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in '/home/mayowae/public_html/alphaweb'
+<w> while resolving '/home/mayowae/public_html/alphaweb/next.config.compiled.js' in /home/mayowae/public_html/alphaweb as file
+<w>  at resolve commonjs /home/mayowae/public_html/alphaweb/next.config.compiled.js
+
+

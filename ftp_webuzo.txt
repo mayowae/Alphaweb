@@ -1,0 +1,72 @@
+=== Pure-FTPd config (Webuzo) ===
+ChrootEveryone              yes
+BrokenClientsCompatibility  no
+MaxClientsNumber            50
+Daemonize                   yes
+MaxClientsPerIP             8
+VerboseLog                  no
+DisplayDotFiles             yes
+AnonymousOnly               no
+NoAnonymous                 yes
+SyslogFacility              ftp
+DontResolve                 yes
+MaxIdleTime                 15
+PureDB                        /var/webuzo/pureftpd.pdb
+LimitRecursion              10000 8
+AnonymousCanCreateDirs      no
+MaxLoad                     4
+PassivePortRange          55000 60000
+AntiWarez                   yes
+Umask                       133:022
+MinUID                      500
+UseFtpUsers no
+AllowUserFXP                no
+AllowAnonymousFXP           no
+ProhibitDotFilesWrite       no
+ProhibitDotFilesRead        no
+AutoRename                  no
+AnonymousCantUpload         yes
+LogPID                     yes
+AltLog                     clf:/var/log/pureftpd.log
+PIDFile                     /var/run/pure-ftpd.pid
+
+
+=== Webuzo puredb users ===
+mayowae	/home/mayowae/./	
+
+
+=== pureftpd.passwd ===
+Not found
+
+=== Creating virtual FTP user (puredb) ===
+pure-pw useradd: home directory is missing
+
+mkdb: Unable to open the passwd file: No such file or directory
+
+
+=== Also try Webuzo pureftpd.pdb path ===
+Webuzo useradd: home directory is missing
+
+Webuzo mkdb: OK
+FTP restart: Stopping pure-ftpd: [ OK ] Starting pure-ftpd: [ OK ] 
+
+=== Test FTP login ===
+*   Trying 127.0.0.1:21...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Connected to 127.0.0.1 (127.0.0.1) port 21 (#0)
+< 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 220-You are user number 1 of 50 allowed.
+< 220-Local time is now 07:54. Server port: 21.
+< 220-This is a private system - No anonymous login
+< 220-IPv6 connections are also welcome on this server.
+< 220 You will be disconnected after 15 minutes of inactivity.
+> USER alphawebftp
+< 331 User alphawebftp OK. Password required
+> PASS AlphaFTP@2026!
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:04 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:05 --:--:--     0< 530 Login authentication failed
+* Access denied: 530
+  0     0    0     0    0     0      0      0 --:--:--  0:00:05 --:--:--     0
+* Closing connection 0
+curl: (67) Access denied: 530
+

@@ -1,0 +1,25 @@
+
+> alphaweb@0.1.0 build
+> set NODE_OPTIONS=--max-old-space-size=4096 && next build
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.production, .env
+   - Experiments (use with caution):
+     ✓ memoryBasedWorkersCount
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 13.5s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/components/BulkCollectionForm.tsx:231:52
+Type error: Property 'packageName' does not exist on type 'Customer'.
+
+[0m [90m 229 |[39m                       
+ [90m 230 |[39m                       [90m// Fallback: Try matching by string name if backend provided a packageName but no straight ID[39m
+[31m[1m>[22m[39m[90m 231 |[39m                       [36mif[39m ([33m![39massignedPkg [33m&&[39m customer[33m.[39mpackageName [33m&&[39m customer[33m.[39mpackageName [33m!==[39m [32m'—'[39m [33m&&[39m customer[33m.[39mpackageName [33m!==[39m [32m'-'[39m) {
+ [90m     |[39m                                                    [31m[1m^[22m[39m
+ [90m 232 |[39m                         assignedPkg [33m=[39m packages[33m.[39mfind(p [33m=>[39m p[33m.[39mname[33m.[39mtoLowerCase() [33m===[39m customer[33m.[39mpackageName[33m.[39mtoLowerCase())[33m;[39m
+ [90m 233 |[39m                       }
+ [90m 234 |[39m                       [0m
+Next.js build worker exited with code: 1 and signal: null

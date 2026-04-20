@@ -1,0 +1,4 @@
+{
+  "frontend_create_package": "/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/package/page.tsx:92:          <h2 className=\"text-xl font-semibold\">Create Package</h2>\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/package/page.tsx:172:              {loading ? 'Creating...' : 'Create Package'}\n/home/mayowae/public_html/alphaweb/src/app/dashboard/(pages)/package/page.tsx:515:      {/* Create Package Modal */}\n/home/mayowae/public_html/alphaweb/src/app/page.tsx:353:              <p className=\"text-[22px] font-inter font-semibold\">Create Packages</p>\n",
+  "backend_delete_package": "547:const deletePackage = async (req, res) => {\n622:  deletePackage,\n"
+}

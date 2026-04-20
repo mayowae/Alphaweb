@@ -1,0 +1,93 @@
+=== Check if node-cron is available ===
+(not installed)
+
+=== Installing node-cron ===
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+
+=== Signup code (lines 100-140 of authController) ===
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    console.log('=== Registration OTP Debug ===');
+    console.log('Generated OTP:', otp);
+    console.log('OTP Expires:', otpExpires.toISOString());
+    console.log('Email:', email);
+
+    const trialMonths = parseInt(process.env.TRIAL_MONTHS || "3", 10);
+    const trialEndDate = new Date();
+    trialEndDate.setMonth(trialEndDate.getMonth() + trialMonths);
+    
+    // Create merchant
+    const merchant = await Merchant.create({
+      name: businessName,
+      businessName,
+      businessAlias,
+      phone,
+      email,
+      currency,
+      password: hashedPassword,
+      otp,
+      otpExpires,
+      trial_end_date: trialEndDate,
+      next_billing_date: trialEndDate, // first charge is at end of trial
+      subscription_status: 'Active',
+    });
+
+    console.log('Merchant created with ID:', merchant.id);
+
+    // Create Virtual Account via TransactPay
+    try {
+        const { createVirtualAccount } = require('../utils/transactPay');
+        const tpResult = await createVirtualAccount({
+            businessName,
+            email,
+            phone
+        });
+
+        if (tpResult && tpResult.status === 'success') {
+            await merchant.update({
+
+
+=== Merchant.create call ===
+113:    const merchant = await Merchant.create({
+114-      name: businessName,
+115-      businessName,
+116-      businessAlias,
+117-      phone,
+118-      email,
+119-      currency,
+120-      password: hashedPassword,
+121-      otp,
+122-      otpExpires,
+123-      trial_end_date: trialEndDate,
+124-      next_billing_date: trialEndDate, // first charge is at end of trial
+125-      subscription_status: 'Active',
+126-    });
+127-
+128:    console.log('Merchant created with ID:', merchant.id);
+129-
+130-    // Create Virtual Account via TransactPay
+131-    try {
+132-        const { createVirtualAccount } = require('../utils/transactPay');
+133-        const tpResult = await createVirtualAccount({
+134-            businessName,
+135-            email,
+136-            phone
+137-        });
+138-
+139-        if (tpResult && tpResult.status === 'success') {
+140-            await merchant.update({
+141-                accountNumber: tpResult.accountNumber,
+142-                bankName: tpResult.bankName,
+143-                accountName: tpResult.accountName,
+144-                bankCode: tpResult.bankCode
+145-            });
+146-            console.log(`Updated merchant ${merchant.id} with account: ${tpResult.accountNumber}`);
+147-        }
+148-    } catch (tpError) {
+

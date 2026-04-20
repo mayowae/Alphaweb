@@ -1,4 +1,4 @@
-const { Remittance, Customer, Agent } = require('../models');
+const { Remittance, Customer, Agent, CustomerWallet, WalletTransaction, Activity, Collection } = require('../models');
 
 /**
  * @swagger
@@ -216,28 +216,215 @@ const updateRemittance = async (req, res) => {
 };
 
 const approveRemittance = async (req, res) => {
+  const transaction = await Remittance.sequelize.transaction();
   try {
-    const merchantId = req.user.id;
     const { id } = req.params;
-    const remittance = await Remittance.findOne({ where: { id, merchantId } });
-    if (!remittance) return res.status(404).json({ success: false, message: 'Remittance not found' });
-    await remittance.update({ status: 'Approved', approvedAt: new Date() });
-    res.json({ success: true, message: 'Remittance approved', remittance });
+
+    // Resolve merchantId for both merchants, staff (collaborators), and agents
+    let merchantId = req.user?.merchantId;
+    if (!merchantId) {
+      if (req.user?.type === 'merchant') {
+        merchantId = req.user.id;
+      } else if (req.user?.type === 'agent') {
+        const { Agent } = require('../models');
+        const agentOwner = await Agent.findByPk(req.user.id);
+        merchantId = agentOwner ? agentOwner.merchantId : undefined;
+      } else if (req.user?.type === 'collaborator') {
+        // Collaborators are usually tied to a merchant through the Staff model
+        const { Staff } = require('../models');
+        const staffOwner = await Staff.findOne({ where: { email: req.user.email } });
+        merchantId = staffOwner ? staffOwner.merchantId : undefined;
+      }
+    }
+
+    if (!merchantId) {
+      await transaction.rollback();
+      return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
+    }
+
+    // Step 1: Fetch remittance WITH customer data (no lock)
+    const remittanceWithCustomer = await Remittance.findOne({
+      where: { id, merchantId },
+      include: [{ model: Customer, as: 'customer' }],
+      transaction
+    });
+
+    if (!remittanceWithCustomer) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+
+    if (remittanceWithCustomer.status === 'Approved') {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: 'Remittance is already approved' });
+    }
+
+    // Step 2: Acquire a row-level lock on the plain remittance row (no joins)
+    const remittance = await Remittance.findOne({
+      where: { id, merchantId },
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+
+    // Race condition guard after lock acquired
+    if (!remittance || remittance.status === 'Approved') {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: 'Remittance is already approved' });
+    }
+
+    // Step 3: Mark remittance as Approved
+    await remittance.update({
+      status: 'Approved',
+      approvedAt: new Date()
+    }, { transaction });
+
+    const customerId = remittance.customerId;
+    const customerAccountNumber = remittanceWithCustomer.customer?.accountNumber;
+
+    // Step 4: Lock and update customer wallet
+    let wallet = await CustomerWallet.findOne({
+      where: { customerId, merchantId },
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+
+    let oldBalance = 0;
+    let newBalance = parseFloat(remittance.amount);
+
+    if (!wallet) {
+      wallet = await CustomerWallet.create({
+        customerId,
+        merchantId,
+        accountNumber: customerAccountNumber || `CW${Date.now()}`,
+        balance: newBalance,
+        status: 'Active',
+        activationDate: new Date()
+      }, { transaction });
+    } else {
+      oldBalance = parseFloat(wallet.balance) || 0;
+      newBalance = oldBalance + parseFloat(remittance.amount);
+      await wallet.update({
+        balance: newBalance,
+        lastTransactionDate: new Date()
+      }, { transaction });
+    }
+
+    // Step 5: Record wallet ledger entry
+    await WalletTransaction.create({
+      transactionType: 'remittance_approval',
+      merchantId,
+      type: 'credit',
+      amount: parseFloat(remittance.amount),
+      description: `Remittance #${remittance.id} Approved`,
+      status: 'Completed',
+      balanceBefore: oldBalance,
+      balanceAfter: newBalance,
+      category: 'collection',
+      relatedId: remittance.id,
+      relatedType: 'Remittance',
+      paymentMethod: remittance.source || 'Web',
+      // Fix: Removed processedBy to avoid "fk_wallet_transactions_processed_by" crash 
+      // as req.user.id refers to merchants/collaborators table, not the users table.
+      processedBy: null
+    }, { transaction });
+
+    // Step 6: Update linked Collection if present
+    if (remittance.collectionId) {
+      const collection = await Collection.findByPk(remittance.collectionId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+      if (collection) {
+        await collection.update({
+          status: 'Collected',
+          collectedDate: new Date(),
+          amountCollected: remittance.amount
+        }, { transaction });
+      }
+    }
+
+    // Step 7: Audit log
+    await Activity.create({
+      merchantId,
+      person: (req.user && req.user.type === 'collaborator') ? 'staff' : 'merchant',
+      staffId: (req.user && req.user.type === 'collaborator') ? req.user.id : null,
+      action: 'APPROVE_REMITTANCE',
+      details: `Approved remittance #${remittance.id} for amount ${remittance.amount}`
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({
+      success: true,
+      message: 'Remittance approved and customer balance updated',
+      remittance,
+      newBalance
+    });
   } catch (error) {
+    if (transaction) await transaction.rollback();
     console.error('approveRemittance error:', error);
     res.status(500).json({ success: false, message: 'Failed to approve remittance', error: error.message });
   }
 };
 
 const deleteRemittance = async (req, res) => {
+  const transaction = await Remittance.sequelize.transaction();
   try {
-    const merchantId = req.user.id;
     const { id } = req.params;
-    const remittance = await Remittance.findOne({ where: { id, merchantId } });
-    if (!remittance) return res.status(404).json({ success: false, message: 'Remittance not found' });
-    await remittance.destroy();
-    res.json({ success: true, message: 'Remittance deleted' });
+
+    // Resolve merchantId for both merchants, staff (collaborators), and agents
+    let merchantId = req.user?.merchantId;
+    if (!merchantId) {
+      if (req.user?.type === 'merchant') {
+        merchantId = req.user.id;
+      } else if (req.user?.type === 'agent') {
+        const { Agent } = require('../models');
+        const agentOwner = await Agent.findByPk(req.user.id);
+        merchantId = agentOwner ? agentOwner.merchantId : undefined;
+      } else if (req.user?.type === 'collaborator') {
+        const { Staff } = require('../models');
+        const staffOwner = await Staff.findOne({ where: { email: req.user.email } });
+        merchantId = staffOwner ? staffOwner.merchantId : undefined;
+      }
+    }
+
+    if (!merchantId) {
+      await transaction.rollback();
+      return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
+    }
+
+    const remittance = await Remittance.findOne({ 
+      where: { id, merchantId },
+      transaction 
+    });
+
+    if (!remittance) {
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+    
+    // If there is an associated collection, delete it as well
+    if (remittance.collectionId) {
+      const collection = await Collection.findByPk(remittance.collectionId, { transaction });
+      if (collection) {
+        await collection.destroy({ transaction });
+      }
+    }
+
+    // Log the deletion activity
+    await Activity.create({
+      merchantId,
+      person: (req.user && req.user.type === 'collaborator') ? 'staff' : 'merchant',
+      staffId: (req.user && req.user.type === 'collaborator') ? req.user.id : null,
+      action: 'DELETE_REMITTANCE',
+      details: `Permanently deleted remittance #${remittance.id} (Amount: ${remittance.amount}) and its associated collection records.`
+    }, { transaction });
+
+    await remittance.destroy({ transaction });
+    await transaction.commit();
+
+    res.json({ success: true, message: 'Remittance and associated collection deleted' });
   } catch (error) {
+    if (transaction) await transaction.rollback();
     console.error('deleteRemittance error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete remittance', error: error.message });
   }

@@ -1,0 +1,24 @@
+=== Backend hard restart ===
+│ status            │ online                                               │
+│ restarts          │ 1404                                                 │
+│ uptime            │ 8s                                                   │
+│ unstable restarts │ 0                                                    │
+
+Backend /health: 200
+Subscription endpoint: {"message":"Access token is required"}
+
+Full subscription response:
+{"success":true,"data":{"merchant":{"id":5,"businessName":"PaxAlpha Ltd","email":"mayowae@msn.com","subscription_status":"Active","plan_id":1,"next_billing_date":"2026-06-13T07:25:49.078Z","total_debt":"0.00","trial_end_date":"2026-06-13T07:25:49.078Z","is_custom_fee":false,"custom_fee":null,"plan":{"id":1,"name":"Starter Pack","type":"standard","billingCycle":"monthly","pricing":"5000.00","currency":"NGN","features":null,"maxAgents":null,"maxCustomers":null,"maxTransactions":null,"status":"acti
+
+=== Backend error log (last 5 lines) ===
+    parameters: undefined
+  },
+  sql: `SELECT "id", "name", "businessName", "businessAlias", "phone", "email", "currency", "password", "isVerified", "otp", "otpExpires", "accountLevel", "accountNumber", "bankName", "accountName", "bankCode", "createdAt", "updatedAt", "subscriptionStatus", "planId", "isCustomFee", "customFee", "nextBillingDate", "totalDebt", "trialEndDate" FROM "merchants" AS "Merchant" WHERE "Merchant"."email" = 'mayowae@msn.com';`,
+  parameters: {}
+}
+
+
+=== Both ports live ===
+tcp6       0      0 :::5000                 :::*                    LISTEN      816482/node /home/m 
+tcp6       0      0 :::3000                 :::*                    LISTEN      802463/next-server  
+

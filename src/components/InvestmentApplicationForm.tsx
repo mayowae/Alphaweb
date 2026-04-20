@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { fetchCustomers, fetchAgents, createInvestmentApplication, updateInvestmentApplication } from '../../services/api';
+import { fetchCustomers, fetchAgents, fetchPackages, createInvestmentApplication, updateInvestmentApplication } from '../../services/api';
 import Swal from 'sweetalert2';
 
 interface InvestmentApplicationFormProps {
@@ -45,6 +45,8 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -75,12 +77,14 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
 
   const fetchData = async () => {
     try {
-      const [customersRes, agentsRes] = await Promise.all([
+      const [customersRes, agentsRes, packagesRes] = await Promise.all([
         fetchCustomers(),
-        fetchAgents()
+        fetchAgents(),
+        fetchPackages('Investment')
       ]);
       setCustomers(customersRes.customers || []);
       setAgents(agentsRes.agents || []);
+      setPackages(packagesRes.packages || packagesRes.data || packagesRes || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -119,6 +123,21 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
     }));
     setShowCustomerDropdown(false);
     setShowAgentDropdown(false);
+  };
+
+  const handlePackageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const pkgId = e.target.value;
+    setSelectedPackage(pkgId);
+    if (pkgId) {
+      const pkg = packages.find(p => p.id.toString() === pkgId);
+      if (pkg) {
+        setFormData(prev => ({
+          ...prev,
+          targetAmount: pkg.amount?.toString() || pkg.targetAmount?.toString() || '',
+          duration: pkg.duration?.toString() || ''
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -243,6 +262,25 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
               />
             </div>
 
+            {/* Package Selection */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Investment Package
+              </label>
+              <select
+                value={selectedPackage}
+                onChange={handlePackageChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Select a package to auto-fill...</option>
+                {packages.map(pkg => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Target Amount */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,8 +294,9 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                 placeholder="0.00"
                 min="0"
                 step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                readOnly={!!selectedPackage}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedPackage ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               />
             </div>
 
@@ -273,8 +312,9 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                 onChange={handleInputChange}
                 placeholder="30"
                 min="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                readOnly={!!selectedPackage}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedPackage ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               />
             </div>
 
@@ -326,7 +366,8 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                 value={formData.branch}
                 onChange={handleInputChange}
                 placeholder="Branch name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                readOnly
               />
             </div>
           </div>

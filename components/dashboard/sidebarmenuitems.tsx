@@ -123,6 +123,12 @@ export const Sidemenuitems: Sidebarmenu[] =[
 
     },
 
+    {
+        title:"Subscription",
+        path: "/dashboard/subscription",
+        icon: "/icons/sidebar.svg",
+    },
+
 
 ]
 

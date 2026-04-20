@@ -1,0 +1,36 @@
+=== Backfilling trial dates ===
+UPDATE 27
+
+
+=== Merchants after backfill ===
+ id |               email               | subscription_status | trial_ends | next_bill  |   joined   
+----+-----------------------------------+---------------------+------------+------------+------------
+ 28 | tepomeroy@att.net                 | Active              | 2026-06-19 | 2026-06-19 | 2026-03-19
+ 27 | holger.sparbert@t-online.de       | Active              | 2026-06-19 | 2026-06-19 | 2026-03-19
+ 26 | bastiaan@korper.nl                | Active              | 2026-06-19 | 2026-06-19 | 2026-03-19
+ 25 | smellynellywoowaa@hotmail.com     | Active              | 2026-06-19 | 2026-06-19 | 2026-03-19
+ 24 | camiel@korper.nl                  | Active              | 2026-06-19 | 2026-06-19 | 2026-03-19
+ 23 | p.ro.fp.ro.b.st@gmail.com         | Active              | 2026-06-18 | 2026-06-18 | 2026-03-18
+ 22 | igutherless@yahoo.com             | Active              | 2026-06-18 | 2026-06-18 | 2026-03-18
+ 21 | czindell@ppg.com                  | Active              | 2026-06-18 | 2026-06-18 | 2026-03-18
+ 20 | avivi.t..ba.r.r@gmail.com         | Active              | 2026-06-18 | 2026-06-18 | 2026-03-18
+ 19 | ala.n.a..ga.v.r.i.l.i.s@gmail.com | Active              | 2026-06-18 | 2026-06-18 | 2026-03-18
+(10 rows)
+
+
+
+=== Check cron scheduled ===
+434:const cron = require('node-cron');
+435:const { runBillingCycle } = require('./services/billingService');
+438:  console.log('[CRON] Running daily billing cycle...');
+440:    await runBillingCycle();
+442:    console.error('[CRON] Billing cycle error:', err);
+449:console.log('[CRON] Billing cron job scheduled (daily at 02:00 WAT)');
+
+Backend log tail:
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+Server is running on port 5000
+Database connection has been established successfully.
+Server is running on port 5000
+Database connection has been established successfully.
+

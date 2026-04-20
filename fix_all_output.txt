@@ -1,0 +1,37 @@
+=== Fix 1: Fix Merchant.create field names in authController.js ===
+SUCCESS: Fixed Merchant.create to use camelCase property names
+
+=== Fix 2: Backfill trial dates for existing merchants ===
+ERROR:  column "createdat" does not exist
+LINE 2: SET trial_end_date = createdAt + INTERVAL '3 months',
+                             ^
+HINT:  Perhaps you meant to reference the column "merchants.createdAt".
+
+Merchants after backfill:
+ id |             email             | subscription_status | trial_end_date | next_billing_date 
+----+-------------------------------+---------------------+----------------+-------------------
+ 28 | tepomeroy@att.net             | Active              |                | 
+ 27 | holger.sparbert@t-online.de   | Active              |                | 
+ 26 | bastiaan@korper.nl            | Active              |                | 
+ 25 | smellynellywoowaa@hotmail.com | Active              |                | 
+ 24 | camiel@korper.nl              | Active              |                | 
+(5 rows)
+
+
+
+=== Fix 3: Add billing cron to server.js ===
+SUCCESS: Added daily billing cron to server.js
+
+Backend restarted.
+Backend out log:
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+Server is running on port 5000
+Database connection has been established successfully.
+Server is running on port 5000
+Database connection has been established successfully.
+

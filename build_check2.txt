@@ -1,0 +1,32 @@
+=== Build log (last 20 lines) ===
+├ ƒ /dashboard/view-agent/[id]                4.89 kB         112 kB
+├ ○ /dashboard/wallet                         12.3 kB         119 kB
+├ ○ /financial                                2.58 kB         149 kB
+├ ○ /forgot-password                          1.31 kB         107 kB
+├ ○ /help                                     4.22 kB         153 kB
+├ ƒ /help/[id]                                 2.2 kB         149 kB
+├ ○ /icon.png                                     0 B            0 B
+├ ○ /login                                    1.82 kB         132 kB
+├ ○ /pricing                                  3.95 kB         151 kB
+├ ○ /signup                                   2.34 kB         133 kB
+└ ○ /verify-otp                               1.74 kB         129 kB
++ First Load JS shared by all                  102 kB
+  ├ chunks/1255-8befde0980f5cba9.js           45.7 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js       54.2 kB
+  └ other shared chunks (total)               2.02 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+
+=== Is build process running? ===
+No build process running
+
+=== PM2 frontend status ===
+│ status            │ online                                                          │
+│ restarts          │ 193                                                             │
+│ uptime            │ 73s                                                             │
+│ unstable restarts │ 10                                                              │
+

@@ -1,0 +1,628 @@
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+ ✓ Ready in 704ms
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+ ✓ Ready in 683ms
+
+> alphaweb@0.1.0 start
+> next start
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://159.198.36.24:3000
+
+ ✓ Starting...
+ ✓ Ready in 601ms

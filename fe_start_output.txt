@@ -1,0 +1,15 @@
+
+> alphaweb@0.1.0 start
+> next start
+
+[1G[0K [31m[1m⨯[22m[39m Failed to start server
+Error: listen EADDRINUSE: address already in use :::3000
+    at <unknown> (Error: listen EADDRINUSE: address already in use :::3000)
+    at new Promise (<anonymous>) {
+  code: [32m'EADDRINUSE'[39m,
+  errno: [33m-98[39m,
+  syscall: [32m'listen'[39m,
+  address: [32m'::'[39m,
+  port: [33m3000[39m
+}
+[1G[0K⠙[1G[0K

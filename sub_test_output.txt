@@ -1,0 +1,15 @@
+=== LOGIN ===
+{"message":"Invalid credentials"}
+Token found: NOT FOUND
+Try Mayowae@123: {"message":"Invalid credentials"}
+Try AlphaWeb2026: {"message":"Invalid credentials"}
+Try password123: {"message":"Invalid credentials"}
+Try Mayowae123: {"message":"Invalid credentials"}
+
+=== Direct DB subscription query for merchant id=5 ===
+ id |      email      | subscription_status | plan_id | next_billing_date | total_debt | trial_end_date 
+----+-----------------+---------------------+---------+-------------------+------------+----------------
+  5 | mayowae@msn.com | Active              |         |                   |       0.00 | 
+(1 row)
+
+

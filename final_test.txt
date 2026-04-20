@@ -1,0 +1,15 @@
+Generated test token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NSwidHlwZSI6Im1...
+
+=== Full subscription API response ===
+{"message":"Failed to fetch subscription details","error":"relation \"subscriptions\" does not exist"}
+
+=== Backend error log (errors after restart only) ===
+Error log lines: 481 /home/mayowae/public_html/alphaweb/logs/backend-error-0.log
+
+Last 5 lines of error log:
+    parameters: undefined
+  },
+  sql: `SELECT "id", "name", "businessName", "businessAlias", "phone", "email", "currency", "password", "isVerified", "otp", "otpExpires", "accountLevel", "accountNumber", "bankName", "accountName", "bankCode", "createdAt", "updatedAt", "subscriptionStatus", "planId", "isCustomFee", "customFee", "nextBillingDate", "totalDebt", "trialEndDate" FROM "merchants" AS "Merchant" WHERE "Merchant"."email" = 'mayowae@msn.com';`,
+  parameters: {}
+}
+

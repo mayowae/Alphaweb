@@ -1,4 +1,4 @@
-const { Customer, Agent, Branch, Merchant, Package } = require('../models');
+const { Customer, Agent, Branch, Merchant, Package, Collection } = require('../models');
 
 /**
  * @swagger
@@ -451,6 +451,14 @@ const listCustomers = async (req, res) => {
           as: 'Merchant',
           attributes: ['id', 'businessName'],
         },
+        {
+          model: Collection,
+          as: 'Collections',
+          attributes: ['packageName'],
+          limit: 1,
+          order: [['date_created', 'DESC']],
+          separate: true
+        },
       ],
       order: [['createdAt', 'DESC']],
     });
@@ -462,7 +470,7 @@ const listCustomers = async (req, res) => {
         accountNumber: c.accountNumber,
         agentName: c.Agent?.fullName,
         branchName: c.Branch?.name,
-        packageName: c.Package?.name,
+        packageName: c.Package?.name || (c.Collections?.[0]?.packageName) || '—',
         dateCreated: c.createdAt,
         status: 'Active',
       })),

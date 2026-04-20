@@ -1,0 +1,74 @@
+=== Find services/api file ===
+
+/home/mayowae/public_html/alphaweb/src/app/admin/utilis/adminApi.ts
+
+
+=== Subscriptions&Billings tab component ===
+File not found
+
+=== merchantdetailstabs files ===
+ls: cannot access '/home/mayowae/public_html/alphaweb/src/components/tables/merchants/merchantdetailstabs/': No such file or directory
+
+
+=== Agent create in agentController (lines 225-275) ===
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create agent
+    const agent = await Agent.create({
+      name,
+      fullName,
+      phoneNumber,
+      email,
+      password: hashedPassword,
+      branch,
+      merchantId,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Agent registered successfully',
+      agent: {
+        id: agent.id,
+        fullName: agent.fullName,
+        email: agent.email,
+        branch: agent.branch,
+      },
+    });
+  } catch (error) {
+    console.error('Agent registration error:', error);
+    res.status(500).json({ message: 'Agent registration failed', error: error.message });
+  }
+};
+
+// Update agent
+const updateAgent = async (req, res) => {
+  try {
+    const { id, fullName, phoneNumber, email, password, branch, status } = req.body;
+
+    const agent = await Agent.findByPk(id);
+    if (!agent) {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Check if email is being changed and if it's already taken
+    if (email !== agent.email) {
+      const existingAgent = await Agent.findOne({ where: { email } });
+      if (existingAgent) {
+        return res.status(400).json({ message: 'Email already taken' });
+      }
+    }
+
+    // Hash password if provided
+    let hashedPassword = agent.password;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+
+=== adminApi.ts functions ===
+grep: /home/mayowae/public_html/alphaweb/src/app/admin/dashboard/utilis/adminApi.ts: No such file or directory
+

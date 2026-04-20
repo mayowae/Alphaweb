@@ -1,0 +1,35 @@
+=== Frontend port 3000 ===
+tcp6       0      0 :::3000                 :::*                    LISTEN      802463/next-server  
+
+
+=== HTTP checks ===
+Direct port 3000 /: 200
+Backend port 5000 /api/merchant/subscription: 000
+
+=== NEXT_PUBLIC_API_URL ===
+NEXT_PUBLIC_API_URL=https://alphakolect.com
+
+
+=== Nginx /api routing ===
+
+
+=== PM2 status ===
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+│ 5  │ alphaweb-backend     │ default     │ 1.0.0   │ fork    │ 808788   │ 0s     │ 773  │ online    │ 100%     │ 65.3mb   │ root     │ disabled │
+│ 6  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 802452   │ 7m     │ 193  │ online    │ 0%       │ 54.8mb   │ root     │ disabled │
+
+
+=== Frontend logs (last 20 lines) ===
+frontend-combined-6.log
+frontend-out-6.log
+frontend-error-6.log
+frontend-combined-1.log
+frontend-out-1.log
+
+
+
+=== services/api getMerchantSubscription ===
+Services files: 
+api.ts locations: 
+getMerchantSubscription def: /home/mayowae/public_html/alphaweb/services/api.tsx:154:export async function getMerchantSubscription() {
+

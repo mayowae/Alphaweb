@@ -411,6 +411,24 @@ const createLoan = async (req, res) => {
       });
     }
 
+    // Check for running loan on this account number
+    if (accountNumber) {
+      const activeLoan = await Loan.findOne({
+        where: {
+          accountNumber,
+          merchantId,
+          status: { [Op.not]: 'Completed' }
+        }
+      });
+
+      if (activeLoan) {
+        return res.status(400).json({
+          success: false,
+          message: 'A loan is already running on this account number. It must be fully paid off before creating another.'
+        });
+      }
+    }
+
     // Find agent if provided
     let agent = null;
     if (agentId) {
@@ -447,6 +465,7 @@ const createLoan = async (req, res) => {
       totalAmount,
       remainingAmount: totalAmount,
       amountPaid: 0,
+      packageName: req.body.packageName || null
       // formUrl not stored as a separate column; embedded in notes JSON
     });
 

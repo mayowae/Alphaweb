@@ -135,6 +135,11 @@ module.exports = (sequelize) => {
       defaultValue: false,
       field: 'is_first_collection',
       comment: 'Whether this is the first collection of the 31-day cycle'
+    },
+    source: {
+      type: DataTypes.ENUM('Mobile', 'Web', 'API'),
+      defaultValue: 'Web',
+      allowNull: false
     }
   }, {
     tableName: 'collections',

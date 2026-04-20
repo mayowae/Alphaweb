@@ -1,0 +1,13 @@
+=== Creating subscriptions table ===
+CREATE TABLE
+
+
+=== Verify table exists ===
+ subscriptions
+
+
+
+Backend restarted.
+
+=== Full subscription API response ===
+{"success":true,"data":{"merchant":{"id":5,"businessName":"PaxAlpha Ltd","email":"mayowae@msn.com","subscription_status":"Active","plan_id":null,"next_billing_date":null,"total_debt":"0.00","trial_end_date":null,"is_custom_fee":false,"custom_fee":null,"plan":null,"agents":[{"id":1}]},"history":[],"agentCount":1}}

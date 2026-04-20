@@ -105,6 +105,12 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
       comment: 'Collateral information if any'
+    },
+    packageName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'package_name',
+      comment: 'Selected loan package name'
     }
   }, {
     tableName: 'loan_applications',

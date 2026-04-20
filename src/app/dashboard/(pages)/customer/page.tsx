@@ -18,6 +18,7 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
         fullName: '',
         alias: '',
         package: '',
+        packageId: '',
         phoneNumber: '',
         address: '',
         email: '',
@@ -35,7 +36,7 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
         Promise.all([
             fetchBranches().catch(() => []),
             fetchAgents().catch(() => []),
-            fetchPackages().catch(() => [])
+            fetchPackages('Collection').catch(() => [])
         ]).then(([branchesRes, agentsRes, packagesRes]) => {
             setBranches(branchesRes?.branches || branchesRes || []);
             setAgents(agentsRes?.agents || agentsRes || []);
@@ -45,10 +46,18 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
     }, [isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormState({
-            ...formState,
-            [e.target.id]: e.target.value,
-        });
+        const { id, value } = e.target;
+        if (id === 'package') {
+            // Store both name and ID for the package field
+            const selectedPkg = packages.find((p: any) => p.name === value);
+            setFormState(prev => ({
+                ...prev,
+                package: value,
+                packageId: selectedPkg ? String(selectedPkg.id) : '',
+            }));
+        } else {
+            setFormState(prev => ({ ...prev, [id]: value }));
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -71,9 +80,10 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
                 accountNumber: formState.accountNumber || undefined,
                 alias: formState.alias || undefined,
                 address: formState.address || undefined,
+                packageId: formState.packageId || undefined,
             });
             Swal.fire({ icon: 'success', title: 'Customer added successfully!' });
-            setFormState({ branch: '', agent: '', fullName: '', alias: '', package: '', phoneNumber: '', address: '', email: '', accountNumber: '' });
+            setFormState({ branch: '', agent: '', fullName: '', alias: '', package: '', packageId: '', phoneNumber: '', address: '', email: '', accountNumber: '' });
             onClose();
             // Trigger refresh of customers list
             if (onCustomerAdded) {
@@ -547,7 +557,7 @@ export default function CustomersPage() {
                                 {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.alias || ''}</td> */}
                                 <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.branchName || c.branch?.name || ''}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[150px]">{c.agentName || c.agent?.fullName || c.agent?.name || ''}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700">{c.packageName || c.package || ''}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700">{c.packageName || c.package_name || c.Package || c.package || c.packageTitle || c.subscriptionPackage || '—'}</td>
                                 {/* <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[200px]">{c.address || ''}</td> */}
                                 <td className="px-4 py-2 text-sm text-gray-700">{c.date || c.createdAt ? new Date(c.date || c.createdAt).toLocaleDateString() : ''}{c.time ? `, ${c.time}` : ''}</td>
                                 <td className="px-4 py-2 text-sm">

@@ -1,0 +1,20 @@
+=== Find pure-ftpd config ===
+/etc/rc.d/init.d/pure-ftpd
+/etc/rc.d/rc5.d/S50pure-ftpd
+/etc/rc.d/rc2.d/S50pure-ftpd
+/etc/rc.d/rc6.d/K50pure-ftpd
+/etc/rc.d/rc4.d/S50pure-ftpd
+/etc/rc.d/rc1.d/K50pure-ftpd
+/etc/rc.d/rc0.d/K50pure-ftpd
+/etc/rc.d/rc3.d/S50pure-ftpd
+/etc/ssl/private/pure-ftpd.pem
+/etc/logrotate.d/pureftpd
+
+Process args:
+root     1040220  0.0  0.3  12912  6240 ?        Ss   07:50   0:00 pure-ftpd (SERVER)
+
+
+=== pure-ftpd.conf ===
+Not found at /etc/pure-ftpd.conf
+From find:
+

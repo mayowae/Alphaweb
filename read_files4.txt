@@ -1,0 +1,80 @@
+=== adminApi.ts (lines 160-220) ===
+      body: JSON.stringify({ status }),
+    }),
+
+  resetMerchantPassword: (id: number, newPassword: string) =>
+    makeRequest(`/superadmin/merchants/${id}/reset-password`, {
+      method: 'PUT',
+      body: JSON.stringify({ newPassword }),
+    }),
+
+  deleteMerchant: (id: number) =>
+    makeRequest(`/superadmin/merchants/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Merchant Detail Tabs
+  getMerchantTransactions: (id: number) =>
+    makeRequest(`/superadmin/merchants/${id}/transactions`),
+
+  getMerchantSubscriptions: (id: number) =>
+    makeRequest(`/superadmin/merchants/${id}/subscriptions`),
+
+  getMerchantLogs: (id: number) =>
+    makeRequest(`/superadmin/merchants/${id}/logs`),
+
+  // Support Tickets
+  getAllTickets: () => makeRequest('/superadmin/tickets'),
+
+  getTicketDetails: (id: number | string) => 
+    makeRequest(`/superadmin/tickets/${id}`),
+
+  replyToTicket: (id: number | string, message: string, senderId?: number) => 
+    makeRequest(`/superadmin/tickets/${id}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ message, senderId }),
+    }),
+
+  updateTicketStatus: (id: number | string, status: string) => 
+    makeRequest(`/superadmin/tickets/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+
+  // Announcements
+  getAllAnnouncements: () => makeRequest('/superadmin/announcements'),
+
+  createAnnouncement: (data: any) => 
+    makeRequest('/superadmin/announcements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteAnnouncement: (id: number | string) => 
+    makeRequest(`/superadmin/announcements/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // FAQs
+  getAllFaqs: () => makeRequest('/superadmin/faqs'),
+
+  createFaq: (data: any) => 
+    makeRequest('/superadmin/faqs', {
+
+
+=== Find @/services/api ===
+
+tsconfig paths: 23:      "@/*": ["./src/*"],
+24:      "@/services/*": ["./services/*"],
+25:      "@/interface/*": ["./interface/*"]
+
+Function definition: /home/mayowae/public_html/alphaweb/src/app/admin/utilis/adminApi.ts:178:  getMerchantSubscriptions: (id: number) =>
+
+
+=== Find Subscriptions_Billings component ===
+
+/home/mayowae/public_html/alphaweb/src/app/admin/dashboard/(pages)/merchants/[id]/merchantsdetails.tsx
+
+Import path: import Subscriptions_Billings from '../../../../../../../components/tables/merchants/merchantdetailstabs/Subscriptions&Billings'
+            {activeTab === "subscriptions" && <Subscriptions_Billings merchantId={paramid} />}
+

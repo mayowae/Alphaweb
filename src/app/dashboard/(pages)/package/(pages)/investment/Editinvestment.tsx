@@ -15,14 +15,15 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
   const [formData, setFormData] = useState({
     id: 0,
     name: '',
-    type: 'Fixed',
-    amount: '',
+    type: 'Fixed Deposit',
+    fixedAmount: '',
+    targetAmount: '',
     period: '',
+    duration: '',
     interestRate: '',
     extraCharges: '0.00',
     defaultPenalty: '0.00',
     defaultDays: '0',
-    duration: '',
     benefits: ['Daily savings', 'Low interest loans'],
     description: ''
   });
@@ -35,14 +36,15 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
       setFormData({
         id: packageData.id || 0,
         name: packageData.name || '',
-        type: packageData.type || 'Fixed',
-        amount: packageData.amount?.toString() || '',
+        type: packageData.type || 'Fixed Deposit',
+        fixedAmount: packageData.type === 'Fixed Deposit' ? packageData.amount?.toString() || '' : '',
+        targetAmount: packageData.type === 'Target Saving' ? (packageData.targetAmount?.toString() || packageData.amount?.toString() || '') : '',
         period: packageData.period?.toString() || '',
+        duration: packageData.duration?.toString() || packageData.period?.toString() || '',
         interestRate: packageData.interestRate?.toString() || '',
         extraCharges: packageData.extraCharges?.toString() || '0.00',
         defaultPenalty: packageData.defaultPenalty?.toString() || '0.00',
         defaultDays: packageData.defaultDays?.toString() || '0',
-        duration: packageData.duration?.toString() || '',
         benefits: packageData.benefits || ['Daily savings', 'Low interest loans'],
         description: packageData.description || ''
       });
@@ -61,10 +63,20 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
     const newErrors: Record<string, string> = {};
     
     if (!formData.name.trim()) newErrors.name = 'Package name is required';
-    if (!formData.amount || parseFloat(formData.amount) <= 0) newErrors.amount = 'Valid amount is required';
+    
+    if (formData.type === 'Fixed Deposit') {
+      if (!formData.fixedAmount || parseFloat(formData.fixedAmount) <= 0) {
+        newErrors.fixedAmount = 'Valid fixed amount is required';
+      }
+    } else if (formData.type === 'Target Saving') {
+      if (!formData.targetAmount || parseFloat(formData.targetAmount) <= 0) {
+        newErrors.targetAmount = 'Valid target amount is required';
+      }
+    }
+    
     if (!formData.period || parseInt(formData.period) <= 0) newErrors.period = 'Valid period is required';
-    if (!formData.interestRate || parseFloat(formData.interestRate) < 0) newErrors.interestRate = 'Valid interest rate is required';
     if (!formData.duration || parseInt(formData.duration) <= 0) newErrors.duration = 'Valid duration is required';
+    if (!formData.interestRate || parseFloat(formData.interestRate) < 0) newErrors.interestRate = 'Valid interest rate is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -81,8 +93,8 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
         id: formData.id,
         name: formData.name,
         type: formData.type,
-        amount: parseFloat(formData.amount),
-        seedAmount: parseFloat(formData.amount),
+        amount: formData.type === 'Fixed Deposit' ? parseFloat(formData.fixedAmount) : parseFloat(formData.targetAmount),
+        seedAmount: formData.type === 'Fixed Deposit' ? parseFloat(formData.fixedAmount) : parseFloat(formData.targetAmount),
         seedType: 'First saving',
         period: parseInt(formData.period),
         collectionDays: 'Daily',
@@ -92,7 +104,8 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
         interestRate: parseFloat(formData.interestRate),
         extraCharges: parseFloat(formData.extraCharges),
         defaultPenalty: parseFloat(formData.defaultPenalty),
-        defaultDays: parseInt(formData.defaultDays)
+        defaultDays: parseInt(formData.defaultDays),
+        packageCategory: 'Investment'
       });
 
       onPackageUpdated();
@@ -148,9 +161,8 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
                 value={formData.type}
                 onChange={(e) => handleInputChange('type', e.target.value)}
               >
-                <option value="Fixed">Fixed deposit</option>
-                <option value="Flexible">Flexible deposit</option>
-                <option value="Variable">Variable deposit</option>
+                <option value="Fixed Deposit">Fixed deposit</option>
+                <option value="Target Saving">Target Saving</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
                 <FaAngleDown className="w-[16px] h-[16px] text-[#8E8E93]" />
@@ -158,17 +170,35 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
             </div>
           </div>
 
-          <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Target amount</p>
-            <input 
-              type="number" 
-              placeholder='0.00' 
-              value={formData.amount}
-              onChange={(e) => handleInputChange('amount', e.target.value)}
-              className={`w-full h-[45px] border ${errors.amount ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
-            />
-            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
-          </div>
+          {/* Show Fixed Amount field for Fixed Deposit */}
+          {formData.type === 'Fixed Deposit' && (
+            <div className="mb-4">
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Fixed Amount</p>
+              <input 
+                type="number" 
+                placeholder='20000' 
+                value={formData.fixedAmount}
+                onChange={(e) => handleInputChange('fixedAmount', e.target.value)}
+                className={`w-full h-[45px] border ${errors.fixedAmount ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
+              />
+              {errors.fixedAmount && <p className="text-red-500 text-xs mt-1">{errors.fixedAmount}</p>}
+            </div>
+          )}
+
+          {/* Show Target Amount field for Target Saving */}
+          {formData.type === 'Target Saving' && (
+            <div className="mb-4">
+              <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Target Amount</p>
+              <input 
+                type="number" 
+                placeholder='20000' 
+                value={formData.targetAmount}
+                onChange={(e) => handleInputChange('targetAmount', e.target.value)}
+                className={`w-full h-[45px] border ${errors.targetAmount ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
+              />
+              {errors.targetAmount && <p className="text-red-500 text-xs mt-1">{errors.targetAmount}</p>}
+            </div>
+          )}
 
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Investment period (days)</p>

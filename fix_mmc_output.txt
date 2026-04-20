@@ -1,0 +1,40 @@
+Exact orphan not found, trying alternative...
+Lines around issue:
+279:   }
+280: };
+281: 
+282: 
+283: 
+284:     res.json({
+285:       success: true,
+286:       data: subscriptionData,
+287:     });
+288:   } catch (error) {
+289:     console.error('Error fetching merchant subscriptions:', error);
+290:     res.status(500).json({
+291:       success: false,
+292:       message: 'Failed to fetch merchant subscriptions',
+293:       error: error.message,
+294:     });
+295:   }
+296: };
+297: 
+298: // Get merchant logs
+299: const getMerchantLogs = async (req, res) => {
+300:   try {
+Removed lines 282-296 (0-indexed 281-295)
+File written
+Syntax check: PASSED - no errors
+
+=== Current merchant model subscription fields ===
+71:    subscriptionStatus: {
+72:      field: 'subscription_status',
+76:    planId: {
+77:      field: 'plan_id',
+85:    isCustomFee: {
+90:    customFee: {
+95:    nextBillingDate: {
+100:    totalDebt: {
+105:    trialEndDate: {
+122:    Merchant.belongsTo(models.Plan, { foreignKey: 'planId', as: 'plan' });
+

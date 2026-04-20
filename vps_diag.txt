@@ -1,0 +1,793 @@
+COMMAND: hostname
+STDOUT:
+server1.alphakolect.com
+
+STDERR:
+
+----------------------------------------
+COMMAND: ip addr show eth0
+STDOUT:
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 00:16:3c:87:1c:43 brd ff:ff:ff:ff:ff:ff
+    altname enp0s3
+    altname ens3
+    inet 159.198.36.24/24 brd 159.198.36.255 scope global noprefixroute eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::216:3cff:fe87:1c43/64 scope link 
+       valid_lft forever preferred_lft forever
+
+STDERR:
+
+----------------------------------------
+COMMAND: systemctl status nginx --no-pager
+STDOUT:
+● nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: disabled)
+     Active: active (running) since Wed 2026-04-08 08:59:58 UTC; 4h 16min ago
+    Process: 797 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    Process: 800 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+    Process: 819 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+   Main PID: 820 (nginx)
+      Tasks: 3 (limit: 12300)
+     Memory: 8.1M (peak: 8.7M)
+        CPU: 179ms
+     CGroup: /system.slice/nginx.service
+             ├─820 "nginx: master process /usr/sbin/nginx"
+             ├─821 "nginx: worker process"
+             └─822 "nginx: worker process"
+
+Apr 08 08:59:58 server1.alphakolect.com systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Apr 08 08:59:58 server1.alphakolect.com nginx[800]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Apr 08 08:59:58 server1.alphakolect.com nginx[800]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Apr 08 08:59:58 server1.alphakolect.com systemd[1]: Started The nginx HTTP and reverse proxy server.
+
+STDERR:
+
+----------------------------------------
+COMMAND: nginx -T
+STDOUT:
+# configuration file /etc/nginx/nginx.conf:
+# For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+# Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 4096;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    # Load modular configuration files from the /etc/nginx/conf.d directory.
+    # See http://nginx.org/en/docs/ngx_core_module.html#include
+    # for more information.
+    include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen       8080;
+        listen       [::]:8080;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        error_page 404 /404.html;
+        location = /404.html {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+        }
+    }
+
+# Settings for a TLS enabled server.
+#
+#    server {
+#        listen       443 ssl http2;
+#        listen       [::]:443 ssl http2;
+#        server_name  _;
+#        root         /usr/share/nginx/html;
+#
+#        ssl_certificate "/etc/pki/nginx/server.crt";
+#        ssl_certificate_key "/etc/pki/nginx/private/server.key";
+#        ssl_session_cache shared:SSL:1m;
+#        ssl_session_timeout  10m;
+#        ssl_ciphers PROFILE=SYSTEM;
+#        ssl_prefer_server_ciphers on;
+#
+#        # Load configuration files for the default server block.
+#        include /etc/nginx/default.d/*.conf;
+#
+#        error_page 404 /404.html;
+#            location = /40x.html {
+#        }
+#
+#        error_page 500 502 503 504 /50x.html;
+#            location = /50x.html {
+#        }
+#    }
+
+}
+
+
+# configuration file /etc/nginx/mime.types:
+
+types {
+    text/html                                        html htm shtml;
+    text/css                                         css;
+    text/xml                                         xml;
+    image/gif                                        gif;
+    image/jpeg                                       jpeg jpg;
+    application/javascript                           js;
+    application/atom+xml                             atom;
+    application/rss+xml                              rss;
+
+    text/mathml                                      mml;
+    text/plain                                       txt;
+    text/vnd.sun.j2me.app-descriptor                 jad;
+    text/vnd.wap.wml                                 wml;
+    text/x-component                                 htc;
+
+    image/png                                        png;
+    image/svg+xml                                    svg svgz;
+    image/tiff                                       tif tiff;
+    image/vnd.wap.wbmp                               wbmp;
+    image/webp                                       webp;
+    image/x-icon                                     ico;
+    image/x-jng                                      jng;
+    image/x-ms-bmp                                   bmp;
+
+    font/woff                                        woff;
+    font/woff2                                       woff2;
+
+    application/java-archive                         jar war ear;
+    application/json                                 json;
+    application/mac-binhex40                         hqx;
+    application/msword                               doc;
+    application/pdf                                  pdf;
+    application/postscript                           ps eps ai;
+    application/rtf                                  rtf;
+    application/vnd.apple.mpegurl                    m3u8;
+    application/vnd.google-earth.kml+xml             kml;
+    application/vnd.google-earth.kmz                 kmz;
+    application/vnd.ms-excel                         xls;
+    application/vnd.ms-fontobject                    eot;
+    application/vnd.ms-powerpoint                    ppt;
+    application/vnd.oasis.opendocument.graphics      odg;
+    application/vnd.oasis.opendocument.presentation  odp;
+    application/vnd.oasis.opendocument.spreadsheet   ods;
+    application/vnd.oasis.opendocument.text          odt;
+    application/vnd.openxmlformats-officedocument.presentationml.presentation
+                                                     pptx;
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+                                                     xlsx;
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document
+                                                     docx;
+    application/vnd.wap.wmlc                         wmlc;
+    application/x-7z-compressed                      7z;
+    application/x-cocoa                              cco;
+    application/x-java-archive-diff                  jardiff;
+    application/x-java-jnlp-file                     jnlp;
+    application/x-makeself                           run;
+    application/x-perl                               pl pm;
+    application/x-pilot                              prc pdb;
+    application/x-rar-compressed                     rar;
+    application/x-redhat-package-manager             rpm;
+    application/x-sea                                sea;
+    application/x-shockwave-flash                    swf;
+    application/x-stuffit                            sit;
+    application/x-tcl                                tcl tk;
+    application/x-x509-ca-cert                       der pem crt;
+    application/x-xpinstall                          xpi;
+    application/xhtml+xml                            xhtml;
+    application/xspf+xml                             xspf;
+    application/zip                                  zip;
+
+    application/octet-stream                         bin exe dll;
+    application/octet-stream                         deb;
+    application/octet-stream                         dmg;
+    application/octet-stream                         iso img;
+    application/octet-stream                         msi msp msm;
+
+    audio/midi                                       mid midi kar;
+    audio/mpeg                                       mp3;
+    audio/ogg                                        ogg;
+    audio/x-m4a                                      m4a;
+    audio/x-realaudio                                ra;
+
+    video/3gpp                                       3gpp 3gp;
+    video/mp2t                                       ts;
+    video/mp4                                        mp4;
+    video/mpeg                                       mpeg mpg;
+    video/quicktime                                  mov;
+    video/webm                                       webm;
+    video/x-flv                                      flv;
+    video/x-m4v                                      m4v;
+    video/x-mng                                      mng;
+    video/x-ms-asf                                   asx asf;
+    video/x-ms-wmv                                   wmv;
+    video/x-msvideo                                  avi;
+}
+
+# configuration file /etc/nginx/conf.d/00-catchall.conf:
+# Catch-all: reject requests for unknown domains
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    return 444;
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+    ssl_certificate      /var/webuzo/certs/webuzo-combined.pem;
+    ssl_certificate_key  /var/webuzo/certs/webuzo.key;
+    return 444;
+}
+
+
+# configuration file /etc/nginx/conf.d/alphaweb.conf:
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name alphakolect.com www.alphakolect.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://alphakolect.com$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name alphakolect.com www.alphakolect.com;
+
+    ssl_certificate     /etc/nginx/ssl/alphakolect.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/alphakolect.com.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    client_max_body_size 50M;
+
+    # Backend API � specific routes that are NOT pages
+    location ~ ^/(api|health|api-docs|merchant|superadmin|branches|roles|staff|charges|investments|investment-applications|investment-transactions|loan-applications|loans|repayments|packages|collections|wallet|wallet-tiers|remittances|customer-wallets|accounting|uploads)(/|$) {
+        proxy_pass         http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        'upgrade';
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+
+    # Clashing paths (Pages vs APIs) -- use Accept header to distinguish
+    location ~ ^/(agents|customers|dashboard|collaborator)(/|$) {
+        # Browser page requests (HTML) -> Next.js on 3000
+        if ($http_accept ~* "text/html") {
+            proxy_pass http://127.0.0.1:3000;
+            break;
+        }
+        # API/AJAX requests -> Express on 5000
+        proxy_pass         http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        'upgrade';
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+
+    # Everything else -- Next.js frontend on port 3000
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        'upgrade';
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
+
+# configuration file /etc/nginx/conf.d/bhislass.conf:
+# bhislass.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name bhislass.com www.bhislass.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://bhislass.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name bhislass.com www.bhislass.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/bhislass.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/bhislass.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/godproposescollege.com.conf:
+# godproposescollege.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name godproposescollege.com www.godproposescollege.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://godproposescollege.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name godproposescollege.com www.godproposescollege.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/godproposescollege.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/godproposescollege.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/kosheglobal.com.conf:
+# kosheglobal.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name kosheglobal.com www.kosheglobal.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://kosheglobal.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name kosheglobal.com www.kosheglobal.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/kosheglobal.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/kosheglobal.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/modoniteintegrated.com.ng.conf:
+# modoniteintegrated.com.ng — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name modoniteintegrated.com.ng www.modoniteintegrated.com.ng;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://modoniteintegrated.com.ng$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name modoniteintegrated.com.ng www.modoniteintegrated.com.ng;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/modoniteintegrated.com.ng-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/modoniteintegrated.com.ng.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/paxalphaltd.com.conf:
+# paxalphaltd.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name paxalphaltd.com www.paxalphaltd.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://paxalphaltd.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name paxalphaltd.com www.paxalphaltd.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/paxalphaltd.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/paxalphaltd.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/suppakash.com.conf:
+# suppakash.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name suppakash.com www.suppakash.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://suppakash.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name suppakash.com www.suppakash.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/suppakash.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/suppakash.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/thepeopleimpact.com.conf:
+# thepeopleimpact.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name thepeopleimpact.com www.thepeopleimpact.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://thepeopleimpact.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name thepeopleimpact.com www.thepeopleimpact.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/thepeopleimpact.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/thepeopleimpact.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+# configuration file /etc/nginx/conf.d/vinemorrisgroup.com.conf:
+# vinemorrisgroup.com — SSL at nginx, backend: Apache HTTP 8081
+server {
+    listen 80;
+    listen [::]:80;
+    server_name vinemorrisgroup.com www.vinemorrisgroup.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://vinemorrisgroup.com$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name vinemorrisgroup.com www.vinemorrisgroup.com;
+
+    ssl_certificate     /var/webuzo/users/mayowae/ssl/vinemorrisgroup.com-combined.pem;
+    ssl_certificate_key /var/webuzo/users/mayowae/ssl/vinemorrisgroup.com.key;
+    ssl_dhparam         /etc/ssl/private/dhparam.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    location / {
+        proxy_pass         http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_set_header   X-Forwarded-Port  443;
+        proxy_connect_timeout 60s;
+        proxy_read_timeout    300s;
+    }
+    location /.well-known/ { root /var/webuzo-data/www; }
+}
+
+
+
+STDERR:
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+----------------------------------------
+COMMAND: pm2 list
+STDOUT:
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 852      │ 4h     │ 0    │ online    │ 0%       │ 89.4mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 853      │ 4h     │ 0    │ online    │ 0%       │ 57.5mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+STDERR:
+
+----------------------------------------
+COMMAND: netstat -tulnp
+STDOUT:
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 0.0.0.0:465             0.0.0.0:*               LISTEN      658/exim            
+tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN      820/nginx: master p 
+tcp        0      0 0.0.0.0:110             0.0.0.0:*               LISTEN      649/dovecot         
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      820/nginx: master p 
+tcp        0      0 0.0.0.0:25              0.0.0.0:*               LISTEN      658/exim            
+tcp        0      0 0.0.0.0:21              0.0.0.0:*               LISTEN      770/pure-ftpd (SERV 
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      668/sshd: /usr/sbin 
+tcp        0      0 0.0.0.0:3306            0.0.0.0:*               LISTEN      790/mariadbd        
+tcp        0      0 0.0.0.0:143             0.0.0.0:*               LISTEN      649/dovecot         
+tcp        0      0 127.0.0.1:953           0.0.0.0:*               LISTEN      778/named           
+tcp        0      0 159.198.36.24:53        0.0.0.0:*               LISTEN      778/named           
+tcp        0      0 127.0.0.1:53            0.0.0.0:*               LISTEN      778/named           
+tcp        0      0 0.0.0.0:993             0.0.0.0:*               LISTEN      649/dovecot         
+tcp        0      0 0.0.0.0:995             0.0.0.0:*               LISTEN      649/dovecot         
+tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      820/nginx: master p 
+tcp        0      0 0.0.0.0:587             0.0.0.0:*               LISTEN      658/exim            
+tcp        0      0 127.0.0.1:5432          0.0.0.0:*               LISTEN      678/postmaster      
+tcp6       0      0 :::465                  :::*                    LISTEN      658/exim            
+tcp6       0      0 :::443                  :::*                    LISTEN      820/nginx: master p 
+tcp6       0      0 fe80::216:3cff:fe87::53 :::*                    LISTEN      778/named           
+tcp6       0      0 :::110                  :::*                    LISTEN      649/dovecot         
+tcp6       0      0 :::80                   :::*                    LISTEN      820/nginx: master p 
+tcp6       0      0 ::1:953                 :::*                    LISTEN      778/named           
+tcp6       0      0 :::25                   :::*                    LISTEN      658/exim            
+tcp6       0      0 :::21                   :::*                    LISTEN      770/pure-ftpd (SERV 
+tcp6       0      0 :::22                   :::*                    LISTEN      668/sshd: /usr/sbin 
+tcp6       0      0 :::3306                 :::*                    LISTEN      790/mariadbd        
+tcp6       0      0 :::143                  :::*                    LISTEN      649/dovecot         
+tcp6       0      0 :::993                  :::*                    LISTEN      649/dovecot         
+tcp6       0      0 :::995                  :::*                    LISTEN      649/dovecot         
+tcp6       0      0 ::1:53                  :::*                    LISTEN      778/named           
+tcp6       0      0 :::3000                 :::*                    LISTEN      878/next-server (v1 
+tcp6       0      0 :::5000                 :::*                    LISTEN      839/PM2 v6.0.14: Go 
+tcp6       0      0 :::8080                 :::*                    LISTEN      820/nginx: master p 
+tcp6       0      0 :::8081                 :::*                    LISTEN      826/httpd           
+tcp6       0      0 :::8082                 :::*                    LISTEN      826/httpd           
+tcp6       0      0 :::587                  :::*                    LISTEN      658/exim            
+tcp6       0      0 ::1:5432                :::*                    LISTEN      678/postmaster      
+udp        0      0 159.198.36.24:53        0.0.0.0:*                           778/named           
+udp        0      0 159.198.36.24:53        0.0.0.0:*                           778/named           
+udp        0      0 127.0.0.1:53            0.0.0.0:*                           778/named           
+udp        0      0 127.0.0.1:53            0.0.0.0:*                           778/named           
+udp        0      0 127.0.0.1:323           0.0.0.0:*                           585/chronyd         
+udp6       0      0 ::1:53                  :::*                                778/named           
+udp6       0      0 ::1:53                  :::*                                778/named           
+udp6       0      0 fe80::216:3cff:fe87::53 :::*                                778/named           
+udp6       0      0 fe80::216:3cff:fe87::53 :::*                                778/named           
+udp6       0      0 ::1:323                 :::*                                585/chronyd         
+
+STDERR:
+
+----------------------------------------
+COMMAND: ls -la /var/www/alphakolect.com || ls -la /var/www/html
+STDOUT:
+
+STDERR:
+ls: cannot access '/var/www/alphakolect.com': No such file or directory
+ls: cannot access '/var/www/html': No such file or directory
+
+----------------------------------------
+COMMAND: cat /etc/nginx/sites-enabled/default || cat /etc/nginx/nginx.conf
+STDOUT:
+# For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log;
+pid /run/nginx.pid;
+
+# Load dynamic modules. See /usr/share/doc/nginx/README.dynamic.
+include /usr/share/nginx/modules/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+    keepalive_timeout   65;
+    types_hash_max_size 4096;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    # Load modular configuration files from the /etc/nginx/conf.d directory.
+    # See http://nginx.org/en/docs/ngx_core_module.html#include
+    # for more information.
+    include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen       8080;
+        listen       [::]:8080;
+        server_name  _;
+        root         /usr/share/nginx/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        error_page 404 /404.html;
+        location = /404.html {
+        }
+
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+        }
+    }
+
+# Settings for a TLS enabled server.
+#
+#    server {
+#        listen       443 ssl http2;
+#        listen       [::]:443 ssl http2;
+#        server_name  _;
+#        root         /usr/share/nginx/html;
+#
+#        ssl_certificate "/etc/pki/nginx/server.crt";
+#        ssl_certificate_key "/etc/pki/nginx/private/server.key";
+#        ssl_session_cache shared:SSL:1m;
+#        ssl_session_timeout  10m;
+#        ssl_ciphers PROFILE=SYSTEM;
+#        ssl_prefer_server_ciphers on;
+#
+#        # Load configuration files for the default server block.
+#        include /etc/nginx/default.d/*.conf;
+#
+#        error_page 404 /404.html;
+#            location = /40x.html {
+#        }
+#
+#        error_page 500 502 503 504 /50x.html;
+#            location = /50x.html {
+#        }
+#    }
+
+}
+
+
+STDERR:
+cat: /etc/nginx/sites-enabled/default: No such file or directory
+
+----------------------------------------

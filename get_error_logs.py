@@ -1,0 +1,20 @@
+import paramiko
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
+hostname = '159.198.36.24'
+port = 22
+username = 'root'
+password = '96eUC4aTbMu1o3yAP2'
+
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(hostname, port=port, username=username, password=password)
+
+print("=== Tailing Backend Logs for Approve Errors ===")
+stdin, stdout, stderr = ssh.exec_command(
+    "grep -C 5 'approveRemittance error:' ~/.pm2/logs/alphaweb-backend-error.log | tail -50"
+)
+print(stdout.read().decode('utf-8', errors='ignore') or "(No approveRemittance error found in logs)")
+
+ssh.close()

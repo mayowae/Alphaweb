@@ -1,0 +1,40 @@
+=== API Customer Payload ===
+--- OLUBI ---
+undefined
+--- PACKAGES ---
+[
+  {
+    "id": 1,
+    "name": "Alpha200"
+  },
+  {
+    "id": 2,
+    "name": "Alpha500"
+  },
+  {
+    "id": 3,
+    "name": "Alpha500"
+  },
+  {
+    "id": 4,
+    "name": "Alpha1kFlex"
+  },
+  {
+    "id": 5,
+    "name": "Aloan30k"
+  },
+  {
+    "id": 6,
+    "name": "Aloan300k180days"
+  },
+  {
+    "id": 7,
+    "name": "Target50k"
+  },
+  {
+    "id": 8,
+    "name": "Fixed100k"
+  }
+]
+
+ERROR: 

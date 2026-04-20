@@ -1,4 +1,4 @@
-const { LoanApplication, Customer, Agent, Staff } = require('../models');
+const { LoanApplication, Customer, Agent, Staff, Loan } = require('../models');
 const { Op } = require('sequelize');
 
 /**
@@ -316,9 +316,28 @@ const createLoanApplication = async (req, res) => {
       branch, 
       notes,
       purpose,
-      collateral
+      collateral,
+      packageName
     } = req.body;
     const merchantId = req.user.id;
+
+    // Check for running loan on this account number
+    if (accountNumber) {
+      const activeLoan = await Loan.findOne({
+        where: {
+          accountNumber,
+          merchantId,
+          status: { [Op.not]: 'Completed' }
+        }
+      });
+
+      if (activeLoan) {
+        return res.status(400).json({
+          success: false,
+          message: 'A loan is already running on this account number. It must be fully paid off before applying for another.'
+        });
+      }
+    }
 
     // Find customer by name
     const customer = await Customer.findOne({
@@ -355,6 +374,7 @@ const createLoanApplication = async (req, res) => {
       notes,
       purpose,
       collateral,
+      packageName,
       merchantId,
       dateApplied: new Date()
     });

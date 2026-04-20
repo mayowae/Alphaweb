@@ -1,0 +1,57 @@
+ Describing process with id 6 - name alphaweb-frontend 
+┌───────────────────┬─────────────────────────────────────────────────────────────────┐
+│ status            │ online                                                          │
+│ name              │ alphaweb-frontend                                               │
+│ namespace         │ default                                                         │
+│ version           │ N/A                                                             │
+│ restarts          │ 0                                                               │
+│ uptime            │ 53s                                                             │
+│ entire log path   │ /home/mayowae/public_html/alphaweb/logs/frontend-combined-6.log │
+│ script path       │ /usr/bin/npm                                                    │
+│ script args       │ start                                                           │
+│ error log path    │ /home/mayowae/public_html/alphaweb/logs/frontend-error-6.log    │
+│ out log path      │ /home/mayowae/public_html/alphaweb/logs/frontend-out-6.log      │
+│ pid path          │ /root/.pm2/pids/alphaweb-frontend-6.pid                         │
+│ interpreter       │ /usr/bin/node                                                   │
+│ interpreter args  │ N/A                                                             │
+│ script id         │ 6                                                               │
+│ exec cwd          │ /home/mayowae/public_html/alphaweb                              │
+│ exec mode         │ cluster_mode                                                    │
+│ node.js version   │ 20.20.0                                                         │
+│ node env          │ production                                                      │
+│ watch & reload    │ ✘                                                               │
+│ unstable restarts │ 0                                                               │
+│ created at        │ 2026-03-20T17:08:33.109Z                                        │
+└───────────────────┴─────────────────────────────────────────────────────────────────┘
+ Actions available 
+┌────────────────────────┐
+│ km:heapdump            │
+│ km:cpu:profiling:start │
+│ km:cpu:profiling:stop  │
+│ km:heap:sampling:start │
+│ km:heap:sampling:stop  │
+└────────────────────────┘
+ Trigger via: pm2 trigger alphaweb-frontend <action_name>
+
+ Code metrics value 
+┌────────────────────────┬──────────┐
+│ Used Heap Size         │ 8.52 MiB │
+│ Heap Usage             │ 94.97 %  │
+│ Heap Size              │ 8.98 MiB │
+│ Event Loop Latency p95 │ 1.32 ms  │
+│ Event Loop Latency     │ 0.82 ms  │
+│ Active handles         │ 3        │
+│ Active requests        │ 0        │
+└────────────────────────┴──────────┘
+ Divergent env variables from local env 
+┌────────────────┬────────────────────────────────────┐
+│ PWD            │ .                                  │
+│ SSH_CONNECTION │ 102.90.96.7 11026 159.198.36.24 22 │
+│ XDG_SESSION_ID │ 641                                │
+│ SSH_CLIENT     │ 102.90.96.7 11026 22               │
+└────────────────┴────────────────────────────────────┘
+
+ Add your own code metrics: http://bit.ly/code-metrics
+ Use `pm2 logs alphaweb-frontend [--lines 1000]` to display logs
+ Use `pm2 env 6` to display environment variables
+ Use `pm2 monit` to monitor CPU and Memory usage alphaweb-frontend

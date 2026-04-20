@@ -1,0 +1,25 @@
+
+> alphaweb@0.1.0 build
+> set NODE_OPTIONS=--max-old-space-size=4096 && next build
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.production, .env
+   - Experiments (use with caution):
+     ✓ memoryBasedWorkersCount
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 13.0s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/app/dashboard/(pages)/package/(pages)/collection/page.tsx:57:44
+Type error: Expected 0 arguments, but got 1.
+
+[0m [90m 55 |[39m       setError([36mnull[39m)[33m;[39m
+ [90m 56 |[39m       
+[31m[1m>[22m[39m[90m 57 |[39m       [36mconst[39m response [33m=[39m [36mawait[39m fetchPackages([32m'Collection'[39m)[33m;[39m
+ [90m    |[39m                                            [31m[1m^[22m[39m
+ [90m 58 |[39m       [36mif[39m (response[33m.[39msuccess) {
+ [90m 59 |[39m         setPackages(response[33m.[39mpackages [33m||[39m [])[33m;[39m
+ [90m 60 |[39m       }[0m
+Next.js build worker exited with code: 1 and signal: null

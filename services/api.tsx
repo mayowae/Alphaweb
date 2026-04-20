@@ -20,6 +20,23 @@ function getAuthHeaders(): Record<string, string> {
   return {};
 }
 
+async function handleResponse(response: Response, defaultErrorMessage: string = 'Request failed') {
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+      // Use router if possible, but window.location is safer for non-component file
+      window.location.href = '/login';
+    }
+    throw new Error('Session expired. Please login again.');
+  }
+  
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || defaultErrorMessage);
+  }
+  return data;
+}
+
 export async function registerUser(userData: any) {
   const response = await fetch(BASE_URL + '/merchant/signup', {
     method: 'POST',
@@ -144,9 +161,17 @@ export async function fetchMerchantProfile() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
+  return handleResponse(response, 'Failed to fetch profile');
+}
+
+export async function getMerchantSubscription() {
+  const response = await fetch(BASE_URL + '/merchant/subscription', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch profile');
+    throw new Error(data.message || 'Failed to fetch subscription');
   }
   return data;
 }
@@ -156,11 +181,7 @@ export async function fetchUpgradeStatus() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch upgrade status');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch upgrade status');
 }
 
 export async function collaboratorResendOtp(email: string) {
@@ -306,11 +327,7 @@ export async function fetchAgents() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch agents');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch agents');
 }
 export async function fetchAgentById(id: number) {
   const response = await fetch(BASE_URL + `/agents/${id}`, {
@@ -457,11 +474,15 @@ export async function fetchCustomers() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch customers');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch customers');
+}
+
+export async function fetchCustomerById(customerId: string | number) {
+  const response = await fetch(BASE_URL + `/customers/${customerId}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response, 'Failed to fetch customer by ID');
 }
 // Role APIs
 export async function createRole(roleData: { roleName: string; cantView: number; canViewOnly: number; canEdit: number; permissions: Record<string, string>; }) {
@@ -596,11 +617,7 @@ export async function getUserTransactions() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch transactions');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch transactions');
 }
 
 export async function getTransactionById(id: string) {
@@ -637,11 +654,7 @@ export async function getUserSummary() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch user summary');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch user summary');
 }
 
 export async function getUserStats() {
@@ -649,11 +662,7 @@ export async function getUserStats() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch user stats');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch user stats');
 }
 
 // Charges APIs
@@ -874,16 +883,13 @@ export async function createPackage(packageData: {
   return data;
 }
 
-export async function fetchPackages() {
-  const response = await fetch(BASE_URL + '/packages', {
+export async function fetchPackages(category?: string) {
+  const url = category ? `${BASE_URL}/packages?category=${category}` : `${BASE_URL}/packages`;
+  const response = await fetch(url, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch packages');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch packages');
 }
 
 export async function updatePackage(packageData: { 
@@ -1015,11 +1021,7 @@ export async function fetchLoanPackages(params?: {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch loan packages');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch loan packages');
 }
 
 // Collection APIs
@@ -1073,11 +1075,7 @@ export async function fetchCollections() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch collections');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch collections');
 }
 
 // Remittances APIs
@@ -1146,6 +1144,16 @@ export async function deleteRemittance(id: number) {
   if (!response.ok) throw new Error(data.message || 'Failed to delete remittance');
   return data;
 }
+
+export async function deleteCollection(id: number) {
+  const response = await fetch(BASE_URL + `/collections/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to delete collection');
+  return data;
+}
 export async function updateCollection(collectionData: {
   id: number;
   customerName?: string;
@@ -1183,11 +1191,7 @@ export async function getWalletBalance() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch wallet balance');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch wallet balance');
 }
 
 export async function createWalletTransaction(transactionData: { type: string; amount: number; description: string; }) {
@@ -1526,11 +1530,7 @@ export async function fetchLoans(params: {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch loans');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch loans');
 }
 
 export async function fetchLoanById(id: number) {
@@ -1578,11 +1578,7 @@ export async function fetchLoanStats() {
     method: 'GET',
     headers: getAuthHeaders(),
   });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch loan statistics');
-  }
-  return data;
+  return handleResponse(response, 'Failed to fetch loan statistics');
 }
 
 // Repayment APIs

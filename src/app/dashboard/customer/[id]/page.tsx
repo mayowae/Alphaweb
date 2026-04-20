@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  fetchCustomerWalletById,
+  fetchCustomerById,
   fetchCustomerWallets,
   fetchCharges,
   fetchLoans,
@@ -39,12 +39,19 @@ export default function CustomerDetailsPage() {
       setLoading(true)
       setError(null)
 
-      const [walletRes] = await Promise.all([
-        fetchCustomerWalletById(customerId).catch(() => null),
-      ])
+      const customerResp = await fetchCustomerById(customerId).catch(() => null)
+      const fetchedCustomer = customerResp?.customer || customerResp
 
-      setCustomer(walletRes?.customer || walletRes || null)
-      setWalletStats(walletRes?.wallet || walletRes || null)
+      let fetchedWallet = null
+      if (fetchedCustomer) {
+        const walletsRes = await fetchCustomerWallets({ search: fetchedCustomer.accountNumber || String(customerId) }).catch(() => null)
+        if (walletsRes?.wallets?.length > 0) {
+          fetchedWallet = walletsRes.wallets[0]
+        }
+      }
+
+      setCustomer(fetchedCustomer)
+      setWalletStats(fetchedWallet)
 
       // Fetch lists with filters where supported (fallback to client-side filter)
       const [colRes, loanRes, invRes, chgRes] = await Promise.all([
@@ -94,12 +101,13 @@ export default function CustomerDetailsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showApplyCharge, setShowApplyCharge] = useState(false)
   const [applyChargeAmount, setApplyChargeAmount] = useState('')
+  const [applyChargeTitle, setApplyChargeTitle] = useState('')
 
   const handlePostToCollection = async () => {
     if (!customerId || !amount) return
     setLoading(true)
     try {
-      await createCollection({ customerName: String(customerId), amount: Number(amount), dueDate: new Date().toISOString(), type: paymentMethod })
+      await createCollection({ customerName: customer?.fullName || String(customerId), amount: Number(amount), dueDate: new Date().toISOString(), type: paymentMethod })
       await loadAll()
     } catch (e) {
       // ignore visual toast here for brevity
@@ -151,17 +159,23 @@ export default function CustomerDetailsPage() {
     } finally { setLoading(false) }
   }
 
-  const handleApplyCharge = async (chargeId: number, amountStr: string) => {
+  const handleApplyCharge = async () => {
+    if (!customerId || !applyChargeAmount || !applyChargeTitle) return
     setLoading(true)
     try {
-      await assignCharge({ chargeName: String(chargeId), amount: amountStr, dueDate: new Date().toISOString(), customer: String(customerId) })
+      await assignCharge({ 
+        chargeName: applyChargeTitle, 
+        amount: applyChargeAmount, 
+        dueDate: new Date().toISOString(), 
+        customer: String(customerId) 
+      })
       await loadAll()
     } finally { setLoading(false) }
   }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen font-['Inter']">
-      <button onClick={() => router.push('/dashboard/(pages)/customer')} className="text-indigo-600 text-sm mb-4">‹ Back to customers</button>
+      <button onClick={() => router.push('/dashboard/customer')} className="text-indigo-600 text-sm mb-4">‹ Back to customers</button>
 
       <div className="flex items-start justify-between bg-white border rounded p-4">
         <div>
@@ -361,7 +375,7 @@ export default function CustomerDetailsPage() {
                     <td className="p-2">{c.status || 'Pending'}</td>
                     <td className="p-2 text-right">
                       {(c.status||'Pending')==='Pending' && (
-                        <button onClick={()=>handleApplyCharge(c.id || i+1, String(c.amount||0))} className="px-3 py-1.5 border rounded text-xs">Pay</button>
+                        <button onClick={() => { setShowApplyCharge(true); }} className="px-3 py-1.5 border rounded text-xs">Pay</button>
                       )}
                     </td>
                   </tr>
@@ -468,13 +482,15 @@ export default function CustomerDetailsPage() {
             <button onClick={()=>setShowApplyCharge(false)} className="text-gray-500">✕</button>
           </div>
           <div className="p-5">
+            <label className="text-xs text-gray-700">Charge Name / Title</label>
+            <input value={applyChargeTitle} onChange={e=>setApplyChargeTitle(e.target.value)} placeholder="e.g. Maintenance Fee" className="w-full border rounded px-3 py-2 mt-1 mb-4"/>
             <label className="text-xs text-gray-700">Charge amount</label>
             <input value={applyChargeAmount} onChange={e=>setApplyChargeAmount(e.target.value)} placeholder="N 0" className="w-full border rounded px-3 py-2 mt-1"/>
             <label className="text-xs text-gray-700 mt-4 block">Due date</label>
             <input type="date" className="w-full border rounded px-3 py-2 mt-1"/>
           </div>
           <div className="p-5 border-t">
-            <button onClick={async()=>{await handleApplyCharge(Date.now(), applyChargeAmount || '0'); setShowApplyCharge(false)}} disabled={loading} className="w-full bg-indigo-600 text-white rounded px-3 py-2 text-sm">Apply charge</button>
+            <button onClick={async()=>{await handleApplyCharge(); setShowApplyCharge(false)}} disabled={loading} className="w-full bg-indigo-600 text-white rounded px-3 py-2 text-sm">Apply charge</button>
           </div>
         </aside>
       </div>

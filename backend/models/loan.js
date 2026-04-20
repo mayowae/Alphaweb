@@ -21,7 +21,8 @@ module.exports = (sequelize) => {
     approvedAt: { type: DataTypes.DATE, allowNull: true, field: 'approved_at' },
     totalAmount: { type: DataTypes.DECIMAL(15, 2), allowNull: true, field: 'total_amount', comment: 'Total amount including interest' },
     amountPaid: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0, field: 'amount_paid', comment: 'Total amount paid so far' },
-    remainingAmount: { type: DataTypes.DECIMAL(15, 2), allowNull: true, field: 'remaining_amount', comment: 'Remaining amount to be paid' }
+    remainingAmount: { type: DataTypes.DECIMAL(15, 2), allowNull: true, field: 'remaining_amount', comment: 'Remaining amount to be paid' },
+    packageName: { type: DataTypes.STRING, allowNull: true, field: 'package_name', comment: 'Loan package name' }
   }, {
     tableName: 'loans',
     timestamps: false,

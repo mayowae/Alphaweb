@@ -448,7 +448,8 @@ const createRepayment = async (req, res) => {
       merchantId,
       paymentMethod,
       reference,
-      notes
+      notes,
+      status: 'Completed'
     });
 
     // Update loan amount paid and remaining amount

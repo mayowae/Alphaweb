@@ -1,0 +1,41 @@
+=== Tables in database ===
+ accounts
+ activities
+ admin_logs
+ admin_roles
+ admin_staff
+ agents
+ announcements
+ branches
+ charge_assignments
+ charges
+ collaborators
+ collections
+ customer_wallets
+ customers
+ faqs
+ fiscal_periods
+ investment_applications
+ investment_transactions
+ investments
+ journal_entries
+ journal_lines
+ loan_applications
+ loans
+ merchants
+ packages
+ plans
+ remittances
+ repayments
+ roles
+ staff
+ super_admins
+ support_tickets
+ ticket_messages
+ transactions
+ users
+ wallet_tiers
+ wallet_transactions
+ wallet_upgrade_requests
+
+

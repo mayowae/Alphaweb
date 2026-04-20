@@ -1,0 +1,52 @@
+=== pure-ftpd init script (launch args) ===
+# Provides:          pure-ftpd
+# Short-Description: Start and Stop pure-ftpd Server
+# Description:       Start and Stop pure-ftpd Server
+prog="pure-ftpd"
+pure_config=/usr/local/apps/pureftpd/etc/pure-ftpd.conf
+pid_file=/var/run/pure-ftpd.pid
+lockfile=/var/lock/subsys/pure-ftpd
+    perl $pure_launch_script $pure_config --daemonize > /dev/null
+            if [ -f /var/lock/subsys/pure-ftpd ] ; then
+            echo $"Usage: pure-ftpd {start|stop|restart|reload|condrestart|status}"
+
+
+=== Webuzo pure-ftpd config ===
+/usr/local/webuzo/tmp/pureftpd_19_56
+/var/webuzo/cache/pure-ftpd
+/var/webuzo/pureftpd.pdb
+/var/webuzo/certs/pure-ftpd.key
+/var/webuzo/certs/pure-ftpd-combined.pem
+
+
+=== Check puredb/virtual users ===
+/usr/bin/pure-pw
+
+=== Test FTP login with created user ===
+
+lftp: no lftp
+
+
+=== FTP log entries ===
+Mar 27 07:50:23 server1 pure-ftpd[1039902]: (?@69.163.178.5) [INFO] Logout.
+Mar 27 07:51:53 server1 pure-ftpd[1040330]: (?@157.230.244.194) [INFO] New connection from 157.230.244.194
+Mar 27 07:51:58 server1 pure-ftpd[1040330]: (?@157.230.244.194) [WARNING] Authentication failed for user [modoniteintegrated]
+Mar 27 07:51:59 server1 pure-ftpd[1040330]: (?@157.230.244.194) [INFO] Logout.
+Mar 27 07:52:29 server1 pure-ftpd[1040449]: (?@185.98.7.5) [INFO] New connection from 185.98.7.5
+Mar 27 07:52:34 server1 pure-ftpd[1040449]: (?@185.98.7.5) [WARNING] Authentication failed for user [bhislass]
+Mar 27 07:52:34 server1 pure-ftpd[1040449]: (?@185.98.7.5) [INFO] Logout.
+Mar 27 07:53:11 server1 pure-ftpd[1040466]: (?@109.199.106.115) [INFO] New connection from 109.199.106.115
+Mar 27 07:53:17 server1 pure-ftpd[1040466]: (?@109.199.106.115) [WARNING] Authentication failed for user [bhislass]
+Mar 27 07:53:17 server1 pure-ftpd[1040466]: (?@109.199.106.115) [INFO] Logout.
+
+journalctl: Mar 27 07:48:55 server1.alphakolect.com pure-ftpd[1039776]: (?@103.188.170.216) [INFO] Logout.
+Mar 27 07:49:09 server1.alphakolect.com pure-ftpd[1039872]: (?@159.69.108.150) [INFO] New connection from 159.69.108.150
+Mar 27 07:49:15 server1.alphakolect.com pure-ftpd[1039872]: (?@159.69.108.150) [WARNING] Authentication failed for user [bhislass]
+Mar 27 07:49:16 server1.alphakolect.com pure-ftpd[1039872]: (?@159.69.108.150) [INFO] Logout.
+Mar 27 07:49:51 server1.alphakolect.com pure-ftpd[1039886]: (?@142.93.208.47) [INFO] New connection from 142.93.208.47
+Mar 27 07:49:55 server1.alphakolect.com pure-ftpd[1039886]: (?@142.93.208.47) [WARNING] Authentication failed for user [shop]
+Mar 27 07:49:55 server1.alphakolect.com pure-ftpd[1039886]: (?@142.93.208.47) [INFO] Logout.
+Mar 27 07:50:18 server1.alphakolect.com pure-ftpd[1039902]: (?@69.163.178.5) [INFO] New connection from 69.163.178.5
+Mar 27 07:50:23 server1.alphakolect.com pure-ftpd[1039902]: (?@69.163.178.5) [WARNING] Authentication failed for user [shop]
+Mar 27 07:50:23 server1.alphakolect.com pure-ftpd[1039902]: (?@69.163.178.5) [INFO] Logout.
+

@@ -1,0 +1,21 @@
+=== Find adminApi ===
+/home/mayowae/public_html/alphaweb/src/app/admin/utilis/adminApi.ts
+
+
+=== Find merchantdetailstabs ===
+
+
+=== adminAPI import in merchantsdetails.tsx ===
+
+All admin api files: /home/mayowae/public_html/alphaweb/src/app/admin/utilis/adminApi.ts
+
+
+=== Services directory ===
+
+
+
+=== getMerchantSubscription ===
+/home/mayowae/public_html/alphaweb/src/app/dashboard/layout.tsx:6:import { getMerchantSubscription } from '@/services/api';
+/home/mayowae/public_html/alphaweb/src/app/dashboard/layout.tsx:16:    getMerchantSubscription()
+/home/mayowae/public_html/alphaweb/src/app/admin/utilis/adminApi.ts:178:  getMerchantSubscriptions: (id: number) =>
+

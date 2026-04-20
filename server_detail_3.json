@@ -1,0 +1,11 @@
+{
+  "netstat": "tcp6       0      0 :::5000                 :::*                    LISTEN      816482/node /home/m \ntcp6       0      0 :::3000                 :::*                    LISTEN      802463/next-server  \n",
+  "curl_internal_3000": "HTTP/1.1 200 OK\r\nVary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding\r\nx-nextjs-cache: HIT\r\nx-nextjs-prerender: 1\r\nx-nextjs-prerender: 1\r\nx-nextjs-stale-time: 300\r\nX-Powered-By: Next.js\r\nCache-Control: s-maxage=31536000\r\nETag: \"16tej7098bv12nd\"\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 50125\r\nDate: Sat, 04 Apr 2026 11:26:33 GMT\r\nConnection: keep-alive\r\nKeep-Alive: timeout=5\r\n\r\n",
+  "curl_internal_5000": "HTTP/1.1 200 OK\r\nX-Powered-By: Express\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 45\r\nETag: W/\"2d-a/91Qz8Liw4Wn5vTQM8+P4eHims\"\r\nDate: Sat, 04 Apr 2026 11:26:34 GMT\r\nConnection: keep-alive\r\nKeep-Alive: timeout=5\r\n\r\n",
+  "pm2_logs_backend_file": "\u2502 out log path      \u2502 /root/.pm2/logs/alphaweb-backend-out.log             \u2502\n",
+  "pm2_err_backend_file": "\u2502 error log path    \u2502 /root/.pm2/logs/alphaweb-backend-error.log           \u2502\n",
+  "pm2_logs_frontend_file": "\u2502 out log path      \u2502 /home/mayowae/public_html/alphaweb/logs/frontend-out-6.log      \u2502\n",
+  "pm2_err_frontend_file": "\u2502 error log path    \u2502 /home/mayowae/public_html/alphaweb/logs/frontend-error-6.log    \u2502\n",
+  "backend_err_tail": "",
+  "frontend_err_tail": ""
+}

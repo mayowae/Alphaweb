@@ -1,0 +1,56 @@
+=== Creating FTP system user ===
+useradd: useradd: warning: the home directory / already exists.
+useradd: Not copying any file from skel directory into it.
+
+password set: OK
+
+=== Pure-FTPd config ===
+
+ChrootEveryone: not found
+
+Set ChrootEveryone=no: done
+bash: line 1: /etc/pure-ftpd/conf/ChrootEveryone: No such file or directory
+
+NoAnonymous: not found
+
+Set NoAnonymous=yes: done
+bash: line 1: /etc/pure-ftpd/conf/NoAnonymous: No such file or directory
+
+UnixAuthentication: not found
+
+Set UnixAuthentication=yes: done
+bash: line 1: /etc/pure-ftpd/conf/UnixAuthentication: No such file or directory
+
+TLS setting: not set
+Set TLS=0: done
+bash: line 1: /etc/pure-ftpd/conf/TLS: No such file or directory
+
+
+=== Restarting pure-ftpd ===
+Stopping pure-ftpd: [ OK ]
+Starting pure-ftpd: [ OK ]
+
+Status:
+pure-ftpd (pid 1040220) is running...
+
++------+---------+-------+------+-------------------------------------------+
+| PID  |  Login  |For/Spd| What |                 File/IP                   |
++------+---------+-------+------+-------------------------------------------+
+
+
+User 'alphawebftp': uid=1004(alphawebftp) gid=1005(alphawebftp) groups=1005(alphawebftp)
+
+Port 21: tcp        0      0 0.0.0.0:21              0.0.0.0:*               LISTEN      1040220/pure-ftpd ( 
+tcp6       0      0 :::21                   :::*                    LISTEN      1040220/pure-ftpd ( 
+
+
+==================================================
+FTP ACCOUNT DETAILS
+==================================================
+Host:     159.198.36.24  (or alphakolect.com)
+Port:     21
+Username: alphawebftp
+Password: AlphaFTP@2026!
+Root dir: /  (full server access)
+Protocol: FTP (use Explicit FTPS/TLS if client supports it)
+==================================================

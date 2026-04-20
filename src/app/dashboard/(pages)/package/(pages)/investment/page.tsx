@@ -54,11 +54,9 @@ const Page = () => {
   const fetchPackagesData = async () => {
     try {
       setLoading(true);
-      const response = await fetchPackages();
+      const response = await fetchPackages('Investment');
       if (response.success) {
-        const allPkgs = (response.packages || []) as Package[];
-        const investmentPkgs = allPkgs.filter((p) => p.packageCategory === 'Investment');
-        setPackages(investmentPkgs);
+        setPackages(response.packages || []);
       }
     } catch (error) {
       console.error('Error fetching packages:', error);

@@ -1,44 +1,36 @@
-=== NGINX TEST ===
-nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-nginx: configuration file /etc/nginx/nginx.conf test is successful
+=== Last backend error timestamp ===
+2026-02-28
+2026-02-28
+2026-02-28
+2026-02-28
+2026-02-28
 
-=== CONF.D FILES ===
-total 48
-drwxr-xr-x 2 root root 4096 Mar 11 09:33 .
-drwxr-xr-x 5 root root 4096 Mar 11 09:33 ..
--rw-r--r-- 1 root root  402 Mar 11 09:33 00-catchall.conf
--rw-r--r-- 1 root root 1425 Mar  9 20:05 alphaweb.conf
--rw-r--r-- 1 root root 1009 Mar 11 09:33 bhislass.conf
--rw-r--r-- 1 root root 1231 Mar 11 09:33 godproposescollege.com.conf
--rw-r--r-- 1 root root 1168 Mar 11 09:33 kosheglobal.com.conf
--rw-r--r-- 1 root root 1258 Mar 11 09:33 modoniteintegrated.com.ng.conf
--rw-r--r-- 1 root root 1168 Mar 11 09:33 paxalphaltd.com.conf
--rw-r--r-- 1 root root 1150 Mar 11 09:33 suppakash.com.conf
--rw-r--r-- 1 root root 1204 Mar 11 09:33 thepeopleimpact.com.conf
--rw-r--r-- 1 root root 1204 Mar 11 09:33 vinemorrisgroup.com.conf
 
-=== DOMAIN VERIFICATION ===
-  alphakolect.com                             HTTP=000ERR  HTTPS=000ERR
-  bhislass.com                                HTTP=000ERR  HTTPS=000ERR
-  paxalphaltd.com                             HTTP=000ERR  HTTPS=000ERR
-  kosheglobal.com                             HTTP=000ERR  HTTPS=000ERR
-  vinemorrisgroup.com                         HTTP=000ERR  HTTPS=000ERR
-  modoniteintegrated.com.ng                   HTTP=000ERR  HTTPS=000ERR
-  suppakash.com                               HTTP=000ERR  HTTPS=000ERR
-  godproposescollege.com                      HTTP=000ERR  HTTPS=000ERR
-  thepeopleimpact.com                         HTTP=000ERR  HTTPS=000ERR
-  unknown-xyz-test.com                        HTTP=000ERR  HTTPS=000ERR
+=== Test login with real account ===
+{"message":"Login failed","error":"Illegal arguments: string, object"}
 
-=== NGINX PROCESSES ===
-nobody      1169  0.0  0.3  99068  7016 ?        S    Mar09   0:00 nginx: cache manager process
-root      117666  0.0  0.5  14808 10380 ?        Ss   Mar10   0:00 nginx: master process /usr/local/emps/sbin/nginx -c /usr/local/emps/etc/nginx/nginx.conf
-nobody    121181  0.0  0.3  97032  6132 ?        S    Mar10   0:00 nginx: cache manager process
-webuzo    274252  0.0  0.6  24908 12572 ?        S    09:33   0:00 nginx: worker process
+=== Subscription endpoint without token ===
+{"message":"Access token is required"}
 
-=== PM2 STATUS ===
-┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
-│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
-├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 122980   │ 19h    │ 1    │ online    │ 0%       │ 86.4mb   │ root     │ disabled │
-│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 122989   │ 19h    │ 1    │ online    │ 0%       │ 53.9mb   │ root     │ disabled │
-└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+=== Backend out log tail ===
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+Server is running on port 5000
+Database connection has been established successfully.
+Server is running on port 5000
+Database connection has been established successfully.
+

@@ -9,7 +9,7 @@ const DashBoardFooter = () => {
         <p>Terms of Use</p>
         </div>
        
-        <p>© Alphakollect</p>
+        <p>© Alphakolect</p>
 
     </div>
     </>

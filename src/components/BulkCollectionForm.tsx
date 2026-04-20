@@ -14,6 +14,8 @@ interface Customer {
   id: number;
   fullName: string;
   accountNumber?: string;
+  packageId?: number | string;
+  packageName?: string;
 }
 
 interface Package {
@@ -30,6 +32,7 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     customerName: '',
+    selectedCustomerId: '',
     packageName: '',
     selectedPackageId: '',
     packageAmount: '',
@@ -77,6 +80,16 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
       );
       setFilteredCustomers(filtered);
       setShowCustomerDropdown(value.length > 0);
+
+      // Clear selection when searching
+      setFormData(prev => ({
+        ...prev,
+        selectedCustomerId: '',
+        selectedPackageId: '',
+        packageName: '',
+        packageAmount: '',
+        totalAmount: ''
+      }));
     }
 
     // Auto-calculate total amount when package amount or number of days changes
@@ -205,8 +218,31 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
                 {filteredCustomers.map((customer) => (
                   <div
                     key={customer.id}
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, customerName: customer.fullName }));
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      
+                      let assignedPkg = null;
+                      const pkgId = customer.packageId || (customer as any).package_id || (customer as any).PackageId || (customer as any).Package?.id;
+                      
+                      if (pkgId) {
+                        assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
+                      }
+                      
+                      // Fallback: Try matching by string name if backend provided a packageName but no straight ID
+                      if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
+                        assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
+                      }
+                      
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        customerName: customer.fullName,
+                        selectedCustomerId: customer.id.toString(),
+                        selectedPackageId: assignedPkg ? assignedPkg.id.toString() : '',
+                        packageName: assignedPkg ? assignedPkg.name : '',
+                        packageAmount: assignedPkg ? assignedPkg.amount.toString() : '',
+                        totalAmount: (assignedPkg && formData.numberOfDays) ? (assignedPkg.amount * parseInt(formData.numberOfDays)).toString() : ''
+                      }));
+                      
                       setShowCustomerDropdown(false);
                     }}
                     className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
@@ -226,15 +262,43 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
               name="selectedPackageId"
               value={formData.selectedPackageId}
               onChange={handlePackageChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                (() => {
+                  const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
+                  if (!c) return false;
+                  if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
+                  if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
+                    return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
+                  }
+                  return false;
+                })() ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
               required
+              disabled={(() => {
+                const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
+                if (!c) return false;
+                if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
+                if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
+                  return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
+                }
+                return false;
+              })()}
             >
               <option value="">Select Package</option>
-              {packages.map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {pkg.name} - ₦{pkg.amount?.toLocaleString()}
-                </option>
-              ))}
+               {packages
+                .filter(pkg => {
+                  // If a customer is selected and has a packageId, only show that package
+                  const selectedCustomer = customers.find(c => c.id.toString() === formData.selectedCustomerId);
+                  if (selectedCustomer?.packageId) {
+                    return pkg.id.toString() === selectedCustomer.packageId.toString();
+                  }
+                  return true;
+                })
+                .map((pkg) => (
+                  <option key={pkg.id} value={pkg.id}>
+                    {pkg.name} - ₦{pkg.amount?.toLocaleString()}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -250,8 +314,27 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
               placeholder="0.00"
               min="0"
               step="0.01"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                (() => {
+                  const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
+                  if (!c) return false;
+                  if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
+                  if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
+                    return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
+                  }
+                  return false;
+                })() ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
               required
+              readOnly={(() => {
+                const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
+                if (!c) return false;
+                if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
+                if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
+                  return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
+                }
+                return false;
+              })()}
             />
           </div>
 

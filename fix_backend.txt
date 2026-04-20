@@ -1,0 +1,185 @@
+=== Backend error log (last 40 lines) ===
+    constraint: undefined,
+    file: 'parse_relation.c',
+    line: '3562',
+    routine: 'errorMissingColumn',
+    sql: `SELECT "id", "name", "businessName", "businessAlias", "phone", "email", "currency", "password", "isVerified", "otp", "otpExpires", "accountLevel", "accountNumber", "bankName", "accountName", "bankCode", "createdAt", "updatedAt", "subscriptionStatus", "planId", "isCustomFee", "customFee", "nextBillingDate", "totalDebt", "trialEndDate" FROM "merchants" AS "Merchant" WHERE "Merchant"."email" = 'mayowae@msn.com';`,
+    parameters: undefined
+  },
+  original: error: column "subscriptionStatus" does not exist
+      at Parser.parseErrorMessage (/home/mayowae/public_html/alphaweb/backend/node_modules/pg-protocol/dist/parser.js:285:98)
+      at Parser.handlePacket (/home/mayowae/public_html/alphaweb/backend/node_modules/pg-protocol/dist/parser.js:122:29)
+      at Parser.parse (/home/mayowae/public_html/alphaweb/backend/node_modules/pg-protocol/dist/parser.js:35:38)
+      at Socket.<anonymous> (/home/mayowae/public_html/alphaweb/backend/node_modules/pg-protocol/dist/index.js:11:42)
+      at Socket.emit (node:events:524:28)
+      at addChunk (node:internal/streams/readable:561:12)
+      at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+      at Readable.push (node:internal/streams/readable:392:5)
+      at TCP.onStreamRead (node:internal/stream_base_commons:191:23) {
+    length: 194,
+    severity: 'ERROR',
+    code: '42703',
+    detail: undefined,
+    hint: 'Perhaps you meant to reference the column "Merchant.subscription_status".',
+    position: '230',
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'parse_relation.c',
+    line: '3562',
+    routine: 'errorMissingColumn',
+    sql: `SELECT "id", "name", "businessName", "businessAlias", "phone", "email", "currency", "password", "isVerified", "otp", "otpExpires", "accountLevel", "accountNumber", "bankName", "accountName", "bankCode", "createdAt", "updatedAt", "subscriptionStatus", "planId", "isCustomFee", "customFee", "nextBillingDate", "totalDebt", "trialEndDate" FROM "merchants" AS "Merchant" WHERE "Merchant"."email" = 'mayowae@msn.com';`,
+    parameters: undefined
+  },
+  sql: `SELECT "id", "name", "businessName", "businessAlias", "phone", "email", "currency", "password", "isVerified", "otp", "otpExpires", "accountLevel", "accountNumber", "bankName", "accountName", "bankCode", "createdAt", "updatedAt", "subscriptionStatus", "planId", "isCustomFee", "customFee", "nextBillingDate", "totalDebt", "trialEndDate" FROM "merchants" AS "Merchant" WHERE "Merchant"."email" = 'mayowae@msn.com';`,
+  parameters: {}
+}
+
+
+=== Backend out log (last 20) ===
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+JWT Secret being used: Set
+Token being verified: eyJhbGciOiJIUzI1NiIs...
+Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+Server is running on port 5000
+Database connection has been established successfully.
+Server is running on port 5000
+Database connection has been established successfully.
+
+
+=== Nginx config ===
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name alphakolect.com www.alphakolect.com;
+    location /.well-known/acme-challenge/ { root /var/webuzo-data/www; }
+    location / { return 301 https://alphakolect.com$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name alphakolect.com www.alphakolect.com;
+
+    ssl_certificate     /etc/nginx/ssl/alphakolect.com.crt;
+    ssl_certificate_key /etc/nginx/ssl/alphakolect.com.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    client_max_body_size 50M;
+
+    # Backend API � specific routes that are NOT pages
+    location ~ ^/(api|health|api-docs|merchant|superadmin|branches|roles|staff|charges|investments|investment-applications|investment-transactions|loan-applications|loans|repayments|packages|collections|wallet|wallet-tiers|remittances|customer-wallets|accounting|uploads)(/|$) {
+        proxy_pass         http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        'upgrade';
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+
+    # Clashing paths (Pages vs APIs) -- use Accept header to distinguish
+    location ~ ^/(agents|customers|dashboard|collaborator)(/|$) {
+        # Browser page requests (HTML) -> Next.js on 3000
+        if ($http_accept ~* "text/html") {
+            proxy_pass http://127.0.0.1:3000;
+            break;
+        }
+        # API/AJAX requests -> Express on 5000
+        proxy_pass         http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        'upgrade';
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+
+    # Everything else -- Next.js frontend on port 3000
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade           $http_upgrade;
+        proxy_set_header   Connection        'upgrade';
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
+    }
+}
+
+
+=== Syntax check merchantManagementController ===
+/home/mayowae/public_html/alphaweb/backend/controllers/merchantManagementController.js:288
+  } catch (error) {
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+    at checkSyntax (node:internal/main/check_syntax:78:3)
+
+Node.js v20.20.0
+
+
+=== Syntax check billingService ===
+Syntax OK
+
+=== Syntax check agentController ===
+Syntax OK
+
+=== services/api.tsx getMerchantSubscription function ===
+  }
+  return data;
+}
+
+export async function getMerchantSubscription() {
+  const response = await fetch(BASE_URL + '/merchant/subscription', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch subscription');
+  }
+  return data;
+}
+
+export async function fetchUpgradeStatus() {
+  const response = await fetch(BASE_URL + '/wallet/upgrade-status', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch upgrade status');
+  }
+  return data;
+

@@ -1,0 +1,25 @@
+=== Current merchants trial/subscription data ===
+ id |               email               | subscription_status | trial_end_date | next_billing_date |         createdAt          
+----+-----------------------------------+---------------------+----------------+-------------------+----------------------------
+ 28 | tepomeroy@att.net                 | Active              |                |                   | 2026-03-19 14:13:36.485+00
+ 27 | holger.sparbert@t-online.de       | Active              |                |                   | 2026-03-19 12:33:33.464+00
+ 26 | bastiaan@korper.nl                | Active              |                |                   | 2026-03-19 09:57:49.27+00
+ 25 | smellynellywoowaa@hotmail.com     | Active              |                |                   | 2026-03-19 07:18:29.586+00
+ 24 | camiel@korper.nl                  | Active              |                |                   | 2026-03-19 01:16:22.898+00
+ 23 | p.ro.fp.ro.b.st@gmail.com         | Active              |                |                   | 2026-03-18 20:25:06.602+00
+ 22 | igutherless@yahoo.com             | Active              |                |                   | 2026-03-18 18:55:39.363+00
+ 21 | czindell@ppg.com                  | Active              |                |                   | 2026-03-18 18:02:57.721+00
+ 20 | avivi.t..ba.r.r@gmail.com         | Active              |                |                   | 2026-03-18 16:34:19.866+00
+ 19 | ala.n.a..ga.v.r.i.l.i.s@gmail.com | Active              |                |                   | 2026-03-18 13:05:29.797+00
+(10 rows)
+
+
+
+=== Full server.js billing/cron section ===
+
+
+=== TRIAL_MONTHS env var ===
+(TRIAL_MONTHS not set — defaults to 3 months)
+
+=== Cron packages installed ===
+(No cron package found in package.json)

@@ -1,0 +1,4 @@
+Frontend restarted.
+Port 3000 status:
+
+HTTP status of /dashboard/subscription: 000

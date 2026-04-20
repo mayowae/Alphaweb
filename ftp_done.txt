@@ -1,0 +1,22 @@
+=== Step 1: Create user with /home/mayowae as base dir ===
+useradd: Password: 
+Enter it again:
+mkdb: OK
+
+=== Step 2: Disable ChrootEveryone in config ===
+ChrootEveryone disabled: OK
+Config now: ChrootEveryone              no
+# just comment out ChrootEveryone and TrustedGID.
+Restart: Stopping pure-ftpd: [ OK ] Starting pure-ftpd: [ OK ] 
+
+=== Step 4: Test login ===
+< 220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+< 220-You are user number 1 of 50 allowed.
+< 220-Local time is now 07:56. Server port: 21.
+< 220-This is a private system - No anonymous login
+< 220-IPv6 connections are also welcome on this server.
+< 220 You will be disconnected after 15 minutes of inactivity.
+< 331 User alphawebftp OK. Password required
+< 230 OK. Current directory is /
+< 150 Accepted data connection
+

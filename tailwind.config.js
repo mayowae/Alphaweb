@@ -1,9 +1,10 @@
 module.exports = {
     darkMode: ['class'],
     content: [
-  './src/app/**/*.{js,ts,jsx,tsx}',     
-  './src/pages/**/*.{js,ts,jsx,tsx}',   
- './components/**/*.{js,ts,jsx,tsx}', 
+  './src/app/**/*.{js,ts,jsx,tsx}',
+  './src/pages/**/*.{js,ts,jsx,tsx}',
+  './src/components/**/*.{js,ts,jsx,tsx}',
+  './components/**/*.{js,ts,jsx,tsx}',
 ],
   theme: {
   	extend: {
@@ -74,10 +75,9 @@ module.exports = {
   				'5': 'hsl(var(--chart-5))'
   			}
   		},
-		 backgroundImage: {
-        'custom-143': 'linear-gradient(143.66deg, #150E46 16.69%, #3322AC 137.55%)',
-      },
-	  
+		backgroundImage: {
+            'custom-143': 'linear-gradient(143.66deg, #150E46 16.69%, #3322AC 137.55%)',
+        },
   	}
   },
   plugins: [require("tailwindcss-animate")],

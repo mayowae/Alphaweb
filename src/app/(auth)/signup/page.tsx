@@ -106,7 +106,7 @@ export default function SignUp() {
               <img src="/images/logo.png" alt="" />
             </div>
             <div className="card-body mt-3">
-              <h1 className="card-title text-center text-black">Signup to Alphakollect</h1>
+              <h1 className="card-title text-center text-black">Signup to Alphakolect</h1>
               <p className="card-description text-center mt-2">Fill the form below to get started</p>
               <form action="">
                     <div className="form-group">

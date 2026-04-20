@@ -1,0 +1,20 @@
+=== DB Customer ===
+ id |   full_name   | package_id 
+----+---------------+------------
+  1 | Olubi Johnson |           
+(1 row)
+
+
+ERROR: could not change directory to "/root": Permission denied
+
+
+=== Node Script Model ===
+
+ERROR: EagerLoadingError [SequelizeEagerLoadingError]: Package is associated to Customer using an alias. You must use the 'as' keyword to specify the alias within your include statement.
+    at Customer._getIncludedAssociation (/home/mayowae/public_html/alphaweb/backend/node_modules/sequelize/lib/model.js:576:13)
+    at Customer._validateIncludedElement (/home/mayowae/public_html/alphaweb/backend/node_modules/sequelize/lib/model.js:502:53)
+    at /home/mayowae/public_html/alphaweb/backend/node_modules/sequelize/lib/model.js:421:37
+    at Array.map (<anonymous>)
+    at Customer._validateIncludedElements (/home/mayowae/public_html/alphaweb/backend/node_modules/sequelize/lib/model.js:417:39)
+    at Customer.findAll (/home/mayowae/public_html/alphaweb/backend/node_modules/sequelize/lib/model.js:1124:12)
+    at async Customer.findOne (/home/mayowae/public_html/alphaweb/backend/node_modules/sequelize/lib/model.js:1240:12)

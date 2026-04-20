@@ -1,7 +1,9 @@
 "use client"
 import { useState } from "react";
-import { HiBars3BottomRight, HiSun } from "react-icons/hi2";
+import { HiBars3BottomRight, HiSun, HiArrowRightOnRectangle, HiChevronDown } from "react-icons/hi2";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 interface DashboardHeaderProps {
   isOpen: boolean;
@@ -11,13 +13,38 @@ interface DashboardHeaderProps {
 const DashboardHeader = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [userInitials, setUserInitials] = useState("OR");
+  const [userName, setUserName] = useState("User");
+  
+  const router = useRouter();
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setUserName(user.businessName || user.fullName || "User");
+        
+        const name = user.businessName || user.fullName || "User";
+        const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        setUserInitials(initials);
+      } catch (e) {
+        console.error("Error parsing user data", e);
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    router.replace('/login');
+  };
+
   // Function to toggle the menu state
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
-
-
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   return (
     <>
@@ -91,8 +118,34 @@ const DashboardHeader = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
           </div>
 
 
-          <div className={`p-2 rounded-full bg-[#FAF9FF] text-[#4E37FB] cursor-pointer flex items-center justify-center text-purple text-sm font-bold `}>
-            OR
+          <div className="relative">
+            <div 
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              className={`p-2 h-[35px] w-[35px] rounded-full bg-[#FAF9FF] text-[#4E37FB] cursor-pointer flex items-center justify-center text-purple text-[12px] font-bold border border-gray-100 hover:bg-gray-100 transition-colors`}
+            >
+              {userInitials}
+            </div>
+
+            {showProfileDropdown && (
+              <>
+                <div 
+                  className="fixed inset-0 z-10" 
+                  onClick={() => setShowProfileDropdown(false)}
+                ></div>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 border border-gray-100">
+                  <div className="px-4 py-2 text-xs text-gray-400 border-b border-gray-50 mb-1">
+                    Logged in as <span className="font-semibold text-gray-700">{userName}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-50 transition-colors"
+                  >
+                    <HiArrowRightOnRectangle className="mr-2 h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
         </div>

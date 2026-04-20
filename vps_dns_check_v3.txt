@@ -1,0 +1,85 @@
+--- ls -la /var/named/ ---
+total 108
+drwxrwx--T   5 root  named 4096 Apr  8 13:00 .
+drwxr-xr-x. 24 root  root  4096 Oct  6  2025 ..
+-rw-r--r--   1 root  root  1184 Feb 28 21:01 alphakolect.com.zone
+-rw-r--r--   1 root  root  1130 Mar  1 19:59 bhislass.com.zone
+-rw-r--r--   1 root  root     0 Feb 28 21:01 custom_logging.conf
+-rw-r--r--   1 root  root     0 Feb 28 21:01 custom_options.conf
+drwxrwx---   2 named named 4096 Apr  5 00:00 data
+drwxrwx---   2 named named 4096 Nov 13 08:16 dynamic
+-rw-r--r--   1 root  root  1240 Feb 28 21:01 godproposescollege.com.zone
+-rw-r--r--   1 root  root  1184 Feb 28 21:01 kosheglobal.com.zone
+-rw-r--r--   1 root  root   198 Oct  6  2025 localdomain.zone
+-rw-r--r--   1 root  root   195 Oct  6  2025 localhost.zone
+-rw-r--r--   1 named named 1421 Apr  8 13:00 managed-keys.bind
+-rw-r--r--   1 named named 1766 Apr  8 13:00 managed-keys.bind.jnl
+-rw-r--r--   1 root  root  1264 Feb 28 21:01 modoniteintegrated.com.ng.zone
+-rw-r--r--   1 root  root   427 Oct  6  2025 named.broadcast
+-rw-r-----   1 root  named 1892 Oct  6  2025 named.ca
+-rw-r-----   1 root  named  152 Nov 13 08:16 named.empty
+-rw-r--r--   1 root  root   424 Oct  6  2025 named.ip6.local
+-rw-r--r--   1 root  root   426 Oct  6  2025 named.local
+-rw-r-----   1 root  named  152 Nov 13 08:16 named.localhost
+-rw-r-----   1 root  named  168 Nov 13 08:16 named.loopback
+-rw-r--r--   1 root  root   775 Oct  6  2025 named.rfc1912.zones
+-rw-r--r--   1 root  root   427 Oct  6  2025 named.zero
+-rw-r--r--   1 root  root  1184 Feb 28 21:01 paxalphaltd.com.zone
+drwxrwx---   2 named named 4096 Nov 13 08:16 slaves
+-rw-r--r--   1 root  root  1168 Feb 28 21:01 suppakash.com.zone
+-rw-r--r--   1 root  root     0 Feb 28 21:01 sync.zones
+-rw-r--r--   1 root  root  1216 Feb 28 21:01 thepeopleimpact.com.zone
+-rw-r--r--   1 root  root  1216 Feb 28 21:01 vinemorrisgroup.com.zone
+
+
+--- grep -r 'alphakolect.com' /var/named/ || grep -r 'alphakolect.com' /etc/named.conf ---
+/var/named/godproposescollege.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/godproposescollege.com.zone:godproposescollege.com. IN NS ns1.alphakolect.com.
+/var/named/godproposescollege.com.zone:godproposescollege.com. IN NS ns2.alphakolect.com.
+/var/named/bhislass.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/bhislass.com.zone:bhislass.com. IN NS ns1.alphakolect.com.
+/var/named/bhislass.com.zone:bhislass.com. IN NS ns2.alphakolect.com.
+/var/named/alphakolect.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/alphakolect.com.zone:alphakolect.com. IN NS ns1.alphakolect.com.
+/var/named/alphakolect.com.zone:alphakolect.com. IN NS ns2.alphakolect.com.
+/var/named/alphakolect.com.zone:alphakolect.com. 14400 IN A 159.198.36.24
+/var/named/alphakolect.com.zone:localhost.alphakolect.com. 14400 IN A 127.0.0.1
+/var/named/alphakolect.com.zone:alphakolect.com. 14400 IN MX 0 alphakolect.com.
+/var/named/alphakolect.com.zone:www 14400 IN CNAME alphakolect.com.
+/var/named/alphakolect.com.zone:mail 14400 IN CNAME alphakolect.com.
+/var/named/kosheglobal.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/kosheglobal.com.zone:kosheglobal.com. IN NS ns1.alphakolect.com.
+/var/named/kosheglobal.com.zone:kosheglobal.com. IN NS ns2.alphakolect.com.
+/var/named/thepeopleimpact.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/thepeopleimpact.com.zone:thepeopleimpact.com. IN NS ns1.alphakolect.com.
+/var/named/thepeopleimpact.com.zone:thepeopleimpact.com. IN NS ns2.alphakolect.com.
+/var/named/suppakash.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/suppakash.com.zone:suppakash.com. IN NS ns1.alphakolect.com.
+/var/named/suppakash.com.zone:suppakash.com. IN NS ns2.alphakolect.com.
+/var/named/vinemorrisgroup.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/vinemorrisgroup.com.zone:vinemorrisgroup.com. IN NS ns1.alphakolect.com.
+/var/named/vinemorrisgroup.com.zone:vinemorrisgroup.com. IN NS ns2.alphakolect.com.
+/var/named/modoniteintegrated.com.ng.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/modoniteintegrated.com.ng.zone:modoniteintegrated.com.ng. IN NS ns1.alphakolect.com.
+/var/named/modoniteintegrated.com.ng.zone:modoniteintegrated.com.ng. IN NS ns2.alphakolect.com.
+/var/named/paxalphaltd.com.zone:@	86400	IN	  SOA	 ns1.alphakolect.com. mayowae.server1.alphakolect.com. (
+/var/named/paxalphaltd.com.zone:paxalphaltd.com. IN NS ns1.alphakolect.com.
+/var/named/paxalphaltd.com.zone:paxalphaltd.com. IN NS ns2.alphakolect.com.
+
+
+--- ls -la /etc/nginx/ssl/ ---
+total 24
+drwxr-xr-x 2 root root 4096 Feb 28 14:51 .
+drwxr-xr-x 5 root root 4096 Mar 11 09:33 ..
+-rw-r--r-- 1 root root 8996 Feb 28 14:51 alphakolect.com.crt
+-rw------- 1 root root 1703 Feb 28 14:51 alphakolect.com.key
+
+
+--- pm2 list ---
+┌────┬──────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                 │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ alphaweb-backend     │ default     │ 1.0.0   │ cluster │ 852      │ 4h     │ 0    │ online    │ 0%       │ 89.0mb   │ root     │ disabled │
+│ 1  │ alphaweb-frontend    │ default     │ N/A     │ cluster │ 853      │ 4h     │ 0    │ online    │ 0%       │ 57.3mb   │ root     │ disabled │
+└────┴──────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+

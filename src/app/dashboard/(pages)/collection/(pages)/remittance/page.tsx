@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { FaPlus } from 'react-icons/fa'
 import { FaAngleDown } from 'react-icons/fa';
 import Image from 'next/image';
-import { fetchAgents, fetchRemittances, createRemittance, approveRemittance, fetchCustomers } from '../../../../../../../services/api';
+import { fetchAgents, fetchRemittances, createRemittance, approveRemittance, fetchCustomers, deleteRemittance } from '../../../../../../../services/api';
 import Swal from 'sweetalert2';
 import {
   Select,
@@ -23,6 +23,7 @@ interface RemittanceItem {
   status: 'Pending' | 'Approved' | 'Rejected';
   createdAt?: string;
   agentName?: string;
+  source?: string;
 }
 
 const Page = () => {
@@ -38,9 +39,6 @@ const Page = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [modalopen, setModalopen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [amountInput, setAmountInput] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
   const fetchData = async () => {
@@ -59,7 +57,8 @@ const Page = () => {
         amount: Number(r.amount || 0),
         status: r.status,
         createdAt: r.createdAt || r.created_at,
-        agentName: r.agentName || r.agent?.fullName || ''
+        agentName: r.agentName || r.agent?.fullName || '',
+        source: r.source || 'Web'
       })));
       setAgents(agentsRes.agents || []);
       setCustomers(customersRes.customers || customersRes.data || []);
@@ -81,6 +80,11 @@ const Page = () => {
 
   // Filter collections based on search, agent, and date range
   const filteredCollections = collections.filter(collection => {
+    // Hide approved transactions
+    if (collection.status && collection.status.toLowerCase() === 'approved') {
+      return false;
+    }
+
     const matchesSearch = collection.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (collection.accountNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -132,11 +136,13 @@ const Page = () => {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -161,7 +167,18 @@ const Page = () => {
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Approve',
-      cancelButtonText: 'Cancel'
+      cancelButtonText: 'Cancel',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          const selectedItems = paginatedCollections.filter((_, index) => selectedRows[index]);
+          await Promise.all(selectedItems.map(item => approveRemittance(item.id)));
+          return true;
+        } catch (error: any) {
+          Swal.showValidationMessage(`Request failed: ${error.message}`);
+        }
+      },
+      allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({
@@ -169,6 +186,7 @@ const Page = () => {
           title: 'Approved!',
           text: 'Selected collections have been approved.',
         });
+        fetchData(); // Refresh data
         // Reset selections
         setSelectedRows(Array(paginatedCollections.length).fill(false));
         setSelectAll(false);
@@ -178,14 +196,30 @@ const Page = () => {
 
   const handleApproveAll = () => {
     const totalAmount = filteredCollections.reduce((sum, collection) => sum + collection.amount, 0);
+    const count = filteredCollections.length;
+
+    if (count === 0) {
+      Swal.fire({ icon: 'info', title: 'No Collections', text: 'No pending collections to approve.' });
+      return;
+    }
     
     Swal.fire({
       title: 'Approve All Collections',
-      text: `You are about to approve ${filteredCollections.length} collections totaling ${formatCurrency(totalAmount)}`,
+      text: `You are about to approve all ${count} collections totaling ${formatCurrency(totalAmount)}`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Approve All',
-      cancelButtonText: 'Cancel'
+      cancelButtonText: 'Cancel',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          await Promise.all(filteredCollections.map(item => approveRemittance(item.id)));
+          return true;
+        } catch (error: any) {
+          Swal.showValidationMessage(`Request failed: ${error.message}`);
+        }
+      },
+      allowOutsideClick: () => !Swal.isLoading()
     }).then((result) => {
       if (result.isConfirmed) {
         Swal.fire({
@@ -193,6 +227,100 @@ const Page = () => {
           title: 'Approved!',
           text: 'All collections have been approved.',
         });
+        fetchData(); // Refresh data
+        setSelectedRows(Array(paginatedCollections.length).fill(false));
+        setSelectAll(false);
+      }
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    const selectedCount = selectedRows.filter(Boolean).length;
+    if (selectedCount === 0) {
+      Swal.fire({ icon: 'warning', title: 'No Selection', text: 'Please select collections to delete.' });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Delete Selected Collections?',
+      text: `You are about to permanently delete ${selectedCount} items. This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#d33',
+      cancelButtonText: 'Cancel',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          const selectedItems = paginatedCollections.filter((_, index) => selectedRows[index]);
+          await Promise.all(selectedItems.map(item => deleteRemittance(item.id)));
+          return true;
+        } catch (error: any) {
+          Swal.showValidationMessage(`Request failed: ${error.message}`);
+        }
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Selected collections have been removed.',
+        });
+        fetchData();
+        setSelectedRows(Array(paginatedCollections.length).fill(false));
+        setSelectAll(false);
+      }
+    });
+  };
+
+  const handleApproveSingle = (id: number, amount: number) => {
+    Swal.fire({
+      title: 'Approve Collection?',
+      text: `Approve collection for ${formatCurrency(amount)}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Approve',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          await approveRemittance(id);
+          return true;
+        } catch (error: any) {
+          Swal.showValidationMessage(`Request failed: ${error.message}`);
+        }
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire('Approved!', 'The collection has been approved.', 'success');
+        fetchData();
+      }
+    });
+  };
+
+  const handleDeleteSingle = (id: number) => {
+    Swal.fire({
+      title: 'Delete Collection?',
+      text: 'Permanently remove this transaction? This cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      confirmButtonColor: '#d33',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          await deleteRemittance(id);
+          return true;
+        } catch (error: any) {
+          Swal.showValidationMessage(`Request failed: ${error.message}`);
+        }
+      },
+      allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire('Deleted!', 'The transaction has been removed.', 'success');
+        fetchData();
       }
     });
   };
@@ -211,17 +339,6 @@ const Page = () => {
         <div className='flex flex-col gap-[3px] min-w-0 w-full md:w-auto'>
           <h1 className='font-inter font-semibold leading-[32px] text-[24px]'>Remittance</h1>
           <p className='leading-[24px] font-inter font-normal text-[#717680] text-[14px] '>View and verify collections made by agents for the day.</p>
-        </div>
-        <div className='w-full md:w-auto flex items-center justify-start md:justify-end'>
-          <button 
-            onClick={() => {
-              console.log('Add Remittance button clicked');
-              setModalopen(true);
-            }} 
-            className='bg-blue-500 hover:bg-blue-600 text-white h-[50px] px-6 rounded-[8px] flex items-center gap-2 w-full md:w-auto font-bold text-lg shadow-lg border-2 border-blue-600'>
-            <FaPlus className='w-[16px] h-[16px]' />
-            <span className='text-[16px]'>ADD REMITTANCE</span>
-          </button>
         </div>
       </div>
 
@@ -255,14 +372,22 @@ const Page = () => {
                 className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] font-inter p-1"
               />
             </div>
-            <div className="outline-none leading-[24px] rounded-[4px] w-full md:w-[330px] font-inter text-[14px] bg-white transition-all">
+            <div className="outline-none leading-[24px] rounded-[4px] w-full md:w-[330px] font-inter text-[14px] bg-white transition-all flex flex-col">
               <p className='text-[14px] font-inter pb-2'>To</p>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] font-inter p-1"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="flex-1 h-[40px] border border-[#D0D5DD] rounded-[4px] font-inter p-1"
+                />
+                <button 
+                  onClick={fetchData}
+                  className="bg-[#4E37FB] text-white px-4 rounded-[4px] h-[40px] font-medium text-[14px] hover:bg-blue-600 transition-colors"
+                >
+                  Search
+                </button>
+              </div>
             </div>
           </div>
 
@@ -310,8 +435,14 @@ const Page = () => {
               </div>}
             </div>
 
-            <div className='cursor-pointer'>
-              <Image src="/icons/delete.svg" alt='delete' width={40} height={40} />
+            <div className='relative w-full md:w-auto mb-2 md:mb-0'>
+              <button 
+                onClick={handleDeleteSelected}
+                className='bg-red-50 hover:bg-red-100 h-[40px] cursor-pointer w-full md:w-[105px] flex items-center justify-center gap-[7px] rounded-[4px] border border-red-200'
+              >
+                <Image src="/icons/delete.svg" alt='delete' width={20} height={20} className="filter-red" />
+                <p className='text-red-600 font-medium text-[14px]'>Delete</p>
+              </button>
             </div>
 
             <div className='relative w-full md:w-auto mb-2 md:mb-0'>
@@ -355,95 +486,138 @@ const Page = () => {
                         <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
                         <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
                       </div>
-                    </span>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Type</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Account number</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Amount</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Customer
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  <div className="flex items-center gap-[3px]">
-                    Date
-                    <div className="flex flex-col gap-[1px] shrink-0">
-                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    </div>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="border-b border-[#D9D4D4] w-full">
-              {paginatedCollections.map((collection, index) => (
-                <tr key={collection.id} className="bg-white transition-all duration-500 hover:bg-gray-50">
-                  <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedRows[index]}
-                        onChange={() => handleRowSelect(index)}
-                        className="w-5 h-5 border border-gray-300 rounded-md hover:border-indigo-500 hover:bg-indigo-100 checked:bg-indigo-100"
-                      />
-                      <span className="flex items-center gap-[3px] text-[12px] leading-[18px] font-lato font-normal text-[#141414]">
-                        {collection.id}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">Remittance</td>
-                  <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{collection.accountNumber}</td>
-                  <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(collection.amount)}</td>
-                  <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{collection.customerName}</td>
-                  <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(collection.createdAt || '')}</td>
-                </tr>
-              ))}
-              {paginatedCollections.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-gray-500">
-                    No collections found for remittance
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          
-          {/* Mobile stacked rows */}
-          <div className="md:hidden">
-            {paginatedCollections.map((collection, index) => (
-              <div key={collection.id} className="block border-b p-2">
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>
-                      <input
-                        type="checkbox"
-                        checked={selectedRows[index]}
-                        onChange={() => handleRowSelect(index)}
-                        className="w-4 h-4 mr-2"
-                      />
-                      Transaction ID:
-                    </span>
-                    <span className="font-semibold">{collection.id}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600"><span>Type:</span><span className="font-semibold">Remittance</span></div>
-                  <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">{collection.accountNumber}</span></div>
-                  <div className="flex justify-between text-sm text-gray-600"><span>Amount:</span><span className="font-semibold">{formatCurrency(collection.amount)}</span></div>
-                  <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">{collection.customerName}</span></div>
-                  <div className="flex justify-between text-sm text-gray-600"><span>Date:</span><span className="font-semibold">{formatDate(collection.createdAt || '')}</span></div>
+                </span>
+              </div>
+            </th>
+            <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Customer Name</th>
+            <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Amount</th>
+            <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Date & Time</th>
+            <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Source</th>
+            <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Status</th>
+            <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="border-b border-[#D9D4D4] w-full">
+          {paginatedCollections.map((collection, index) => (
+            <tr key={collection.id} className="bg-white transition-all duration-500 hover:bg-gray-50">
+              <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedRows[index]}
+                    onChange={() => handleRowSelect(index)}
+                    className="w-5 h-5 border border-gray-300 rounded-md hover:border-indigo-500 hover:bg-indigo-100 checked:bg-indigo-100"
+                  />
+                  <span className="flex items-center gap-[3px] text-[12px] leading-[18px] font-lato font-normal text-[#141414]">
+                    {collection.id}
+                  </span>
                 </div>
-              </div>
-            ))}
-            {paginatedCollections.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
+              </td>
+              <td className="px-5 py-4 text-gray-900 font-medium text-[14px] leading-[20px] font-lato">{collection.customerName}</td>
+              <td className="px-5 py-4 text-gray-900 font-semibold text-[14px] leading-[20px] font-lato">{formatCurrency(collection.amount)}</td>
+              <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">{formatDateTime(collection.createdAt || '')}</td>
+              <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">
+                <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-[4px] text-xs font-medium border border-blue-100">
+                  {collection.source || 'Web'}
+                </span>
+              </td>
+              <td className="px-5 py-4 text-[14px] leading-[20px] font-lato">
+                <span className={`px-2 py-1 rounded-[4px] text-xs font-medium ${
+                  collection.status === 'Pending' ? 'bg-orange-50 text-orange-600 border border-orange-100' :
+                  collection.status === 'Approved' ? 'bg-green-50 text-green-600 border border-green-100' :
+                  'bg-red-50 text-red-600 border border-red-100'
+                }`}>
+                  {collection.status}
+                </span>
+              </td>
+              <td className="px-5 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <button 
+                    onClick={() => handleApproveSingle(collection.id, collection.amount)}
+                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-[4px] text-[13px] font-medium transition-colors"
+                  >
+                    Approve
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteSingle(collection.id)}
+                    className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-[4px] text-[13px] font-medium transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {paginatedCollections.length === 0 && (
+            <tr>
+              <td colSpan={7} className="px-5 py-8 text-center text-gray-500">
                 No collections found for remittance
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      
+      {/* Mobile stacked rows */}
+      <div className="md:hidden">
+        {paginatedCollections.map((collection, index) => (
+          <div key={collection.id} className="block border-b p-4 bg-white mb-2 shadow-sm rounded-md">
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center text-sm text-gray-600 border-b pb-2">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedRows[index]}
+                    onChange={() => handleRowSelect(index)}
+                    className="w-4 h-4 mr-2"
+                  />
+                  <span>ID: <span className="font-semibold">{collection.id}</span></span>
+                </div>
+                <span className={`px-2 py-1 rounded-[4px] text-xs font-medium ${
+                  collection.status === 'Pending' ? 'bg-orange-50 text-orange-600' :
+                  collection.status === 'Approved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                }`}>
+                  {collection.status}
+                </span>
               </div>
-            )}
+              <div className="flex justify-between text-sm pt-1">
+                <span className="text-gray-500">Customer:</span>
+                <span className="font-semibold text-gray-900">{collection.customerName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Amount:</span>
+                <span className="font-semibold text-green-700">{formatCurrency(collection.amount)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Date:</span>
+                <span className="text-gray-700">{formatDateTime(collection.createdAt || '')}</span>
+              </div>
+              <div className="flex justify-between text-sm pb-2 border-b">
+                <span className="text-gray-500">Source:</span>
+                <span className="text-gray-700 font-medium">{collection.source || 'Web'}</span>
+              </div>
+              <div className="flex gap-2 pt-2 mt-1">
+                <button 
+                  onClick={() => handleApproveSingle(collection.id, collection.amount)}
+                  className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-[4px] text-sm font-medium border border-indigo-100"
+                >
+                  Approve
+                </button>
+                <button 
+                  onClick={() => handleDeleteSingle(collection.id)}
+                  className="flex-1 bg-red-50 text-red-600 py-2 rounded-[4px] text-sm font-medium border border-red-100"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {paginatedCollections.length === 0 && (
+          <div className="p-8 text-center text-gray-500 bg-white rounded-md mt-2 shadow-sm">
+            No collections found for remittance
+          </div>
+        )}
           </div>
         </div>
       
@@ -475,84 +649,6 @@ const Page = () => {
           </button>
         </div>
       </div>
-      {modalopen && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4'>
-          <div className='bg-white w-full max-w-[520px] rounded-[8px] shadow-lg'>
-            <div className='flex items-center justify-between px-5 py-4 border-b'>
-              <h2 className='text-[16px] font-semibold'>Add Remittance</h2>
-              <button onClick={() => setModalopen(false)} className='text-gray-500 hover:text-gray-700'>✕</button>
-            </div>
-            <div className='p-5 flex flex-col gap-4'>
-              <div>
-                <p className='pb-2 text-[14px]'>Customer</p>
-                <Select value={selectedCustomerId || ''} onValueChange={setSelectedCustomerId}>
-                  <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none max-h-[260px] overflow-auto">
-                    <SelectGroup>
-                      {customers.map((c: any) => (
-                        <SelectItem key={c.id} value={String(c.id)} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">
-                          {c.fullName || c.customerName} {c.accountNumber ? `(${c.accountNumber})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <p className='pb-2 text-[14px]'>Amount</p>
-                <input
-                  type='number'
-                  value={amountInput || ''}
-                  onChange={(e) => setAmountInput(e.target.value)}
-                  className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] font-inter p-2'
-                  placeholder='0.00'
-                  min='0'
-                />
-              </div>
-              <div>
-                <p className='pb-2 text-[14px]'>Notes (optional)</p>
-                <textarea
-                  value={notes || ''}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className='w-full min-h-[80px] border border-[#D0D5DD] rounded-[4px] font-inter p-2 resize-y'
-                  placeholder='Add a note'
-                />
-              </div>
-            </div>
-            <div className='flex items-center justify-end gap-3 px-5 py-4 border-t'>
-              <button onClick={() => setModalopen(false)} className='h-[40px] px-4 rounded-[4px] border border-[#D0D5DD]'>Cancel</button>
-              <button
-                onClick={async () => {
-                  try {
-                    if (!selectedCustomerId || !amountInput) {
-                      Swal.fire({ icon: 'warning', title: 'Missing fields', text: 'Please select a customer and enter amount.' });
-                      return;
-                    }
-                    const amountNumber = Number(amountInput);
-                    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
-                      Swal.fire({ icon: 'warning', title: 'Invalid amount', text: 'Enter a valid amount greater than zero.' });
-                      return;
-                    }
-                    await createRemittance({ customerId: Number(selectedCustomerId), amount: amountNumber, notes: notes || undefined });
-                    Swal.fire({ icon: 'success', title: 'Created', text: 'Remittance added successfully.' });
-                    setModalopen(false);
-                    setSelectedCustomerId('');
-                    setAmountInput('');
-                    setNotes('');
-                    fetchData();
-                  } catch (error: any) {
-                    Swal.fire({ icon: 'error', title: 'Error', text: error?.message || 'Failed to create remittance' });
-                  }
-                }}
-                className='bg-[#4E37FB] text-white h-[40px] px-4 rounded-[4px]'>
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

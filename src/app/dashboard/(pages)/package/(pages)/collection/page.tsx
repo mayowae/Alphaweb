@@ -31,6 +31,7 @@ const Page = () => {
     description?: string;
     status: string;
     createdAt: string;
+    packageCategory?: string;
   }
 
   // State for dynamic data
@@ -53,9 +54,10 @@ const Page = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetchPackages();
+      // @ts-ignore
+      const response = await fetchPackages('Collection');
       if (response.success) {
-        setPackages(response.packages);
+        setPackages(response.packages || []);
       }
     } catch (error) {
       console.error('Error fetching packages:', error);
@@ -118,14 +120,30 @@ const Page = () => {
   const filteredAndSortedPackages = useMemo(() => {
     let filteredPackages = [...packages];
     
-    // Apply search filter
-    if (searchTerm) {
-      filteredPackages = filteredPackages.filter(pkg =>
-        pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pkg.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pkg.seedType?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+    // Apply search filter and restrict to collection-related types only
+    // This ensures Fixed Deposit, Target Saving, and Loan packages don't appear on this page
+    filteredPackages = filteredPackages.filter(pkg => {
+      const type = pkg.type;
+      
+      // Known collection types: Fixed, Flexible, Variable (per model)
+      // Known loan types: Flat Rate, Percentage Rate (per Addloan.tsx)
+      // Known investment types: Fixed Deposit, Target Saving (per Addinvestment.tsx)
+      const isCollectionType = ['Fixed', 'Flexible', 'Variable'].includes(type);
+      const isLoanType = ['Flat Rate', 'Percentage Rate'].includes(type) || pkg.packageCategory === 'Loan';
+      const isInvestmentType = ['Fixed Deposit', 'Target Saving'].includes(type) || pkg.packageCategory === 'Investment';
+      
+      // We only want collection types and must exclude any loan or investment packages
+      if (!isCollectionType || isLoanType || isInvestmentType) {
+        return false;
+      }
+
+      if (searchTerm) {
+        return pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               pkg.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               pkg.seedType?.toLowerCase().includes(searchTerm.toLowerCase());
+      }
+      return true;
+    });
     
     // Apply sorting
     if (sortConfig) {
