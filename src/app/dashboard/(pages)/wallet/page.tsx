@@ -95,7 +95,20 @@ export default function Wallet() {
       ]);
 
       if (balanceResponse.success) {
-        setWalletBalance(balanceResponse.balance);
+        const bal = balanceResponse.balance;
+        if (bal.bankName && (bal.bankName.toLowerCase().includes('transactpay'))) {
+          bal.bankName = 'Wema Bank';
+        }
+        if (!bal.bankName) bal.bankName = 'Wema Bank';
+        setWalletBalance(bal);
+        // Update merchantInfo from the balance response (most authoritative source)
+        if (bal.accountNumber) {
+          setMerchantInfo((prev: any) => ({
+            ...prev,
+            accountNumber: bal.accountNumber,
+            accountName: bal.accountName || prev.accountName
+          }));
+        }
       }
 
       if (tiersResponse.message.includes('successfully')) {
@@ -103,27 +116,32 @@ export default function Wallet() {
       }
       
       if (transactionsResponse.success) {
-        console.log('Raw transaction data from API:', transactionsResponse.transactions);
+        const CREDIT_TYPES = ['credit', 'initial_balance', 'remittance_approval', 'loan_repayment'];
+        const DEBIT_TYPES = ['debit', 'charge_deduction', 'loan_disbursement', 'transfer_out'];
         const formattedTransactions = transactionsResponse.transactions.map((tx: any) => {
-          // Use transactionType (customer perspective) if available, otherwise fall back to type
-          // transactionType represents what the user selected (credit/debit from customer's perspective)
-          // type represents the merchant's perspective (opposite of what user selected)
-          const userSelectedType = tx.transactionType || tx.type;
-          const isDebit = userSelectedType === 'debit';
+          const tType = (tx.type || '').toLowerCase();
+          const trType = (tx.transactionType || '').toLowerCase();
+          const isCredit = CREDIT_TYPES.includes(tType) || CREDIT_TYPES.includes(trType);
+          const isDebit = !isCredit && (DEBIT_TYPES.includes(tType) || DEBIT_TYPES.includes(trType) || tType === 'debit');
           const amountNum = parseFloat(tx.amount);
           
-          const formattedTx = {
-            refId: tx.reference,
-            type: isDebit ? 'Debit' : 'Credit',
-            amount: `${isDebit ? '-' : ''}₦${Math.abs(amountNum).toLocaleString()}`,
-            transactionType: isDebit ? 'Debit' : 'Credit',
-            paymentMethod: tx.payment_method || tx.paymentMethod || '—',
-            date: new Date(tx.date || tx.createdAt).toLocaleDateString('en-GB'),
-            status: tx.status === 'Completed' ? 'Successful' : tx.status
-          };
+          // Build a human-readable description from transactionType
+          const typeLabel = trType === 'remittance_approval' ? 'Remittance'
+            : trType === 'charge_deduction' ? 'Charge'
+            : trType === 'loan_disbursement' ? 'Loan Disbursement'
+            : trType === 'loan_repayment' ? 'Loan Repayment'
+            : isDebit ? 'Debit' : 'Credit';
           
-          console.log(`Transaction ${tx.reference}: userSelectedType=${userSelectedType}, isDebit=${isDebit}, display=${formattedTx.amount}`);
-          return formattedTx;
+          return {
+            refId: tx.reference || `REF-${tx.id}`,
+            type: isDebit ? 'Debit' : 'Credit',
+            description: typeLabel,
+            amount: `${isDebit ? '-' : '+'}₦${Math.abs(amountNum).toLocaleString()}`,
+            transactionType: tx.description || typeLabel || (isDebit ? 'Debit' : 'Credit'),
+            paymentMethod: tx.payment_method || tx.paymentMethod || 'Bank Transfer',
+            date: new Date(tx.date || tx.createdAt).toLocaleDateString('en-GB'),
+            status: tx.status === 'Completed' ? 'Successful' : (tx.status || 'Pending')
+          };
         });
         setWalletTransactions(formattedTransactions);
       }
@@ -156,11 +174,12 @@ export default function Wallet() {
 
       if (profileResponse && profileResponse.success) {
         const merchant = profileResponse.merchant;
-        setMerchantInfo({
-          accountNumber: merchant.accountNumber || '0112435467',
+        setMerchantInfo((prev: any) => ({
+          accountNumber: merchant.accountNumber || prev.accountNumber || '',
           accountLevel: merchant.accountLevel || 'Tier 0',
-          businessName: merchant.businessName || merchant.name || 'Merchant'
-        });
+          businessName: merchant.businessName || merchant.name || 'Merchant',
+          accountName: merchant.accountName || prev.accountName || ''
+        }));
       }
 
     } catch (error) {
@@ -175,21 +194,23 @@ export default function Wallet() {
   useEffect(() => {
     fetchData();
     
-    // Load merchant info from localStorage
+    // Load merchant info from localStorage as initial values (will be overridden by API)
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        setMerchantInfo({
-          accountNumber: user.accountNumber || '0112435467',
-          accountLevel: user.accountLevel || 'Tier 3',
-          businessName: user.businessName || user.fullName || 'Gbenga daniel'
-        });
+        setMerchantInfo((prev: any) => ({
+          accountNumber: prev.accountNumber || user.accountNumber || '',
+          accountLevel: user.accountLevel || prev.accountLevel || 'Tier 0',
+          businessName: user.businessName || user.fullName || prev.businessName || ''
+        }));
       } catch (e) {
         console.error('Error parsing user data', e);
       }
     }
   }, []);
+
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Use dynamic data instead of mock data
   const mockData = walletTransactions;
@@ -197,15 +218,25 @@ export default function Wallet() {
 
   const itemsPerPage = 10;
 
-  // Use useMemo to sort the data efficiently based on the active tab
+  // Use useMemo to filter and sort the data efficiently based on the active tab and search query
   const sortedItems = useMemo(() => {
     const dataToSort = activeTab === 'activities' ? mockData : mockCustomerData;
-    let sortableItems = [...dataToSort];
+    let filteredItems = [...dataToSort];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filteredItems = filteredItems.filter((item: any) =>
+        Object.values(item).some((val) =>
+          String(val || '').toLowerCase().includes(q)
+        )
+      );
+    }
+
     if (sortConfig !== null) {
-      sortableItems.sort((a: any, b: any) => {
+      filteredItems.sort((a: any, b: any) => {
         // Handle number sorting for amount and balance
-        const valA = sortConfig.key === 'amount' || sortConfig.key === 'balance' ? parseInt(a[sortConfig.key].replace(/₦|,/g, ''), 10) : a[sortConfig.key];
-        const valB = sortConfig.key === 'amount' || sortConfig.key === 'balance' ? parseInt(b[sortConfig.key].replace(/₦|,/g, ''), 10) : b[sortConfig.key];
+        const valA = sortConfig.key === 'amount' || sortConfig.key === 'balance' ? parseInt(a[sortConfig.key]?.toString().replace(/₦|,/g, '') || '0', 10) : a[sortConfig.key];
+        const valB = sortConfig.key === 'amount' || sortConfig.key === 'balance' ? parseInt(b[sortConfig.key]?.toString().replace(/₦|,/g, '') || '0', 10) : b[sortConfig.key];
         
         if (valA < valB) {
           return sortConfig.direction === 'asc' ? -1 : 1;
@@ -216,8 +247,8 @@ export default function Wallet() {
         return 0;
       });
     }
-    return sortableItems;
-  }, [mockData, mockCustomerData, sortConfig, activeTab]);
+    return filteredItems;
+  }, [mockData, mockCustomerData, sortConfig, activeTab, searchQuery]);
 
   const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
 
@@ -338,6 +369,53 @@ export default function Wallet() {
     setSortConfig(null); // Reset sorting on tab switch
   };
 
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export' || format === 'Last 12 months') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    // CSV export
+    const data = activeTab === 'activities' ? sortedItems : sortedItems;
+    if (activeTab === 'activities') {
+      const headers = ['Ref ID', 'Amount', 'Transaction Type', 'Payment Method', 'Date', 'Status'];
+      const rows = (sortedItems as any[]).map((item: any) => [
+        `"${item.refId || ''}"`,
+        `"${item.amount || ''}"`,
+        `"${item.transactionType || ''}"`,
+        `"${item.paymentMethod || ''}"`,
+        `"${item.date || ''}"`,
+        `"${item.status || ''}"`,
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'wallet-activities.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = ['Customer Name', 'Account Number', 'Account Level', 'Balance', 'Last Transaction Date', 'Status'];
+      const rows = (sortedItems as any[]).map((item: any) => [
+        `"${item.customerName || ''}"`,
+        `"${item.accountNumber || ''}"`,
+        `"${item.accountLevel || ''}"`,
+        `"${item.balance || ''}"`,
+        `"${item.lastTransactionDate || ''}"`,
+        `"${item.status || ''}"`,
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'customer-wallets.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
   return (
     <div className="relative min-h-screen pt-3">
       {/* Error Message */}
@@ -452,7 +530,7 @@ export default function Wallet() {
             <div className="w-full md:w-5/12">
               <div className="balance-overview flex flex-col justify-between min-h-[100px]">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs text-gray-500 font-medium">{(walletBalance as any).bankName || 'TransactPay'} - {(walletBalance as any).accountName || merchantInfo.businessName}</p>
+                  <p className="text-xs text-gray-500 font-medium">{String((walletBalance as any).bankName || 'Wema Bank').replace(/TransactPay/gi, 'Wema Bank')} - {(walletBalance as any).accountName || merchantInfo.businessName}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-[10px] text-gray-500 font-medium">Live account: {merchantInfo.accountLevel}</p>
                     {pendingUpgrade?.status === 'pending' ? (
@@ -588,7 +666,7 @@ export default function Wallet() {
                       <select
                         className="input-field appearance-none w-full"
                         value={export_option}
-                        onChange={(e) => setExportOption(e.target.value)}
+                        onChange={(e) => { setExportOption(e.target.value); handleExport(e.target.value); }}
                       >
                         <option value="Last 12 months">Export</option>
                         <option value="PDF">PDF</option>
@@ -621,6 +699,11 @@ export default function Wallet() {
                           type="text"
                           className="search-input w-full pl-10"
                           placeholder="Search"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setCurrentPage(1);
+                          }}
                         />
                       </div>
                     </div>
@@ -760,7 +843,7 @@ export default function Wallet() {
                       <select
                         className="input-field appearance-none w-full"
                         value={export_option}
-                        onChange={(e) => setExportOption(e.target.value)}
+                        onChange={(e) => { setExportOption(e.target.value); handleExport(e.target.value); }}
                       >
                         <option value="">Export</option>
                         <option value="PDF">PDF</option>
@@ -916,141 +999,118 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [transferring, setTransferring] = useState(false);
   const [transferStatus, setTransferStatus] = useState('');
-  
+  const [transferSuccess, setTransferSuccess] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
 
   const [transferForm, setTransferForm] = useState({
     customerId: '',
     amount: '',
     description: '',
-    transactionType: 'credit', // debit or credit relative to customer wallet
-    paymentMethod: 'TransactPay Transfer',
-    pin: ''
+    transactionType: 'credit',
+    paymentMethod: 'Bank Transfer',
   });
+
+  // Filter customers by search query
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch.trim()) return customers;
+    const q = customerSearch.toLowerCase();
+    return customers.filter((c: any) => {
+      const name = (c.fullName || c.customerName || '').toLowerCase();
+      const phone = (c.phoneNumber || '').toLowerCase();
+      const email = (c.email || '').toLowerCase();
+      const acct = (c.accountNumber || '').toLowerCase();
+      return name.includes(q) || phone.includes(q) || email.includes(q) || acct.includes(q);
+    });
+  }, [customers, customerSearch]);
+
+  // Selected customer object
+  const selectedCustomer = useMemo(
+    () => customers.find((c: any) => String(c.id) === String(transferForm.customerId)),
+    [customers, transferForm.customerId]
+  );
+
+  const resetForm = () => {
+    setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Bank Transfer' });
+    setCustomerSearch('');
+    setTransferStatus('');
+    setTransferSuccess(false);
+  };
 
   // Handle transfer submission
   const handleTransferSubmit = async () => {
+    if (!transferForm.customerId) {
+      setTransferStatus('Please select a customer.');
+      return;
+    }
+    if (!transferForm.amount || parseFloat(transferForm.amount) <= 0) {
+      setTransferStatus('Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    setTransferring(true);
+    setTransferStatus('Processing transfer...');
+    setTransferSuccess(false);
+
+    const customerId = parseInt(transferForm.customerId);
+
     try {
-      if (!transferForm.transactionType) {
-        alert('Please choose a transaction type');
-        return;
-      }
-      if (!transferForm.customerId || !transferForm.amount) {
-        alert('Please fill in all required fields');
-        return;
-      }
-
-      setTransferring(true);
-      
-      // Find the customer by account number or ID
-      const selectedCustomer = customers.find(customer => String(customer.id) === String(transferForm.customerId));
-      
-      if (!selectedCustomer) {
-        alert('Customer not found');
-        return;
-      }
-
-      const customerId = parseInt(selectedCustomer.id || selectedCustomer.customerId || '0');
-
-      if (!transferForm.pin || transferForm.pin.length < 4) {
-        alert('Please enter your valid Transaction PIN. If you do not have one, you will need to set it up in your profile settings.');
-        return;
-      }
-
+      let response;
       try {
-        setTransferStatus('Authenticating PIN & Attempting transfer...');
-        // First, try to transfer directly
-      const response = await transferToCustomer({
-          customerId: customerId,
-        amount: parseFloat(transferForm.amount),
-          description: transferForm.description,
+        response = await transferToCustomer({
+          customerId,
+          amount: parseFloat(transferForm.amount),
+          description: transferForm.description || `Transfer to ${selectedCustomer?.fullName || 'customer'}`,
           transactionType: transferForm.transactionType,
           type: transferForm.transactionType as 'credit' | 'debit',
-          paymentMethod: transferForm.paymentMethod
-      });
-
-      if (response.success) {
-          setTransferStatus('Transfer completed successfully!');
-          // Immediately refresh the balance data
-          try {
-            const balanceResponse = await getWalletBalance();
-            if (balanceResponse.success) {
-              setWalletBalance(balanceResponse.balance);
-            }
-          } catch (balanceError) {
-            console.error('Failed to refresh balance:', balanceError);
-          }
-          
-          setTimeout(() => {
-            setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Cash', pin: '' });
-        setIsSidebarOpen(false);
-        // Refresh the page to show updated data
-        window.location.reload();
-          }, 1500);
-          return;
-        }
+          paymentMethod: transferForm.paymentMethod,
+        });
       } catch (transferError: any) {
-        // If transfer fails due to missing wallet, try to create one
-        if (transferError.message && transferError.message.includes('Customer wallet not found')) {
-          try {
-            setTransferStatus('Creating customer wallet...');
-            // Create customer wallet first
-            const walletResponse = await createCustomerWallet({
-              customerId: customerId,
-              accountNumber: selectedCustomer.accountNumber || `CW${Date.now()}`,
-              balance: 0,
-              notes: 'Auto-created wallet for transfer'
-            });
-
-            if (walletResponse.success) {
-              setTransferStatus('Wallet created! Completing transfer...');
-              // Now try the transfer again
-              const retryResponse = await transferToCustomer({
-                customerId: customerId,
-                amount: parseFloat(transferForm.amount),
-                description: transferForm.description,
-                transactionType: transferForm.transactionType,
-                type: transferForm.transactionType as 'credit' | 'debit',
-                paymentMethod: transferForm.paymentMethod
-              });
-
-              if (retryResponse.success) {
-                setTransferStatus('Transfer completed successfully! Customer wallet was automatically created.');
-                // Immediately refresh the balance data
-                try {
-                  const balanceResponse = await getWalletBalance();
-                  if (balanceResponse.success) {
-                    setWalletBalance(balanceResponse.balance);
-                  }
-                } catch (balanceError) {
-                  console.error('Failed to refresh balance:', balanceError);
-                }
-                
-                setTimeout(() => {
-                  setTransferForm({ customerId: '', amount: '', description: '', transactionType: 'credit', paymentMethod: 'Cash', pin: '' });
-                  setIsSidebarOpen(false);
-                  // Refresh the page to show updated data
-                  window.location.reload();
-                }, 1500);
-                return;
-              }
-            }
-          } catch (walletError: any) {
-            console.error('Failed to create customer wallet:', walletError);
-            setTransferStatus('Failed to create customer wallet: ' + walletError.message);
-            setTimeout(() => setTransferStatus(''), 3000);
-            return;
-          }
+        // Auto-create wallet if missing, then retry
+        if (transferError.message?.includes('Customer wallet not found')) {
+          setTransferStatus('Creating customer wallet...');
+          await createCustomerWallet({
+            customerId,
+            accountNumber: selectedCustomer?.accountNumber || `CW${Date.now()}`,
+            balance: 0,
+            notes: 'Auto-created wallet for transfer',
+          });
+          setTransferStatus('Wallet created! Retrying transfer...');
+          response = await transferToCustomer({
+            customerId,
+            amount: parseFloat(transferForm.amount),
+            description: transferForm.description || `Transfer to ${selectedCustomer?.fullName || 'customer'}`,
+            transactionType: transferForm.transactionType,
+            type: transferForm.transactionType as 'credit' | 'debit',
+            paymentMethod: transferForm.paymentMethod,
+          });
+        } else {
+          throw transferError;
         }
-        
-        // If we get here, the transfer failed for another reason
-        throw transferError;
       }
-    } catch (error) {
-      console.error('Transfer failed:', error);
-      // Show immediate alert with backend message (e.g., "Insufficient balance in merchant wallet")
-      alert((error as Error)?.message || 'Transfer failed');
-      setTransferStatus('Transfer failed: ' + (error as Error).message);
-      setTimeout(() => setTransferStatus(''), 3000);
+
+      if (response?.success) {
+        setTransferSuccess(true);
+        setTransferStatus(`Transfer of ₦${parseFloat(transferForm.amount).toLocaleString()} to ${selectedCustomer?.fullName || 'customer'} completed successfully!`);
+
+        // Refresh wallet balance
+        try {
+          const balanceResponse = await getWalletBalance();
+          if (balanceResponse.success) setWalletBalance(balanceResponse.balance);
+        } catch (_) {}
+
+        // Close and reload after 2s
+        setTimeout(() => {
+          resetForm();
+          setIsSidebarOpen(false);
+          window.location.reload();
+        }, 2000);
+      } else {
+        setTransferStatus(response?.message || 'Transfer failed. Please try again.');
+      }
+    } catch (error: any) {
+      const msg = error?.message || 'Transfer failed. Please try again.';
+      setTransferStatus(msg);
+      setTransferSuccess(false);
     } finally {
       setTransferring(false);
     }
@@ -1062,15 +1122,14 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
         setIsSidebarOpen(false);
       }
     }
-
-    if (isSidebarOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (isSidebarOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSidebarOpen, setIsSidebarOpen]);
+
+  // Reset form when sidebar closes
+  useEffect(() => {
+    if (!isSidebarOpen) resetForm();
+  }, [isSidebarOpen]);
 
   return (
     <>
@@ -1078,7 +1137,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ease-in-out"
           onClick={() => setIsSidebarOpen(false)}
-        ></div>
+        />
       )}
 
       <aside
@@ -1090,8 +1149,12 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
           flex flex-col
         `}
       >
+        {/* Header */}
         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Transfer to customer</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Transfer to Customer</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Credit or debit a customer wallet</p>
+          </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
             className="p-2 text-gray-500 rounded-full hover:bg-gray-100 transition-colors"
@@ -1100,67 +1163,73 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
           </button>
         </div>
 
-        <div className="p-6 flex-grow overflow-y-auto space-y-6">
+        <div className="p-6 flex-grow overflow-y-auto space-y-5">
+          {/* Amount */}
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="tf-amount" className="block text-sm font-medium text-gray-700 mb-1">
               Amount <span className="text-red-500">*</span>
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="relative rounded-md shadow-sm">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₦</span>
               <input
                 type="number"
-                name="amount"
-                id="amount"
-                className="block w-full rounded-md border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                id="tf-amount"
+                className="block w-full rounded-md border border-gray-300 pl-7 pr-4 py-2.5 text-gray-900 placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 placeholder="0.00"
                 min="0.01"
                 step="0.01"
                 value={transferForm.amount}
                 onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
-                required
+                disabled={transferring}
               />
             </div>
             {transferForm.amount && parseFloat(transferForm.amount) <= 0 && (
-              <p className="mt-1 text-sm text-red-600">Amount must be greater than 0</p>
+              <p className="mt-1 text-xs text-red-600">Amount must be greater than 0</p>
             )}
           </div>
 
+          {/* Transaction Type */}
           <div>
-            <label htmlFor="transaction-type" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="tf-type" className="block text-sm font-medium text-gray-700 mb-1">
               Transaction Type <span className="text-red-500">*</span>
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="relative rounded-md shadow-sm">
               <select
-                id="transaction-type"
-                name="transaction-type"
-                className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                id="tf-type"
+                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-2.5 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer"
                 value={transferForm.transactionType}
                 onChange={(e) => setTransferForm({ ...transferForm, transactionType: e.target.value })}
-                required
+                disabled={transferring}
               >
-                <option value="">Choose Transaction Type</option>
-                <option value="credit">Credit</option>
-                <option value="debit">Debit</option>
+                <option value="credit">Credit (add funds to customer)</option>
+                <option value="debit">Debit (withdraw from customer)</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <ChevronDown className="h-5 w-5" />
               </div>
             </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {transferForm.transactionType === 'credit'
+                ? 'Funds will be added to the customer wallet from merchant wallet.'
+                : 'Funds will be withdrawn from customer wallet to merchant wallet.'}
+            </p>
           </div>
 
+          {/* Payment Method */}
           <div>
-            <label htmlFor="payment-method" className="block text-sm font-medium text-gray-700 mb-1">
-              Payment Method <span className="text-red-500">*</span>
+            <label htmlFor="tf-method" className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Method
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="relative rounded-md shadow-sm">
               <select
-                id="payment-method"
-                name="payment-method"
-                className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                id="tf-method"
+                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-2.5 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer"
                 value={transferForm.paymentMethod}
                 onChange={(e) => setTransferForm({ ...transferForm, paymentMethod: e.target.value })}
+                disabled={transferring}
               >
-                <option value="Cash">Cash</option>
                 <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cash">Cash</option>
                 <option value="POS">POS</option>
                 <option value="Cheque">Cheque</option>
                 <option value="Mobile Money">Mobile Money</option>
@@ -1171,47 +1240,37 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
             </div>
           </div>
 
+          {/* Select Customer */}
           <div>
-            <label htmlFor="transfer-to" className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Customer <span className="text-red-500">*</span>
               <span className="text-xs text-gray-500 ml-2">({customers.length} available)</span>
             </label>
-            
-            {/* Customer Search Input */}
-            <div className="mb-3">
-              <input
-                type="text"
-                placeholder="Search customers by name, phone, or email..."
-                className="block w-full rounded-md border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500"
-                onChange={(e) => {
-                  const searchTerm = e.target.value.toLowerCase();
-                  const filteredCustomers = customers.filter((customer: any) => {
-                    const name = (customer.fullName || customer.customerName || '').toLowerCase();
-                    const phone = (customer.phoneNumber || '').toLowerCase();
-                    const email = (customer.email || '').toLowerCase();
-                    const accountNumber = (customer.accountNumber || '').toLowerCase();
-                    return name.includes(searchTerm) || phone.includes(searchTerm) || email.includes(searchTerm) || accountNumber.includes(searchTerm);
-                  });
-                  // You could add state for filtered customers here if needed
-                }}
-              />
-            </div>
-            
-            <div className="relative mt-1 rounded-md shadow-sm">
+
+            {/* Live customer search */}
+            <input
+              type="text"
+              placeholder="Search by name, phone, email, or account..."
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500 mb-2"
+              value={customerSearch}
+              onChange={(e) => { setCustomerSearch(e.target.value); setTransferForm({ ...transferForm, customerId: '' }); }}
+              disabled={transferring}
+            />
+
+            <div className="relative rounded-md shadow-sm">
               <select
-                id="transfer-to"
-                name="transfer-to"
-                className="block w-full rounded-md border-gray-300 pl-4 pr-10 py-2 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
+                id="tf-customer"
+                className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-2.5 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none cursor-pointer"
                 value={transferForm.customerId}
                 onChange={(e) => setTransferForm({ ...transferForm, customerId: e.target.value })}
-                disabled={customers.length === 0}
+                disabled={customers.length === 0 || transferring}
               >
                 <option value="">
-                  {customers.length === 0 ? 'No customers available' : 'Select a customer to transfer to'}
+                  {customers.length === 0 ? 'No customers available' : filteredCustomers.length === 0 ? 'No matches found' : 'Select a customer...'}
                 </option>
-                {customers.map((customer: any) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.fullName || customer.customerName} - {customer.accountNumber || customer.phoneNumber || customer.email}
+                {filteredCustomers.map((customer: any) => (
+                  <option key={customer.id} value={String(customer.id)}>
+                    {customer.fullName || customer.customerName} — {customer.accountNumber || customer.phoneNumber || customer.email}
                   </option>
                 ))}
               </select>
@@ -1219,130 +1278,101 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, customers, setWalletBalance 
                 <ChevronDown className="h-5 w-5" />
               </div>
             </div>
-            
+
             {customers.length === 0 && (
-              <div className="mt-2 p-3 bg-yellow-50 rounded-md border border-yellow-200">
-                <p className="text-sm text-yellow-800">
-                  No customers available. Please add customers first.
-                </p>
-          </div>
+              <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-md p-2 border border-amber-200">
+                No customers found. Add customers first before making a transfer.
+              </p>
             )}
-            
-            {transferForm.customerId && (
-              <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">Selected Customer:</span> {
-                    customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.fullName || 
-                    customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.customerName
-                  }
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Account: {transferForm.customerId}
-                </p>
-                <p className="text-xs text-blue-600">
-                  Phone: {customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.phoneNumber || 'N/A'}
-                </p>
-                <p className="text-xs text-amber-600 mt-1">
-                  <span className="font-medium">Note:</span> If this customer doesn't have a wallet, one will be automatically created during the transfer.
-                </p>
-            </div>
+
+            {selectedCustomer && (
+              <div className="mt-2 p-3 bg-indigo-50 rounded-md border border-indigo-200 text-xs space-y-0.5">
+                <p className="font-semibold text-indigo-800 text-sm">{selectedCustomer.fullName || selectedCustomer.customerName}</p>
+                {selectedCustomer.accountNumber && <p className="text-indigo-600">Account: {selectedCustomer.accountNumber}</p>}
+                {selectedCustomer.phoneNumber && <p className="text-indigo-600">Phone: {selectedCustomer.phoneNumber}</p>}
+                {selectedCustomer.email && <p className="text-indigo-600">Email: {selectedCustomer.email}</p>}
+              </div>
             )}
           </div>
 
+          {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              Description (optional)
+            <label htmlFor="tf-description" className="block text-sm font-medium text-gray-700 mb-1">
+              Description <span className="text-gray-400 text-xs">(optional)</span>
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
-              <input
-                type="text"
-                name="description"
-                id="description"
-                className="block w-full rounded-md border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="e.g., Payment for services"
-                value={transferForm.description}
-                onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
-              />
-            </div>
+            <input
+              type="text"
+              id="tf-description"
+              className="block w-full rounded-md border border-gray-300 px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              placeholder="e.g., Payment for services rendered"
+              value={transferForm.description}
+              onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
+              disabled={transferring}
+            />
           </div>
-          
+
           {/* Transfer Summary */}
-          {transferForm.customerId && transferForm.amount && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Transfer Summary</h4>
-              <div className="space-y-1 text-sm text-gray-600">
+          {selectedCustomer && transferForm.amount && parseFloat(transferForm.amount) > 0 && (
+            <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Transfer Summary</h4>
+              <div className="space-y-1.5 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>To:</span>
-                  <span className="font-medium">
-                    {customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.fullName || 
-                     customers.find((c: any) => (c.accountNumber || c.id) === transferForm.customerId)?.customerName}
-                  </span>
+                  <span className="font-medium">{selectedCustomer.fullName || selectedCustomer.customerName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Type:</span>
-                  <span className="font-medium capitalize">{transferForm.transactionType}</span>
+                  <span className={`font-medium capitalize px-2 py-0.5 rounded-full text-xs ${transferForm.transactionType === 'credit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {transferForm.transactionType}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Payment Method:</span>
+                  <span>Method:</span>
                   <span className="font-medium">{transferForm.paymentMethod}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Amount:</span>
-                  <span className="font-medium">₦{parseFloat(transferForm.amount || '0').toLocaleString()}</span>
+                <div className="flex justify-between border-t pt-1.5 mt-1">
+                  <span className="font-semibold">Amount:</span>
+                  <span className="font-bold text-indigo-700">₦{parseFloat(transferForm.amount || '0').toLocaleString()}</span>
                 </div>
-                {transferForm.description && (
-                  <div className="flex justify-between">
-                    <span>Description:</span>
-                    <span className="font-medium">{transferForm.description}</span>
-                  </div>
-                )}
               </div>
             </div>
           )}
-          
-          {/* PIN code generation block */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Transaction PIN <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              maxLength={6}
-              value={transferForm.pin || ''}
-              onChange={(e) => setTransferForm({ ...transferForm, pin: e.target.value })}
-              className="block w-full rounded-md border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Enter 4-6 digit PIN"
-            />
-            <div className="flex justify-start mt-2">
-              <button type="button" className="text-xs text-indigo-600 hover:text-indigo-800">Generate or Reset PIN?</button>
-            </div>
-          </div>
         </div>
-        
-        {/* Transfer Status */}
+
+        {/* Status message */}
         {transferStatus && (
-          <div className="px-6 py-3 border-t border-gray-200">
-            <div className={`p-3 rounded-md text-sm ${
-              transferStatus.includes('successfully') || transferStatus.includes('completed') 
-                ? 'bg-green-50 text-green-800 border border-green-200' 
-                : transferStatus.includes('failed') || transferStatus.includes('Failed')
+          <div className="px-6 py-3 border-t border-gray-100">
+            <div className={`p-3 rounded-md text-sm flex items-start gap-2 ${
+              transferSuccess
+                ? 'bg-green-50 text-green-800 border border-green-200'
+                : transferStatus.toLowerCase().includes('fail') || transferStatus.toLowerCase().includes('insufficient') || transferStatus.toLowerCase().includes('error')
                 ? 'bg-red-50 text-red-800 border border-red-200'
                 : 'bg-blue-50 text-blue-800 border border-blue-200'
             }`}>
-              {transferStatus}
+              {transferSuccess && <CheckCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />}
+              <span>{transferStatus}</span>
             </div>
           </div>
         )}
 
-        <div className="p-6 border-t border-gray-200 flex justify-center">
+        {/* Action Button */}
+        <div className="p-6 border-t border-gray-200 flex gap-3">
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            disabled={transferring}
+          >
+            Cancel
+          </button>
           <LoadingButton
             onClick={handleTransferSubmit}
             loading={transferring}
-            loadingText={transferStatus || "Transferring..."}
-            className="btn-sm"
-            disabled={!transferForm.customerId || !transferForm.amount || parseFloat(transferForm.amount || '0') <= 0}
+            loadingText={transferStatus?.includes('...') ? transferStatus : 'Transferring...'}
+            className="flex-1 btn-sm"
+            disabled={!transferForm.customerId || !transferForm.amount || parseFloat(transferForm.amount || '0') <= 0 || transferring}
           >
-            {transferring ? (transferStatus || 'Transferring...') : 'Transfer'}
+            {transferSuccess ? 'Done!' : `${transferForm.transactionType === 'credit' ? 'Credit' : 'Debit'} Customer`}
           </LoadingButton>
         </div>
       </aside>
