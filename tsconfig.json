@@ -21,10 +21,11 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@/components/*": ["./components/*", "./src/components/*"],
       "@/services/*": ["./services/*"],
       "@/interface/*": ["./interface/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "backend/old_project/**/*"]
+  "exclude": ["node_modules", "backend/**/*", "local_edit/**/*", "local_edit/*", "local_edit", "services_api.tsx", "src_dashboard_charges_page.tsx"]
 }
