@@ -9,7 +9,7 @@ interface pack {
   onClose: () => void;
 }
 
-import { createPackage } from '../../../../../../../services/api'
+import { createPackage } from '@/services/api'
 
 const Addpackage = ({ packag, onClose }: pack) => {
   const [form, setForm] = useState({

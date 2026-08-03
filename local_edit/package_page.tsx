@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Download, Package, Users, Calendar, X } from 'lucide-react';
-import { fetchPackages, createPackage } from '../../../../../services/api';
+import { fetchPackages, createPackage } from '@/services/api';
 import Swal from 'sweetalert2';
 
 interface PackageType {

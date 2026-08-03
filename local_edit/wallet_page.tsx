@@ -14,7 +14,7 @@ import {
   fetchWalletTiers,
   fetchUpgradeStatus,
   fetchMerchantProfile
-} from 'services/api';
+} from '@/services/api';
 import LoadingButton from '../../../../../components/LoadingButton';
 
 // The main Wallet component with tab functionality

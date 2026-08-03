@@ -3,7 +3,7 @@ import React, {useState, useEffect} from 'react';
 import DashboardHeader from '../../../components/dashboard/Header';
 import DashBoardSidebar from '../../../components/dashboard/Sidebar';
 import DashBoardFooter from '../../../components/dashboard/Footer';
-import { getMerchantSubscription } from '../../../services/api';
+import { getMerchantSubscription } from '@/services/api';
 import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
