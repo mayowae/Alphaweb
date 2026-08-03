@@ -3,12 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "set NODE_OPTIONS=--max-old-space-size=4096 && next dev",
-    "build": "set NODE_OPTIONS=--max-old-space-size=4096 && next build",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "next lint",
-    "start2": "set NODE_ENV=production && node server.js",
-    "clean": "rmdir /s /q .next && rmdir /s /q node_modules\\.cache"
+    "start2": "cross-env NODE_ENV=production node server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -38,6 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
