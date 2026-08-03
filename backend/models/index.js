@@ -18,6 +18,26 @@ try {
 const databaseUrl = process.env.DATABASE_URL;
 const useSsl = String(process.env.DB_SSL || '').toLowerCase() === 'true';
 
+const validateConnectionSocket = (client) => {
+  try {
+    if (!client) return false;
+    if (client._ending || client._connected === false) return false;
+    if (client.connection && client.connection.stream && client.connection.stream.destroyed) return false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+const commonPoolConfig = {
+  max: 20,
+  min: 0,           // Evict idle connections to prevent stale socket reuse
+  acquire: 30000,
+  idle: 5000,       // Evict idle connections after 5 seconds
+  evict: 5000,      // Prune dead/stale connections every 5 seconds
+  validate: validateConnectionSocket,
+};
+
 let sequelize;
 if (databaseUrl) {
   const shouldForceSsl = useSsl || /render\.com/i.test(databaseUrl) || /sslmode=require/i.test(databaseUrl);
@@ -25,14 +45,14 @@ if (databaseUrl) {
     dialect: 'postgres',
     protocol: 'postgres',
     logging: false,
-    dialectOptions: shouldForceSsl
-      ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false
-          }
-        }
-      : {}
+    dialectOptions: {
+      ...(shouldForceSsl ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 5000,
+      statement_timeout: 30000,
+      idle_in_transaction_session_timeout: 30000,
+    },
+    pool: commonPoolConfig,
   });
 } else {
   const database = process.env.DB_NAME || 'alphacollect_db';
@@ -46,16 +66,47 @@ if (databaseUrl) {
     port,
     dialect: 'postgres',
     logging: false,
-    dialectOptions: useSsl
-      ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false
-          }
-        }
-      : {}
+    dialectOptions: {
+      ...(useSsl ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 5000,
+      statement_timeout: 30000,
+      idle_in_transaction_session_timeout: 30000,
+    },
+    pool: commonPoolConfig,
   });
 }
+
+// Automatic query retry interceptor for transient DB connection drops
+const originalQuery = sequelize.query.bind(sequelize);
+sequelize.query = async function (...args) {
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      return await originalQuery(...args);
+    } catch (err) {
+      const isConnError =
+        err.name === 'SequelizeConnectionError' ||
+        err.name === 'SequelizeConnectionRefusedError' ||
+        err.name === 'SequelizeHostNotFoundError' ||
+        err.name === 'SequelizeHostNotReachableError' ||
+        err.name === 'SequelizeInvalidConnectionError' ||
+        err.name === 'SequelizeConnectionTimedOutError' ||
+        /Connection terminated/i.test(err.message || '') ||
+        /ECONNRESET/i.test(err.message || '') ||
+        /ECONNREFUSED/i.test(err.message || '') ||
+        /socket has been ended/i.test(err.message || '');
+
+      if (isConnError && retries > 1) {
+        retries--;
+        console.warn(`[DB Retry] Transient connection error: "${err.message}". Retrying query (${3 - retries}/3)...`);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } else {
+        throw err;
+      }
+    }
+  }
+};
 
 const db = {};
 
@@ -84,6 +135,7 @@ db.LoanApplication = require('./loanApplication')(sequelize, Sequelize.DataTypes
 db.Repayment = require('./repayment')(sequelize, Sequelize.DataTypes);
 db.InvestmentTransaction = require('./investmentTransaction')(sequelize, Sequelize.DataTypes);
 db.Remittance = require('./remittance')(sequelize, Sequelize.DataTypes);
+db.Subscription = require('./subscription')(sequelize, Sequelize.DataTypes);
 
 // Super Admin models
 db.SuperAdmin = require('./SuperAdmin')(sequelize, Sequelize.DataTypes);
@@ -186,6 +238,13 @@ db.WalletTransaction.belongsTo(db.Merchant, { foreignKey: 'merchantId' });
 db.Merchant.hasMany(db.WalletUpgradeRequest, { foreignKey: 'merchantId' });
 db.WalletUpgradeRequest.belongsTo(db.Merchant, { foreignKey: 'merchantId', as: 'Merchant' });
 db.WalletUpgradeRequest.belongsTo(db.AdminStaff, { foreignKey: 'reviewedBy', as: 'Reviewer' });
+
+// Subscription associations
+db.Merchant.belongsTo(db.Plan, { foreignKey: 'plan_id', as: 'plan' });
+db.Plan.hasMany(db.Merchant, { foreignKey: 'plan_id' });
+db.Merchant.hasMany(db.Subscription, { foreignKey: 'merchantId', as: 'history' });
+db.Subscription.belongsTo(db.Merchant, { foreignKey: 'merchantId', as: 'merchant' });
+db.Subscription.belongsTo(db.Plan, { foreignKey: 'planId', as: 'plan' });
 
 // Customer Wallet associations - defined in individual model files
 
