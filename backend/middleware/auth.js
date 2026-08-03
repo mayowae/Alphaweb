@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { Agent } = require('../models');
+const { Agent, Staff } = require('../models');
 
 // Middleware to verify JWT token
 const verifyToken = async (req, res, next) => {
@@ -21,27 +21,30 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    console.log('JWT Secret being used:', jwtSecret ? 'Set' : 'Using default');
-    console.log('Token being verified:', token.substring(0, 20) + '...');
-    
     const decoded = jwt.verify(token, jwtSecret);
-    console.log('Token decoded successfully:', { id: decoded.id, type: decoded.type, email: decoded.email });
     req.user = decoded;
     
-    // Backward compatibility: enrich agent token with merchantId if missing
-    if (req.user && req.user.type === 'agent' && !req.user.merchantId) {
-      try {
-        const agentRecord = await Agent.findByPk(req.user.id);
-        if (agentRecord && agentRecord.merchantId) {
-          req.user.merchantId = agentRecord.merchantId;
-        }
-      } catch (_) {}
+    // Backward compatibility: enrich agent or collaborator token with merchantId if missing
+    if (req.user) {
+      if (req.user.type === 'agent' && !req.user.merchantId) {
+        try {
+          const agentRecord = await Agent.findByPk(req.user.id);
+          if (agentRecord && agentRecord.merchantId) {
+            req.user.merchantId = agentRecord.merchantId;
+          }
+        } catch (_) {}
+      } else if ((req.user.type === 'collaborator' || req.user.type === 'staff') && !req.user.merchantId) {
+        try {
+          const staffRecord = await Staff.findByPk(req.user.id || req.user.staffId);
+          if (staffRecord && staffRecord.merchantId) {
+            req.user.merchantId = staffRecord.merchantId;
+          }
+        } catch (_) {}
+      }
     }
     next();
   } catch (error) {
     console.error('Token verification error:', error.message);
-    console.error('Token that failed:', token.substring(0, 20) + '...');
-    console.error('JWT Secret used:', process.env.JWT_SECRET ? 'Environment variable' : 'Default');
     return res.status(403).json({ message: 'Invalid or expired token' });
   }
 };
@@ -62,11 +65,11 @@ const requireCollaborator = (req, res, next) => {
   next();
 };
 
-// Middleware to check if user is authenticated as merchant, collaborator, or agent
+// Middleware to check if user is authenticated as merchant, collaborator, staff, or agent
 const requireAuthenticated = (req, res, next) => {
   if (
     !req.user ||
-    (req.user.type !== 'merchant' && req.user.type !== 'collaborator' && req.user.type !== 'agent')
+    (req.user.type !== 'merchant' && req.user.type !== 'collaborator' && req.user.type !== 'staff' && req.user.type !== 'agent')
   ) {
     return res.status(403).json({ message: 'Access denied. Authentication required.' });
   }
@@ -81,11 +84,47 @@ const requireSuperAdmin = (req, res, next) => {
   next();
 };
 
+// Middleware to check if merchant subscription is active
+const checkActiveSubscription = async (req, res, next) => {
+  try {
+    const { Merchant } = require('../models');
+    
+    // Resolve merchant ID for current user (merchant, agent, or collaborator)
+    const merchantId = req.user.type === 'merchant' ? req.user.id : req.user.merchantId;
+    
+    if (!merchantId) {
+      return next();
+    }
+    
+    const merchant = await Merchant.findByPk(merchantId);
+    if (!merchant) {
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
+    
+    const isExpiredByDate = merchant.next_billing_date && new Date() > new Date(merchant.next_billing_date);
+    const isBlockedStatus = ['Suspended', 'Blocked', 'Grace'].includes(merchant.subscription_status) || isExpiredByDate;
+    
+    if (isBlockedStatus) {
+      return res.status(403).json({
+        success: false,
+        subscriptionExpired: true,
+        message: 'Your subscription has expired. Please reactivate your account to perform this action.'
+      });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('Error checking active subscription:', error);
+    next();
+  }
+};
+
 module.exports = {
   verifyToken,
   requireMerchant,
   requireCollaborator,
   requireAuthenticated,
   requireSuperAdmin,
+  checkActiveSubscription,
 };
 

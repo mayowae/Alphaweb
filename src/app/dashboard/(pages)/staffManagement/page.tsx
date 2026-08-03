@@ -1,7 +1,7 @@
 // ...existing imports...
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, X, Trash2, Pencil, Building, User, Mail, Phone, Briefcase, FileText, CheckCircle, Edit } from 'lucide-react';
+import { Plus, X, Trash2, Pencil, Building, User, Mail, Phone, Briefcase, FileText, CheckCircle, Edit, ChevronDown } from 'lucide-react';
 import { createRole, fetchRoles, updateRole, createStaff, listStaff, updateStaff, fetchBranches } from '@/services/api';
 import Swal from 'sweetalert2';
 
@@ -121,6 +121,61 @@ const EditStaffModal = ({ isOpen, onClose, staffData, onSave }: { isOpen: boolea
   );
 };
 
+// Reusable input component for the form.
+const FormInput = ({ label, name, type, placeholder, value, onChange, icon: Icon }: { label: string; name: string; type: string; placeholder: string; value: string | number; onChange: (e: any) => void; icon: React.ElementType }) => (
+  <div className="mb-4">
+    <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <div className="relative rounded-md shadow-sm">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        {Icon && <Icon className="h-5 w-5 text-gray-400" />}
+      </div>
+      <input
+        type={type}
+        name={name}
+        id={name}
+        value={value}
+        onChange={onChange}
+        className="block w-full rounded-md border-gray-300 pl-10 pr-3 py-2
+        focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+        placeholder={placeholder}
+        required
+      />
+    </div>
+  </div>
+);
+
+// Reusable select component for the form.
+const FormSelect = ({ label, name, options, value, onChange, icon: Icon }: { label: string; name: string; options: { value: string; label: string; }[]; value: string; onChange: (e: any) => void; icon: React.ElementType }) => (
+  <div className="mb-4">
+    <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <div className="relative rounded-md shadow-sm">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        {Icon && <Icon className="h-5 w-5 text-gray-400" />}
+      </div>
+      <select
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        className="block w-full rounded-md border-gray-300 pl-10 pr-10 py-2
+        focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+        required
+      >
+        <option value="" disabled>Select {label.toLowerCase()}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+);
+
 // Unified sidebar component for creating staff and roles.
 const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'staff' | 'role' }> = ({ isOpen, onClose, type }) => {
   const [roleLoading, setRoleLoading] = useState(false);
@@ -131,6 +186,7 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
     email: '',
     phoneNumber: '',
     role: '',
+    password: '',
   });
   const [branchOptions, setBranchOptions] = useState<{ value: string; label: string }[]>([]);
 
@@ -195,9 +251,22 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
     const { name, value } = e.target;
     setRoleFormData((prevData) => ({
       ...prevData,
-      [name]: parseInt(value, 10) || 0,
+      [name]: value,
     }));
   };
+
+  useEffect(() => {
+    if (isOpen && type === 'staff') {
+      setStaffFormData({
+        branch: '',
+        fullName: '',
+        email: '',
+        phoneNumber: '',
+        role: '',
+        password: '',
+      });
+    }
+  }, [isOpen, type]);
 
   // Handles the form submission for staff.
   const [staffLoading, setStaffLoading] = useState(false);
@@ -219,6 +288,7 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
         email: '',
         phoneNumber: '',
         role: '',
+        password: '',
       });
       onClose();
       try {
@@ -302,30 +372,7 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
       .finally(() => setRoleLoading(false));
   };
 
-  // Reusable input component for the form.
-  const FormInput = ({ label, name, type, placeholder, value, onChange, icon: Icon }: { label: string; name: string; type: string; placeholder: string; value: string | number; onChange: (e: any) => void; icon: React.ElementType }) => (
-    <div className="mb-4">
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      <div className="relative rounded-md shadow-sm">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          {Icon && <Icon className="h-5 w-5 text-gray-400" />}
-        </div>
-        <input
-          type={type}
-          name={name}
-          id={name}
-          value={value}
-          onChange={onChange}
-          className="block w-full rounded-md border-gray-300 pl-10 pr-3 py-2
-          focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          placeholder={placeholder}
-          required
-        />
-      </div>
-    </div>
-  );
+
 
   // Fetch roles for dynamic dropdown in staff form
   const [roleOptions, setRoleOptions] = useState<{ value: string; label: string }[]>([]);
@@ -352,35 +399,7 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
     return () => document.removeEventListener('role-created', handleRoleCreated);
   }, [isOpen, type]);
 
-  // Reusable select component for the form.
-  const FormSelect = ({ label, name, options, value, onChange, icon: Icon }: { label: string; name: string; options: { value: string; label: string; }[]; value: string; onChange: (e: any) => void; icon: React.ElementType }) => (
-    <div className="mb-4">
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      <div className="relative rounded-md shadow-sm">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          {Icon && <Icon className="h-5 w-5 text-gray-400" />}
-        </div>
-        <select
-          id={name}
-          name={name}
-          value={value}
-          onChange={onChange}
-          className="block w-full rounded-md border-gray-300 pl-10 pr-10 py-2
-          focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          required
-        >
-          <option value="" disabled>Select {label.toLowerCase()}</option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
+
 
   return (
     <>
@@ -457,6 +476,15 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
               onChange={handleStaffChange}
               options={roleOptions}
             />
+            <FormInput
+              label="Password (login password)"
+              name="password"
+              type="password"
+              placeholder="Leave blank for default: Staff123!"
+              icon={FileText}
+              value={staffFormData.password}
+              onChange={handleStaffChange}
+            />
             <div className="pt-2">
               <button
                 type="submit"
@@ -465,6 +493,7 @@ const CreateSidebar: React.FC<{ isOpen: boolean; onClose: () => void; type: 'sta
               >
                 {staffLoading ? 'Creating...' : 'Create user'}
               </button>
+              <p className="text-xs text-gray-500 mt-2">If no password is set, default will be <strong>Staff123!</strong></p>
               {staffError && <div className="text-red-600 text-sm mt-2">{staffError}</div>}
             </div>
           </form>
@@ -965,6 +994,33 @@ export default function StaffPage() {
       (s.role || '').toLowerCase().includes(term)
     );
   }, [staff, search]);
+
+  const handleExport = (format: string) => {
+    if (format === 'CSV') {
+      const headers = ['Staff ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Date Added'];
+      const rows = filteredStaff.map((s) => [
+        s.id || '',
+        s.name || '',
+        s.email || '',
+        s.phone || '',
+        s.role || '',
+        s.status || 'Active',
+        s.date || '',
+      ]);
+      const csv = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `staff_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'PDF') {
+      window.print();
+    }
+  };
   const totalPages = Math.ceil(filteredStaff.length / itemsPerPage) || 1;
   const pagedStaff = filteredStaff.slice(
     (currentPage - 1) * itemsPerPage,
@@ -1023,7 +1079,24 @@ export default function StaffPage() {
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <button className="border border-gray-300 text-sm px-3 py-1.5 rounded hover:bg-gray-50">Export</button>
+                <div className="relative bg-[#e9e6ff] text-indigo-500 rounded">
+                  <select
+                    className="block bg-[#e9e6ff] appearance-none rounded text-indigo-500 pl-3 pr-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer border border-indigo-200"
+                    defaultValue=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) handleExport(val);
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="" disabled>Export</option>
+                    <option value="PDF">PDF</option>
+                    <option value="CSV">CSV</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
                 <div className="relative">
                   <input
                     type="text"

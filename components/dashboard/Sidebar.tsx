@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Sidemenuitems } from './sidebarmenuitems'
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,18 +11,45 @@ interface DashboardHeaderProps {
   setIsOpen: (isOpen: boolean) => void;
 }
 
-const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
+/** Returns the permission level for a given key, or null if no restrictions (merchant). */
+function getPermission(permissions: Record<string, string> | null, key: string | undefined): string | null {
+  if (!permissions || !key) return 'Can edit'; // merchant: full access
+  return permissions[key] ?? "Can't view";
+}
 
+const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
 
   const pathName = usePathname();
 
+  // Read staff permissions from localStorage (set on collaborator/staff login)
+  const [staffPermissions, setStaffPermissions] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('staffPermissions');
+      if (stored) {
+        setStaffPermissions(JSON.parse(stored));
+      } else {
+        setStaffPermissions(null);
+      }
+    } catch {
+      setStaffPermissions(null);
+    }
+  }, []);
+
+  // Filter sidebar items based on staff permissions
+  const visibleItems = Sidemenuitems.filter((item) => {
+    const perm = getPermission(staffPermissions, item.permissionKey);
+    return perm !== "Can't view";
+  });
+
   // Find the index of the submenu that matches the current path
   const initialMenuOpen = React.useMemo(() => {
-    const submenuIndex = Sidemenuitems.findIndex(item =>
+    const submenuIndex = visibleItems.findIndex(item =>
       item.submenu && item.submenuitems?.some(sub => sub.path === pathName)
     );
     return submenuIndex !== -1 ? submenuIndex : null;
-  }, [pathName]);
+  }, [pathName, visibleItems]);
 
   const [menuOpen, setMenuOpen] = useState<number | null>(initialMenuOpen);
   const [activeSubmenu, setActiveSubmenu] = useState<number | null>(initialMenuOpen);
@@ -37,8 +64,8 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
         />
       )}
       <div className={`fixed top-0 left-0 h-screen pt-20  transition-transform w-[264px] z-40 bg-[#150E46] text-[#E9E6FF] shadow-md ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:block`}>
-   <div className="flex flex-col gap-[8px] antialiased font-inter font-normal h-full overflow-y-auto hide-scrollbar pb-8 px-3">
-      {Sidemenuitems.map((items, index) => {
+   <div className="flex flex-col gap-[8px] antialiased font-inter font-normal h-full overflow-y-auto pb-8 px-3">
+      {visibleItems.map((items, index) => {
   return (
     <React.Fragment key={index}>
       {items.submenu ? (

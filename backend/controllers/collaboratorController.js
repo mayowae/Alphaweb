@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const { Collaborator } = require('../models');
+const { Collaborator, Staff, Role } = require('../models');
 
 /**
  * @swagger
@@ -425,13 +425,78 @@ const registerCollaborator = async (req, res) => {
   }
 };
 
-// Login collaborator
+// Login collaborator / staff
 const loginCollaborator = async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(422).json({ message: 'Email and password are required' });
+    }
 
-    // Find collaborator
-    const collaborator = await Collaborator.findOne({ where: { email } });
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    // 1. Check Staff model (Staff created in Merchant Staff Management)
+    const staff = await Staff.findOne({
+      where: { email: cleanEmail }
+    });
+
+    if (staff) {
+      if (staff.status && staff.status.toLowerCase() !== 'active') {
+        return res.status(403).json({ message: 'Staff account is inactive. Please contact your manager.' });
+      }
+
+      if (!staff.password) {
+        return res.status(401).json({ message: 'Invalid credentials. Password not set.' });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, staff.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+
+      // Fetch role & permissions
+      let permissions = null;
+      if (staff.roleId) {
+        const roleRecord = await Role.findByPk(staff.roleId);
+        if (roleRecord && roleRecord.permissions) {
+          permissions = typeof roleRecord.permissions === 'string'
+            ? JSON.parse(roleRecord.permissions)
+            : roleRecord.permissions;
+        }
+      }
+
+      const token = jwt.sign(
+        {
+          id: staff.id,
+          staffId: staff.id,
+          email: staff.email,
+          type: 'collaborator',
+          merchantId: staff.merchantId,
+          roleId: staff.roleId,
+          role: staff.role,
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      return res.json({
+        message: 'Login successful',
+        token,
+        collaborator: {
+          id: staff.id,
+          fullName: staff.fullName,
+          email: staff.email,
+          role: staff.role,
+          roleId: staff.roleId,
+          branch: staff.branch,
+          merchantId: staff.merchantId,
+          permissions,
+        },
+      });
+    }
+
+    // 2. Fallback to Collaborator model
+    const collaborator = await Collaborator.findOne({ where: { email: cleanEmail } });
     if (!collaborator) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -442,11 +507,6 @@ const loginCollaborator = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Check if email is verified
-    if (!collaborator.isVerified) {
-      return res.status(403).json({ message: 'Please verify your email first' });
-    }
-
     // Generate JWT token
     const token = jwt.sign(
       { id: collaborator.id, email: collaborator.email, type: 'collaborator' },
@@ -454,7 +514,7 @@ const loginCollaborator = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({
+    return res.json({
       message: 'Login successful',
       token,
       collaborator: {
@@ -473,9 +533,11 @@ const loginCollaborator = async (req, res) => {
 // Forgot password for collaborator
 const collaboratorForgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body?.email || '').trim();
 
-    const collaborator = await Collaborator.findOne({ where: { email } });
+    const collaborator = await Collaborator.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!collaborator) {
       return res.status(404).json({ message: 'Email not found' });
     }
@@ -487,8 +549,8 @@ const collaboratorForgotPassword = async (req, res) => {
     // Update collaborator with OTP
     await collaborator.update({ otp, otpExpires });
 
-    // Send OTP email (non-blocking for dev)
-    const emailResult = await sendOTPEmail(email, otp);
+    // Send OTP email
+    const emailResult = await sendOTPEmail(collaborator.email, otp);
     res.json({
       message: emailResult.sent ? 'OTP sent to your email' : 'Email not sent; use the OTP shown here',
       otp: otp,
@@ -503,9 +565,11 @@ const collaboratorForgotPassword = async (req, res) => {
 // Resend OTP for collaborator
 const collaboratorResendOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body?.email || '').trim();
 
-    const collaborator = await Collaborator.findOne({ where: { email } });
+    const collaborator = await Collaborator.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!collaborator) {
       return res.status(404).json({ message: 'Email not found' });
     }
@@ -518,7 +582,7 @@ const collaboratorResendOTP = async (req, res) => {
     await collaborator.update({ otp, otpExpires });
 
     // Send OTP email
-    const emailResult = await sendOTPEmail(email, otp);
+    const emailResult = await sendOTPEmail(collaborator.email, otp);
     console.log(`[ResendOTP] OTP for ${email}: ${otp}`);
     res.json({
       message: emailResult.sent ? 'OTP resent to your email' : 'Email not sent; use the OTP shown here',
@@ -534,9 +598,12 @@ const collaboratorResendOTP = async (req, res) => {
 // Verify OTP for collaborator
 const collaboratorVerifyOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const email = String(req.body?.email || '').trim();
+    const otp = String(req.body?.otp || '').trim();
 
-    const collaborator = await Collaborator.findOne({ where: { email } });
+    const collaborator = await Collaborator.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!collaborator) {
       return res.status(404).json({ message: 'Email not found' });
     }
@@ -567,9 +634,16 @@ const collaboratorVerifyOTP = async (req, res) => {
 // Change password for collaborator
 const collaboratorChangePassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
+    const email = String(req.body?.email || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
 
-    const collaborator = await Collaborator.findOne({ where: { email } });
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: 'Email and new password are required' });
+    }
+
+    const collaborator = await Collaborator.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!collaborator) {
       return res.status(404).json({ message: 'Email not found' });
     }

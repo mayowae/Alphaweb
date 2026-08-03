@@ -5,6 +5,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Dashboard",
         path: "/dashboard",
         icon: "/icons/sidebar.svg",
+        permissionKey: "dashboard",
 
     },
 
@@ -12,6 +13,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Branch Management",
         path: "/dashboard/branchManagement",
         icon: "/icons/sidebar.svg",
+        permissionKey: "branch",
 
     },
 
@@ -19,6 +21,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Agents",
         path: "/dashboard/agents",
         icon: "/icons/sidebar.svg",
+        permissionKey: "agents",
 
     },
 
@@ -26,6 +29,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Package",
         path: "/dashboard/package",
         icon: "/icons/sidebar.svg",
+        permissionKey: "packages",
         submenu: true,
         submenuitems: [
             {title: 'Collection', path: "/dashboard/package/collection", icon: "/icons/brown.png"},
@@ -40,6 +44,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Collection",
         path: "/dashboard/collection",
         icon: "/icons/sidebar.svg",
+        permissionKey: "collection",
         submenu: true,
         submenuitems: [
             {title: 'Collections', path: "/dashboard/collection/collections", icon: "/icons/brown.png"},
@@ -53,6 +58,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Loan",
         path: "/dashboard/loan",
         icon: "/icons/sidebar.svg",
+        permissionKey: "loan",
         submenu: true,
         submenuitems: [
             {title: 'Applications', path: "/dashboard/loan/applications", icon: "/icons/blue.png"},
@@ -67,6 +73,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Investment",
         path: "/dashboard/investment",
         icon: "/icons/sidebar.svg",
+        permissionKey: "investments",
         submenu: true,
         submenuitems: [
             {title: 'Applications', path: "/dashboard/investment/applications", icon: "/icons/green.png"},
@@ -81,6 +88,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Accounting",
         path: "/dashboard/accounting",
         icon: "/icons/sidebar.svg",
+        permissionKey: "accounting",
         submenu: true,
         submenuitems: [
             {title: 'Analytics', path: "/dashboard/accounting/analytics", icon: "/icons/green.png"},
@@ -98,6 +106,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Customer",
         path: "/dashboard/customer",
         icon: "/icons/sidebar.svg",
+        permissionKey: "customers",
 
     },
 
@@ -106,6 +115,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Wallet",
         path: "/dashboard/wallet",
         icon: "/icons/sidebar.svg",
+        permissionKey: "wallet",
 
     },
 
@@ -113,6 +123,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Charges",
         path: "/dashboard/charges",
         icon: "/icons/sidebar.svg",
+        permissionKey: "charges",
 
     },
 
@@ -120,6 +131,7 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Staff Management",
         path: "/dashboard/staffManagement",
         icon: "/icons/sidebar.svg",
+        permissionKey: "staff_management",
 
     },
 
@@ -127,8 +139,8 @@ export const Sidemenuitems: Sidebarmenu[] =[
         title:"Subscription",
         path: "/dashboard/subscription",
         icon: "/icons/sidebar.svg",
+        permissionKey: "subscription",
     },
 
 
 ]
-

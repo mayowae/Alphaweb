@@ -5,7 +5,7 @@ export interface Sidebarmenu {
     icon: string;
     submenu?:boolean,
     submenuitems?:Sidebarmenu[];
-
+    permissionKey?: string;
 }
 
 export interface InvestmentTransaction {
