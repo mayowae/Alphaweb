@@ -99,8 +99,20 @@ sequelize.query = async function (...args) {
 
       if (isConnError && retries > 1) {
         retries--;
-        console.warn(`[DB Retry] Transient connection error: "${err.message}". Retrying query (${3 - retries}/3)...`);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        console.warn(`[DB Retry] Connection error: "${err.message}". Evicting pool & retrying (${3 - retries}/3)...`);
+        
+        // Force eviction of stale connections from pool so retry opens a fresh TCP/SSL socket
+        try {
+          if (sequelize.connectionManager && sequelize.connectionManager.pool) {
+            if (typeof sequelize.connectionManager.pool.clear === 'function') {
+              sequelize.connectionManager.pool.clear();
+            } else if (typeof sequelize.connectionManager.pool.drain === 'function') {
+              sequelize.connectionManager.pool.drain();
+            }
+          }
+        } catch (_) {}
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
       } else {
         throw err;
       }
