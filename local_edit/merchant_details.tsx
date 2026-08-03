@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import Addpackage from '../../../../../../../components/tables/merchants/modals/Add&EditMerchantModal'
-import ChangestatusModal from '../../../../../../../components/tables/merchants/modals/Changestatusmodal'
-import { data } from "../../../../utilis/sidebarmenuitems";
-import Transactions from '../../../../../../../components/tables/merchants/merchantdetailstabs/Transactions'
-import Subscriptions_Billings from '../../../../../../../components/tables/merchants/merchantdetailstabs/Subscriptions&Billings'
-import Logs_Audits from '../../../../../../../components/tables/merchants/merchantdetailstabs/Logs&Audits'
-import { MerchantData } from '../../../../../../../interface/type';
-import adminAPI from '../../../../utilis/adminApi';
+import Addpackage from '@/components/tables/merchants/modals/Add&EditMerchantModal'
+import ChangestatusModal from '@/components/tables/merchants/modals/Changestatusmodal'
+import { data } from "@/app/admin/utilis/sidebarmenuitems";
+import Transactions from '@/components/tables/merchants/merchantdetailstabs/Transactions'
+import Subscriptions_Billings from '@/components/tables/merchants/merchantdetailstabs/Subscriptions&Billings'
+import Logs_Audits from '@/components/tables/merchants/merchantdetailstabs/Logs&Audits'
+import { MerchantData } from '@/interface/type';
+import adminAPI from '@/app/admin/utilis/adminApi';
 
 const MerchantDetails = ({ paramid }: { paramid: string }) => {
   const queryClient = useQueryClient();

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import '../../../../../global.css'; 
+import '@/global.css'; 
 
 export default function VerifyOtp() {
   const [otp, setOtp] = useState(new Array(6).fill(""));

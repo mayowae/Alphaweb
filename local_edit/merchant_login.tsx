@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { loginUserWithEmail } from "@/services/api";
-import '../../../../global.css';
+import '@/global.css';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);

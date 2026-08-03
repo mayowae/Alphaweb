@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import '../../../../../global.css';
+import '@/global.css';
 
 export default function Login() {
   const [email, setEmail] = useState("");

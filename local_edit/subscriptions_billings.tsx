@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import adminAPI from '../../../../src/app/admin/utilis/adminApi';
+import adminAPI from '@/app/admin/utilis/adminApi';
 
 interface SubscriptionsProps {
   merchantId: string;

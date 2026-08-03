@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from "next/navigation";
 import { ChevronDown, X, ChevronUp, ChevronRight, Menu, Calendar, Upload, Plus, CheckCircle } from 'lucide-react';
 import Link from "next/link";
-import '../../../../../global.css';
+import '@/global.css';
 import { 
   getWalletBalance, 
   fetchWalletTransactions, 
@@ -15,7 +15,7 @@ import {
   fetchUpgradeStatus,
   fetchMerchantProfile
 } from '@/services/api';
-import LoadingButton from '../../../../../components/LoadingButton';
+import LoadingButton from '@/components/LoadingButton';
 
 // The main Wallet component with tab functionality
 export default function Wallet() {
