@@ -402,10 +402,16 @@ const getWalletBalance = async (req, res) => {
       const amount = parseFloat(transaction.amount || 0);
 
       if (isCompleted) {
-        if (tType === 'credit' || trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval') {
+        if (tType === 'credit') {
           totalBalance += amount;
           availableBalance += amount;
-        } else if (tType === 'debit' || trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement') {
+        } else if (tType === 'debit') {
+          totalBalance -= amount;
+          availableBalance -= amount;
+        } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
+          totalBalance += amount;
+          availableBalance += amount;
+        } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
           totalBalance -= amount;
           availableBalance -= amount;
         }
@@ -856,6 +862,7 @@ const transferToCustomer = async (req, res) => {
     // Determine merchant-side transaction type
     const customerSideType = (type === 'credit' || type === 'debit') ? type : 'debit';
     const merchantSideType = customerSideType === 'credit' ? 'debit' : 'credit';
+    const merchantTxType = customerSideType === 'credit' ? 'transfer_out' : 'transfer_in';
 
     // Enforce Tier Limits
     try {
@@ -867,7 +874,7 @@ const transferToCustomer = async (req, res) => {
         });
     }
 
-    // For merchant debit (payout) ensure sufficient merchant balance; skip for merchant credit (inflow)
+    // For merchant debit (payout/transfer to customer) ensure sufficient merchant balance; skip for merchant credit (transfer from customer)
     if (merchantSideType === 'debit') {
       const merchant = await Merchant.findByPk(merchantId);
       const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
@@ -900,9 +907,13 @@ const transferToCustomer = async (req, res) => {
           const amt = parseFloat(transaction.amount || 0);
 
           if (isCompleted) {
-            if (tType === 'credit' || trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval') {
+            if (tType === 'credit') {
               merchantBalance += amt;
-            } else if (tType === 'debit' || trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement') {
+            } else if (tType === 'debit') {
+              merchantBalance -= amt;
+            } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
+              merchantBalance += amt;
+            } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
               merchantBalance -= amt;
             }
           }
@@ -912,16 +923,16 @@ const transferToCustomer = async (req, res) => {
       if (merchantBalance < parseFloat(amount)) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient balance in merchant wallet. Available balance: ₦${merchantBalance.toLocaleString()}`
+          message: `Insufficient balance in merchant wallet. Available balance: ₦${merchantBalance.toLocaleString('en-NG')}`
         });
       }
     }
 
-    // Create debit transaction for merchant wallet
+    // Create transaction for merchant wallet
     const merchantTransaction = await WalletTransaction.create({
       merchantId,
       type: merchantSideType,
-      transactionType: customerSideType,
+      transactionType: merchantTxType,
       amount: parseFloat(amount),
       description: `Transfer ${customerSideType === 'credit' ? 'to' : 'from'} ${customerWallet.customer.fullName}: ${description || 'Wallet transaction'}`,
       reference: `TRF_${Date.now()}`,
