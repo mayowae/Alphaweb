@@ -441,20 +441,21 @@ const getWalletBalance = async (req, res) => {
       }
     }
 
-    // Fetch live TransactPay Payout Wallet Balance
-    let tpBalance = null;
+    // Fetch platform master TransactPay balance for audit/system check
+    let platformTpBalance = null;
     try {
       const tpBalanceData = await fetchTpBalance(merchant?.currency || 'NGN');
       if (tpBalanceData) {
         const val = parseFloat(tpBalanceData.availableBalance ?? tpBalanceData.balance ?? 0);
-        if (!isNaN(val)) tpBalance = val;
+        if (!isNaN(val)) platformTpBalance = val;
       }
     } catch (tpErr) {
-      console.error('TransactPay balance check error:', tpErr.message);
+      console.error('[Wallet] TransactPay platform balance check error:', tpErr.message);
     }
 
-    const finalTotal = tpBalance !== null ? tpBalance : totalBalance;
-    const finalAvailable = tpBalance !== null ? tpBalance : availableBalance;
+    // Per-merchant balance is calculated from their isolated WalletTransaction ledger
+    const finalTotal = Math.max(0, totalBalance);
+    const finalAvailable = Math.max(0, availableBalance);
 
     res.json({
       success: true,
@@ -463,10 +464,11 @@ const getWalletBalance = async (req, res) => {
         available: finalAvailable,
         pending: pendingAmount,
         currency: merchant?.currency || 'NGN',
-        fromWallet: tpBalance !== null,
+        fromWallet: true,
         accountNumber: merchant?.accountNumber || null,
         bankName: merchant?.bankName || null,
-        accountName: merchant?.accountName || null
+        accountName: merchant?.accountName || null,
+        platformMasterBalance: platformTpBalance
       }
     });
   } catch (error) {
@@ -874,56 +876,40 @@ const transferToCustomer = async (req, res) => {
         });
     }
 
-    // For merchant debit (payout/transfer to customer) ensure sufficient merchant balance; skip for merchant credit (transfer from customer)
+    // For merchant debit (payout/transfer to customer) ensure sufficient merchant balance
     if (merchantSideType === 'debit') {
       const merchant = await Merchant.findByPk(merchantId);
-      const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
 
+      // Always calculate per-merchant balance from their isolated WalletTransaction ledger
       let merchantBalance = 0;
-      let fetchedFromTp = false;
+      const merchantTransactions = await WalletTransaction.findAll({
+        where: { merchantId },
+        attributes: ['type', 'transactionType', 'amount', 'status']
+      });
 
-      if (merchant) {
-        try {
-          const tpData = await fetchTpBalance(merchant.currency || 'NGN');
-          if (tpData && (tpData.availableBalance !== undefined || tpData.balance !== undefined)) {
-            merchantBalance = parseFloat(tpData.availableBalance ?? tpData.balance ?? 0);
-            fetchedFromTp = true;
+      merchantTransactions.forEach(transaction => {
+        const isCompleted = (transaction.status || '').toLowerCase() === 'completed';
+        const tType = (transaction.type || '').toLowerCase();
+        const trType = (transaction.transactionType || '').toLowerCase();
+        const amt = parseFloat(transaction.amount || 0);
+
+        if (isCompleted) {
+          if (tType === 'credit') {
+            merchantBalance += amt;
+          } else if (tType === 'debit') {
+            merchantBalance -= amt;
+          } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
+            merchantBalance += amt;
+          } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
+            merchantBalance -= amt;
           }
-        } catch (tpErr) {
-          console.error('[WalletTransfer] TransactPay balance fetch error:', tpErr.message);
         }
-      }
-
-      if (!fetchedFromTp) {
-        const merchantTransactions = await WalletTransaction.findAll({
-          where: { merchantId },
-          attributes: ['type', 'transactionType', 'amount', 'status']
-        });
-
-        merchantTransactions.forEach(transaction => {
-          const isCompleted = (transaction.status || '').toLowerCase() === 'completed';
-          const tType = (transaction.type || '').toLowerCase();
-          const trType = (transaction.transactionType || '').toLowerCase();
-          const amt = parseFloat(transaction.amount || 0);
-
-          if (isCompleted) {
-            if (tType === 'credit') {
-              merchantBalance += amt;
-            } else if (tType === 'debit') {
-              merchantBalance -= amt;
-            } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
-              merchantBalance += amt;
-            } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
-              merchantBalance -= amt;
-            }
-          }
-        });
-      }
+      });
 
       if (merchantBalance < parseFloat(amount)) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient balance in merchant wallet. Available balance: ₦${merchantBalance.toLocaleString('en-NG')}`
+          message: `Insufficient balance in merchant wallet. Available balance: ₦${Math.max(0, merchantBalance).toLocaleString('en-NG')}`
         });
       }
     }
