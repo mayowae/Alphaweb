@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { fetchCustomers, fetchPackages, createCollection } from '../../services/api';
+import { fetchCustomers, fetchPackages, createCollection } from '../services/api';
 import Swal from 'sweetalert2';
 
 interface SingleCollectionFormProps {
@@ -36,14 +36,13 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
     packageName: '',
     selectedPackageId: '',
     packageAmount: '',
+    cycle: 31,
     cycleCounter: 1,
     dueDate: new Date().toISOString().split('T')[0]
   });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -59,40 +58,58 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
     try {
       const [customersRes, packagesRes] = await Promise.all([
         fetchCustomers().catch(() => ({ customers: [] })),
-        fetchPackages('Collection').catch(() => ({ packages: [] }))
+        fetchPackages('Collection').catch(() => [])
       ]);
-      setCustomers(customersRes.customers || []);
+
+      const rawCusts = customersRes.customers || customersRes.data || customersRes || [];
+      setCustomers(Array.isArray(rawCusts) ? rawCusts : []);
+
       const rawPkgs = (packagesRes.packages || packagesRes.data || packagesRes || []) as Package[];
-      const collectionPkgs = rawPkgs.filter((p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'collection');
+      const collectionPkgs = (Array.isArray(rawPkgs) ? rawPkgs : []).filter(
+        (p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'collection'
+      );
       setPackages(collectionPkgs);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('Failed to fetch collection form data:', error);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    if (name === 'customerName') {
-      const filtered = customers.filter(customer =>
-        customer.fullName.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredCustomers(filtered);
-      setShowCustomerDropdown(value.length > 0);
-      
-      // Clear selection when searching
+  const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const custId = e.target.value;
+    if (!custId) {
       setFormData(prev => ({
         ...prev,
         selectedCustomerId: '',
+        customerName: '',
         selectedPackageId: '',
         packageName: '',
         packageAmount: ''
       }));
+      return;
     }
+
+    const customer = customers.find(c => c.id.toString() === custId);
+    if (!customer) return;
+
+    let assignedPkg = null;
+    const pkgId = customer.packageId || (customer as any).package_id || (customer as any).PackageId || (customer as any).Package?.id;
+    if (pkgId) {
+      assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
+    }
+    if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
+      assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
+    }
+
+    const selectedPkg = assignedPkg || (packages.length > 0 ? packages[0] : null);
+
+    setFormData(prev => ({
+      ...prev,
+      selectedCustomerId: customer.id.toString(),
+      customerName: customer.fullName || (customer as any).name || '',
+      selectedPackageId: selectedPkg ? selectedPkg.id.toString() : '',
+      packageName: selectedPkg ? selectedPkg.name : '',
+      packageAmount: selectedPkg ? selectedPkg.amount.toString() : ''
+    }));
   };
 
   const handlePackageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -103,6 +120,14 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
       selectedPackageId: packageId,
       packageName: selectedPackage?.name || '',
       packageAmount: selectedPackage ? selectedPackage.amount.toString() : prev.packageAmount
+    }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
@@ -127,8 +152,8 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
         type: 'Package Payment',
         packageName: formData.packageName,
         packageAmount: parseFloat(formData.packageAmount),
-        cycle: 31,
-        cycleCounter: parseInt(formData.cycleCounter.toString()),
+        cycle: parseInt(formData.cycle.toString()) || 31,
+        cycleCounter: parseInt(formData.cycleCounter.toString()) || 1,
         isFirstCollection: parseInt(formData.cycleCounter.toString()) === 1
       };
 
@@ -171,56 +196,24 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="relative">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Customer Name *
             </label>
-            <input
-              type="text"
-              name="customerName"
-              value={formData.customerName}
-              onChange={handleInputChange}
-              placeholder="Search customer..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <select
+              name="selectedCustomerId"
+              value={formData.selectedCustomerId}
+              onChange={handleCustomerChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               required
-            />
-            {showCustomerDropdown && filteredCustomers.length > 0 && (
-              <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                {filteredCustomers.map((customer) => (
-                  <div
-                    key={customer.id}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      
-                      let assignedPkg = null;
-                      const pkgId = customer.packageId || (customer as any).package_id || (customer as any).PackageId || (customer as any).Package?.id;
-                      
-                      if (pkgId) {
-                        assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
-                      }
-                      
-                      if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
-                        assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
-                      }
-                      
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        customerName: customer.fullName,
-                        selectedCustomerId: customer.id.toString(),
-                        selectedPackageId: assignedPkg ? assignedPkg.id.toString() : (packages.length > 0 ? packages[0].id.toString() : ''),
-                        packageName: assignedPkg ? assignedPkg.name : (packages.length > 0 ? packages[0].name : ''),
-                        packageAmount: assignedPkg ? assignedPkg.amount.toString() : (packages.length > 0 ? packages[0].amount.toString() : '')
-                      }));
-                      
-                      setShowCustomerDropdown(false);
-                    }}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    {customer.fullName}{customer.accountNumber ? ` • ${customer.accountNumber}` : ''}
-                  </div>
-                ))}
-              </div>
-            )}
+            >
+              <option value="">Select customer</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.fullName || (c as any).name}{c.accountNumber ? ` • ${c.accountNumber}` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -273,6 +266,24 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cycle
+            </label>
+            <input
+              type="number"
+              name="cycle"
+              value={formData.cycle}
+              onChange={handleInputChange}
+              min="1"
+              max="365"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Total cycle length in days (default: 31)
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Cycle Counter
             </label>
             <input
@@ -281,12 +292,11 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
               value={formData.cycleCounter}
               onChange={handleInputChange}
               min="1"
-              max="31"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-              readOnly
+              max="365"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Automatically increments by 1 for single collection
+              Current day in cycle (automatically increments by 1 for single collection)
             </p>
           </div>
 

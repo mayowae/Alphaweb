@@ -38,7 +38,11 @@ const CreateCollectionModal = ({ isOpen, onClose, onSuccess }: {
         .then((res) => setCustomers(res.customers || res || []))
         .catch(() => setCustomers([]));
       fetchPackages('Collection')
-        .then((res: any) => setCollectionPackages(res.packages || []))
+        .then((res: any) => {
+          const raw = res?.packages || res?.data || res || [];
+          const list = Array.isArray(raw) ? raw : [];
+          setCollectionPackages(list);
+        })
         .catch(() => setCollectionPackages([]));
     }
   }, [isOpen]);
