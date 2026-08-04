@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { Sequelize } = require('sequelize');
 const { swaggerUi, swaggerSpec } = require('./swagger');
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 // Configure multer for form-data (including file uploads)
 const uploadsDir = path.join(__dirname, 'uploads');
