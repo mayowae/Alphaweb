@@ -1,3 +1,6 @@
+// Load environment variables FIRST before any other imports
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -6,7 +9,6 @@ const fs = require('fs');
 const path = require('path');
 const { Sequelize } = require('sequelize');
 const { swaggerUi, swaggerSpec } = require('./swagger');
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 // Configure multer for form-data (including file uploads)
 const uploadsDir = path.join(__dirname, 'uploads');

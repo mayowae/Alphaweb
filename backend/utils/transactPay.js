@@ -1,9 +1,11 @@
 const forge = require('node-forge');
 const fetch = require('node-fetch');
 
-const PUBLIC_KEY = process.env.TRANSACTPAY_PUBLIC_KEY;
-const SECRET_KEY = process.env.TRANSACTPAY_SECRET_KEY;
-const ENCRYPTION_KEY_BASE64 = process.env.TRANSACTPAY_ENCRYPTION_KEY_BASE64;
+// Read keys lazily at call-time (not module load time) to avoid
+// module-caching issues when dotenv runs after first require()
+const getPublicKey = () => process.env.TRANSACTPAY_PUBLIC_KEY;
+const getSecretKey = () => process.env.TRANSACTPAY_SECRET_KEY;
+const getEncryptionKey = () => process.env.TRANSACTPAY_ENCRYPTION_KEY_BASE64;
 const TP_BASE_URL = 'https://payment-api-service.transactpay.ai';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -11,6 +13,7 @@ const TP_BASE_URL = 'https://payment-api-service.transactpay.ai';
 // ────────────────────────────────────────────────────────────────────────────
 const encryptPayload = (payload) => {
     try {
+        const ENCRYPTION_KEY_BASE64 = getEncryptionKey();
         let xmlString = Buffer.from(ENCRYPTION_KEY_BASE64, 'base64').toString('utf8');
         if (xmlString.startsWith('4096!')) {
             xmlString = xmlString.substring(5);
@@ -53,7 +56,7 @@ const createVirtualAccount = async (userData) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'api-key': PUBLIC_KEY,
+                'api-key': getPublicKey(),
                 'encryption': 'RSA'
             },
             body: JSON.stringify({ data: encryptedData })
@@ -97,7 +100,7 @@ const getVirtualAccountDetails = async (alias) => {
     try {
         const response = await fetch(`${TP_BASE_URL}/payment/account-details?alias=${encodeURIComponent(alias)}`, {
             method: 'GET',
-            headers: { 'api-key': PUBLIC_KEY }
+            headers: { 'api-key': getPublicKey() }
         });
 
         const text = await response.text();
@@ -126,9 +129,14 @@ const getWalletBalance = async (currency = 'NGN') => {
     try {
         // TransactPay payout wallet balance supports NGN (and USD), fallback to NGN for others like XOF
         const targetCurrency = (currency === 'USD') ? 'USD' : 'NGN';
+        const secretKey = getSecretKey();
+        if (!secretKey) {
+            console.error('[TransactPay] TRANSACTPAY_SECRET_KEY is not set in environment');
+            return null;
+        }
         const response = await fetch(`${TP_BASE_URL}/payout/balance-enquiry?currency=${targetCurrency}`, {
             method: 'GET',
-            headers: { 'api-key': SECRET_KEY }
+            headers: { 'api-key': secretKey }
         });
 
         const text = await response.text();
@@ -175,7 +183,7 @@ const getTransactionDetails = async (sessionId) => {
     try {
         const response = await fetch(`${TP_BASE_URL}/payment/transaction-details/${sessionId}`, {
             method: 'GET',
-            headers: { 'api-key': PUBLIC_KEY }
+            headers: { 'api-key': getPublicKey() }
         });
 
         const text = await response.text();
