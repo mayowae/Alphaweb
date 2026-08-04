@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { fetchCustomers, fetchPackages, createCollection } from '../services/api';
+import { fetchCustomers, fetchPackages, createCollection } from '@/services/api';
 import Swal from 'sweetalert2';
 
 interface BulkCollectionFormProps {
