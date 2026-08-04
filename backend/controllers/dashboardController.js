@@ -110,60 +110,52 @@ const getDashboardStats = async (req, res) => {
 
     const totalCollections = (parseFloat(packageCollectionsSum || 0) + parseFloat(loanRepaymentsSum || 0));
 
-    // Calculate wallet balance from TransactPay live balance
-    const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
-    
+    // Calculate per-merchant wallet balance from WalletTransaction ledger (matching walletController)
     let walletBalance = 0;
-    let fetchedFromWallet = false;
+    const walletTransactions = await WalletTransaction.findAll({
+      where: { merchantId },
+      attributes: ['type', 'transactionType', 'amount', 'status']
+    });
 
-    if (merchant) {
-      try {
-        const tpBalanceData = await fetchTpBalance(merchant.currency || 'NGN');
-        if (tpBalanceData) {
-          walletBalance = parseFloat(tpBalanceData.availableBalance ?? tpBalanceData.balance ?? 0);
-          fetchedFromWallet = true;
+    walletTransactions.forEach(transaction => {
+      const isCompleted = (transaction.status || '').toLowerCase() === 'completed';
+      const tType = (transaction.type || '').toLowerCase();
+      const trType = (transaction.transactionType || '').toLowerCase();
+      const amount = parseFloat(transaction.amount || 0);
+
+      if (isCompleted) {
+        if (tType === 'credit') {
+          walletBalance += amount;
+        } else if (tType === 'debit') {
+          walletBalance -= amount;
+        } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
+          walletBalance += amount;
+        } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
+          walletBalance -= amount;
         }
-      } catch (err) {
-        console.error('TransactPay live balance error on dashboard:', err.message);
       }
-    }
+    });
 
-    if (!fetchedFromWallet) {
-        const walletTransactions = await WalletTransaction.findAll({
-          where: { merchantId },
-          attributes: ['type', 'transactionType', 'amount', 'status']
-        });
+    walletBalance = Math.max(0, walletBalance);
 
-        walletTransactions.forEach(transaction => {
-          if (transaction.status === 'Completed') {
-            const amount = parseFloat(transaction.amount || 0);
-            const tt = (transaction.transactionType || transaction.type || '').toLowerCase();
-            if (tt === 'credit' || tt === 'initial_balance' || tt === 'remittance_approval') {
-              walletBalance += amount;
-            } else if (tt === 'debit' || tt === 'charge_deduction' || tt === 'loan_disbursement') {
-              walletBalance -= amount;
-            }
-          }
-        });
-    }
-
-    // Cumulative Collection Wallets - sum of all customer wallet balances
-    const allCollectionWallet = await CustomerWallet.sum('balance', { 
+    // Cumulative Collection Wallets - sum of all customer wallet balances (clamped to 0 minimum)
+    const rawCollectionWallet = await CustomerWallet.sum('balance', { 
         where: { merchantId } 
     }) || 0;
+    const allCollectionWallet = Math.max(0, parseFloat(rawCollectionWallet));
 
     res.json({
       success: true,
       data: {
         walletBalance,
         allCollectionWallet,
-        totalDue: totalDue || 0,
+        totalDue: Math.max(0, parseFloat(totalDue || 0)),
         smsBalance,
         totalCustomers,
         totalAgents,
         activeLoans,
         activeInvestments,
-        totalCollections: totalCollections || 0
+        totalCollections: Math.max(0, totalCollections || 0)
       }
     });
   } catch (error) {
