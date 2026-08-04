@@ -15,6 +15,10 @@ interface Customer {
   id: number;
   fullName: string;
   accountNumber?: string;
+  agentId?: number;
+  agentName?: string;
+  branchName?: string;
+  branch?: string;
 }
 
 interface Agent {
@@ -71,6 +75,7 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
           branch: '',
           notes: ''
         });
+        setSelectedPackage('');
       }
     }
   }, [isOpen, editData]);
@@ -78,17 +83,30 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
   const fetchData = async () => {
     try {
       const [customersRes, agentsRes, packagesRes] = await Promise.all([
-        fetchCustomers(),
-        fetchAgents(),
-        fetchPackages('Investment')
+        fetchCustomers().catch(() => ({ customers: [] })),
+        fetchAgents().catch(() => ({ agents: [] })),
+        fetchPackages('Investment').catch(() => ({ packages: [] }))
       ]);
-      setCustomers(customersRes.customers || []);
-      setAgents(agentsRes.agents || []);
-      setPackages(packagesRes.packages || packagesRes.data || packagesRes || []);
+      setCustomers(customersRes.customers || customersRes.data || (Array.isArray(customersRes) ? customersRes : []));
+      setAgents(agentsRes.agents || agentsRes.data || (Array.isArray(agentsRes) ? agentsRes : []));
+      const rawPackages = packagesRes.packages || packagesRes.data || packagesRes || [];
+      const investmentPackages = Array.isArray(rawPackages)
+        ? rawPackages.filter((p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'investment')
+        : [];
+      setPackages(investmentPackages);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
   };
+
+  // Determine if a customer is selected from the list
+  const selectedCustomerObj = customers.find(
+    c => c.fullName.trim().toLowerCase() === formData.customerName.trim().toLowerCase()
+  );
+  const isCustomerSelected = Boolean(selectedCustomerObj);
+
+  // Determine if a package is selected from the dropdown
+  const isPackageSelected = Boolean(selectedPackage);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -103,10 +121,24 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
       );
       setFilteredCustomers(filtered);
       setShowCustomerDropdown(value.length > 0);
+
+      // Auto-fill agent & branch if exact match found
+      const match = customers.find(c => c.fullName.toLowerCase() === value.trim().toLowerCase());
+      if (match) {
+        const matchingAgent = agents.find(a =>
+          a.id === (match as any).agentId ||
+          (a.fullName && (match as any).agentName && a.fullName.toLowerCase() === (match as any).agentName.toLowerCase())
+        );
+        setFormData(prev => ({
+          ...prev,
+          accountNumber: match.accountNumber || prev.accountNumber,
+          agentId: matchingAgent ? matchingAgent.id.toString() : ((match as any).agentId ? String((match as any).agentId) : prev.agentId),
+          branch: matchingAgent ? matchingAgent.branch : ((match as any).branchName || (match as any).branch || prev.branch)
+        }));
+      }
     }
 
-    if (name === 'branch') {
-      // When user types in branch field, also open agent dropdown filtered by branch
+    if (name === 'branch' && !isCustomerSelected) {
       const filtered = agents.filter(agent =>
         agent.branch.toLowerCase().includes(value.toLowerCase()) ||
         agent.fullName.toLowerCase().includes(value.toLowerCase())
@@ -125,16 +157,37 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
     setShowAgentDropdown(false);
   };
 
+  const handleCustomerPick = (customer: Customer) => {
+    const matchingAgent = agents.find(a =>
+      a.id === (customer as any).agentId ||
+      (a.fullName && (customer as any).agentName && a.fullName.toLowerCase() === (customer as any).agentName.toLowerCase())
+    );
+
+    const agentIdVal = matchingAgent ? matchingAgent.id.toString() : ((customer as any).agentId ? String((customer as any).agentId) : '');
+    const branchVal = matchingAgent ? matchingAgent.branch : ((customer as any).branchName || (customer as any).branch || '');
+
+    setFormData(prev => ({
+      ...prev,
+      customerName: customer.fullName,
+      accountNumber: customer.accountNumber || '',
+      agentId: agentIdVal,
+      branch: branchVal
+    }));
+    setShowCustomerDropdown(false);
+  };
+
   const handlePackageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pkgId = e.target.value;
     setSelectedPackage(pkgId);
     if (pkgId) {
       const pkg = packages.find(p => p.id.toString() === pkgId);
       if (pkg) {
+        const amountVal = pkg.amount ?? pkg.targetAmount ?? pkg.seedAmount ?? '';
+        const durationVal = pkg.duration ?? pkg.period ?? '';
         setFormData(prev => ({
           ...prev,
-          targetAmount: pkg.amount?.toString() || pkg.targetAmount?.toString() || '',
-          duration: pkg.duration?.toString() || ''
+          targetAmount: amountVal ? String(amountVal) : prev.targetAmount,
+          duration: durationVal ? String(durationVal) : prev.duration
         }));
       }
     }
@@ -197,6 +250,8 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
 
   if (!isOpen) return null;
 
+  const currentAgentName = agents.find(a => a.id.toString() === formData.agentId)?.fullName || (selectedCustomerObj as any)?.agentName || '';
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -233,11 +288,7 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                   {filteredCustomers.map((customer) => (
                     <div
                       key={customer.id}
-                      onClick={() => {
-                        // Set customer name and auto-fill account number
-                        handleSelectChange('customerName', customer.fullName);
-                        setFormData(prev => ({ ...prev, accountNumber: customer.accountNumber || '' }));
-                      }}
+                      onClick={() => handleCustomerPick(customer)}
                       className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                     >
                       {customer.fullName}{customer.accountNumber ? ` • ${customer.accountNumber}` : ''}
@@ -270,21 +321,35 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
               <select
                 value={selectedPackage}
                 onChange={handlePackageChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${
+                  packages.length === 0 ? 'border-amber-300 text-amber-800 bg-amber-50' : 'border-gray-300'
+                }`}
               >
-                <option value="">Select a package to auto-fill...</option>
-                {packages.map(pkg => (
-                  <option key={pkg.id} value={pkg.id}>
-                    {pkg.name}
-                  </option>
-                ))}
+                {packages.length === 0 ? (
+                  <option value="">No Investment package created yet</option>
+                ) : (
+                  <>
+                    <option value="">Select a package to auto-fill target amount & duration...</option>
+                    {packages.map(pkg => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.name} {pkg.amount ? `(₦${Number(pkg.amount).toLocaleString()} - ${pkg.duration || pkg.period || 360} days)` : ''}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
+              {packages.length === 0 && (
+                <p className="text-xs text-amber-700 mt-1.5 flex items-center gap-1">
+                  <span>⚠️</span> No Investment packages found. Please create an Investment package under <strong>Package &gt; Investment</strong> before applying.
+                </p>
+              )}
             </div>
 
             {/* Target Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Target Amount *
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                <span>Target Amount *</span>
+                {isPackageSelected && <span className="text-xs text-indigo-600 font-normal">🔒 Locked (from package)</span>}
               </label>
               <input
                 type="number"
@@ -295,15 +360,18 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                 min="0"
                 step="0.01"
                 required
-                readOnly={!!selectedPackage}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedPackage ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                readOnly={isPackageSelected}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isPackageSelected ? 'bg-gray-100 text-gray-700 cursor-not-allowed font-medium' : ''
+                }`}
               />
             </div>
 
             {/* Duration */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Duration (Days) *
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                <span>Duration (Days) *</span>
+                {isPackageSelected && <span className="text-xs text-indigo-600 font-normal">🔒 Locked (from package)</span>}
               </label>
               <input
                 type="number"
@@ -313,20 +381,24 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                 placeholder="30"
                 min="1"
                 required
-                readOnly={!!selectedPackage}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedPackage ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                readOnly={isPackageSelected}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isPackageSelected ? 'bg-gray-100 text-gray-700 cursor-not-allowed font-medium' : ''
+                }`}
               />
             </div>
 
             {/* Agent */}
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Agent
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                <span>Agent</span>
+                {isCustomerSelected && <span className="text-xs text-indigo-600 font-normal">🔒 Locked (customer's agent)</span>}
               </label>
               <input
                 type="text"
-                value={agents.find(a => a.id.toString() === formData.agentId)?.fullName || ''}
+                value={currentAgentName}
                 onChange={(e) => {
+                  if (isCustomerSelected) return;
                   const term = e.target.value.toLowerCase();
                   const filtered = agents.filter(agent =>
                     agent.fullName.toLowerCase().includes(term) || agent.branch.toLowerCase().includes(term)
@@ -334,10 +406,13 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                   setFilteredAgents(filtered);
                   setShowAgentDropdown(e.target.value.length > 0);
                 }}
-                placeholder="Search agent or branch..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly={isCustomerSelected}
+                placeholder={isCustomerSelected ? "Auto-filled" : "Search agent or branch..."}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isCustomerSelected ? 'bg-gray-100 text-gray-700 cursor-not-allowed font-medium' : ''
+                }`}
               />
-              {showAgentDropdown && filteredAgents.length > 0 && (
+              {!isCustomerSelected && showAgentDropdown && filteredAgents.length > 0 && (
                 <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
                   {filteredAgents.map((agent) => (
                     <div
@@ -357,8 +432,9 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
 
             {/* Branch */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                <span>Branch</span>
+                {isCustomerSelected && <span className="text-xs text-indigo-600 font-normal">🔒 Locked (customer's branch)</span>}
               </label>
               <input
                 type="text"
@@ -366,8 +442,8 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
                 value={formData.branch}
                 onChange={handleInputChange}
                 placeholder="Branch name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                 readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 text-gray-700 cursor-not-allowed font-medium"
               />
             </div>
           </div>
@@ -397,9 +473,9 @@ const InvestmentApplicationForm: React.FC<InvestmentApplicationFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-blue-500 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {loading ? 'Creating...' : editData ? 'Update' : 'Create'}
+              {loading ? 'Creating...' : editData ? 'Update' : 'Create Application'}
             </button>
           </div>
         </form>

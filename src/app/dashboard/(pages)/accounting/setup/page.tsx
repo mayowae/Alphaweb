@@ -10,7 +10,8 @@ import {
   deleteAccount,
   createFiscalPeriod,
   fetchFiscalPeriods,
-  updateFiscalPeriod
+  updateFiscalPeriod,
+  fetchTransactionMappings
 } from '@/services/api';
 
 interface Account {
@@ -38,6 +39,8 @@ export default function AccountingSetupPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [fiscalPeriods, setFiscalPeriods] = useState<FiscalPeriod[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mappings, setMappings] = useState<any>(null);
+  const [loadingMappings, setLoadingMappings] = useState(false);
 
   const [categories] = useState(['Current Assets', 'Fixed Assets', 'Current Liabilities', 'Long-term Liabilities', 'Equity', 'Revenue', 'Expenses']);
   const [accountTypes] = useState(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense']);
@@ -46,7 +49,20 @@ export default function AccountingSetupPage() {
   useEffect(() => {
     loadAccounts();
     loadFiscalPeriods();
+    loadTransactionMappings();
   }, []);
+
+  const loadTransactionMappings = async () => {
+    setLoadingMappings(true);
+    try {
+      const response = await fetchTransactionMappings();
+      setMappings(response.transactionMappings || null);
+    } catch (error: any) {
+      console.error('Failed to load transaction mappings:', error);
+    } finally {
+      setLoadingMappings(false);
+    }
+  };
 
   const loadAccounts = async () => {
     setLoading(true);
@@ -499,6 +515,72 @@ export default function AccountingSetupPage() {
     </div>
   );
 
+  const renderTransactionMappings = () => {
+    if (loadingMappings) {
+      return (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <p className="mt-2 text-gray-600">Loading mappings...</p>
+        </div>
+      );
+    }
+
+    if (!mappings) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          No transaction mappings configuration found.
+        </div>
+      );
+    }
+
+    const getAccountDisplay = (code: string) => {
+      const acc = accounts.find(a => a.code === code);
+      return acc ? `${code} — ${acc.name}` : code;
+    };
+
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Transaction Mappings</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Automatic double-entry bookkeeping rules for wallet, loan, remittance, and investment transactions.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">System Key</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Debit Account (Dr)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Credit Account (Cr)</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {Object.entries(mappings).map(([key, value]: any) => (
+                <tr key={key} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{key}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{value.label}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium mr-2">DR</span>
+                    <span className="text-gray-900 font-medium">{getAccountDisplay(value.debitCode)}</span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs font-medium mr-2">CR</span>
+                    <span className="text-gray-900 font-medium">{getAccountDisplay(value.creditCode)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -550,6 +632,16 @@ export default function AccountingSetupPage() {
             >
               Currency
             </button>
+            <button
+              onClick={() => setActiveTab('mappings')}
+              className={`px-6 py-3 font-medium whitespace-nowrap ${
+                activeTab === 'mappings'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Transaction Mappings
+            </button>
           </div>
         </div>
 
@@ -559,6 +651,7 @@ export default function AccountingSetupPage() {
           {activeTab === 'categories' && renderCategories()}
           {activeTab === 'financial-year' && renderFinancialYear()}
           {activeTab === 'currency' && renderCurrency()}
+          {activeTab === 'mappings' && renderTransactionMappings()}
         </div>
       </div>
     </div>

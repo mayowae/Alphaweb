@@ -229,16 +229,18 @@ const Addpackage = ({ packag, onClose, onPackageCreated }: pack) => {
           </div>
 
           <div className="mb-4">
-            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Default penalty (per day)</p>
+            <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Default penalty rate (%)</p>
             <input 
               type="number" 
               step="0.01"
+              min="0"
+              max="100"
               placeholder='0.00' 
               value={formData.defaultPenalty}
               onChange={(e) => handleInputChange('defaultPenalty', e.target.value)}
               className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' 
             />
-            <p className='text-xs text-gray-500 mt-1'>Note: If a customer misses a day, their final interest will be reduced by deducting the Default Percentage Rate from the interest earned on days they did invest</p>
+            <p className='text-xs text-gray-500 mt-1'>Enter a value between 0–100. If a customer misses a day, this % will be deducted from interest earned on active days.</p>
           </div>
 
           <div className="mb-2">

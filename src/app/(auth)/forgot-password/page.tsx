@@ -20,10 +20,12 @@ export default function ForgotPassword() {
 
     try {
       setIsLoading(true);
-      await forgotPassword(email);
+      const cleanEmail = String(email).trim().toLowerCase();
+      await forgotPassword(cleanEmail);
       
-      // Store email for verify-otp and change-password pages
-      localStorage.setItem('email', email);
+      // Store email and flow for verify-otp and change-password pages
+      localStorage.setItem('email', cleanEmail);
+      localStorage.setItem('auth_flow', 'forgot-password');
       
       Swal.fire({ 
         icon: "success", 

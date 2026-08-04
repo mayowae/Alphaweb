@@ -26,6 +26,12 @@ export default function Login() {
           ...authenticated.merchant,
           token: authenticated.token
         }));
+        window.localStorage.setItem("userType", "merchant");
+        window.localStorage.removeItem("staffPermissions");
+        window.localStorage.removeItem("collaboratorToken");
+        if (authenticated.token) {
+          window.localStorage.setItem("merchantToken", authenticated.token);
+        }
         setButtonState('success');
         setTimeout(() => {
           router.push("/dashboard");

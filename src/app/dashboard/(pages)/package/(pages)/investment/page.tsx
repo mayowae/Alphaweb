@@ -15,6 +15,48 @@ import Addpackage from './Addinvestment';
 import Editpackage from './Editinvestment';
 import { fetchPackages, deletePackage } from '@/services/api';
 
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `
+    <div class="print-table-area">
+      <div class="print-header">
+        <div class="print-header-title">${title}</div>
+        <div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div>
+      </div>
+      <table>
+        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div>
+    </div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'print-portal';
+    document.body.appendChild(portal);
+  }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 interface Package {
   id: number;
   name: string;
@@ -116,6 +158,30 @@ const Page = () => {
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-NG').format(num);
+  };
+
+  // ── Export handlers ───────────────────────────────────────
+  const invHeaders = ['Package Name', 'Investment Type', 'Target Amount', 'Period', '% Interest', 'Extra Charges', 'Default Penalty', 'Default Days', 'Status'];
+  const getInvRows = () => filteredPackages.map(pkg => [
+    pkg.name,
+    pkg.type,
+    formatCurrency(pkg.amount),
+    `${pkg.period} days`,
+    `${pkg.interestRate}%`,
+    formatCurrency(pkg.extraCharges),
+    formatCurrency(pkg.defaultPenalty),
+    pkg.defaultDays,
+    pkg.status
+  ]);
+
+  const handleExportPDF = () => {
+    setShow(false);
+    exportTableToPDF('Investment Packages', invHeaders, getInvRows(), filteredPackages.length);
+  };
+
+  const handleExportCSV = () => {
+    setShow(false);
+    exportToCSV('Investment_Packages', invHeaders, getInvRows());
   };
 
   return (
@@ -248,9 +314,9 @@ const Page = () => {
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
 
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-50'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px]">CSV</p>
               </div>}
             </div>
 
@@ -305,7 +371,7 @@ const Page = () => {
                   </div>
                 </th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Extra charges</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Default penalty</th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Default penalty (%)</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
                   <div className="flex items-center gap-[3px]">
                     Default days
@@ -329,7 +395,7 @@ const Page = () => {
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.period} days</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.interestRate}%</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(pkg.extraCharges)}</td>
-                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(pkg.defaultPenalty)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.defaultPenalty}%</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{pkg.defaultDays}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
                         <span className={`px-2 py-1 rounded-full text-xs ${
@@ -391,7 +457,7 @@ const Page = () => {
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Default penalty:</span>
-                      <span className="font-semibold">{formatCurrency(pkg.defaultPenalty)}</span>
+                      <span className="font-semibold">{pkg.defaultPenalty}%</span>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Default days:</span>

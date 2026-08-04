@@ -15,6 +15,48 @@ import Addpackage from './Addloan';
 import Editpackage from './Editloan';
 import { fetchLoanPackages, deletePackage } from '@/services/api';
 
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `
+    <div class="print-table-area">
+      <div class="print-header">
+        <div class="print-header-title">${title}</div>
+        <div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div>
+      </div>
+      <table>
+        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div>
+    </div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'print-portal';
+    document.body.appendChild(portal);
+  }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 interface LoanPackage {
   id: number;
   name: string;
@@ -43,6 +85,7 @@ const Page = () => {
   const [typeFilter, setTypeFilter] = useState('')
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
+  const [filter, setFilter] = useState(false);
 
   // Fetch loan packages on component mount
   useEffect(() => {
@@ -88,6 +131,7 @@ const Page = () => {
     fetchLoanPackagesData(); // Refresh the list
   };
 
+
   // Filter packages based on search and filters
   const filteredPackages = packages.filter(pkg => {
     const matchesSearch = pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,6 +158,30 @@ const Page = () => {
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-NG').format(num);
+  };
+
+  // ── Export handlers ───────────────────────────────────────
+  const loanHeaders = ['Package Name', 'Loan Type', 'Loan Amount', 'Loan Period', 'Loan Interest', 'Default Amount', 'Grace Period', 'Charges', 'Status'];
+  const getLoanRows = () => filteredPackages.map(pkg => [
+    pkg.name,
+    pkg.type,
+    formatCurrency(pkg.loanAmount),
+    `${pkg.loanPeriod} days`,
+    pkg.type?.toLowerCase().includes('flat') ? formatCurrency(pkg.interestAmount ?? 0) : `${pkg.loanInterestRate ?? 0}%`,
+    formatCurrency(pkg.defaultAmount),
+    `${pkg.gracePeriod} days`,
+    formatCurrency(pkg.loanCharges),
+    pkg.status
+  ]);
+
+  const handleExportPDF = () => {
+    setShow(false);
+    exportTableToPDF('Loan Packages', loanHeaders, getLoanRows(), filteredPackages.length);
+  };
+
+  const handleExportCSV = () => {
+    setShow(false);
+    exportToCSV('Loan_Packages', loanHeaders, getLoanRows());
   };
 
   return (
@@ -154,6 +222,79 @@ const Page = () => {
                 </SelectGroup>
               </SelectContent>
             </Select>
+
+            <div className='relative w-full md:w-auto'>
+              <button onClick={() => setFilter(!filter)} className='h-[40px] outline-none leading-[24px] rounded-[4px] w-[90px] border border-[#D0D5DD] flex items-center justify-center gap-[9px] font-inter text-[14px] bg-white  transition-all'>
+                <Image src="/icons/filters.svg" alt="filter" width={16} height={16} className="" />
+                <p className='font-medium text-[14px]'>Filter</p>
+              </button>
+
+              {filter && (
+                <div className='fixed md:absolute flex flex-col justify-center z-[100] left-0 right-0 md:left-auto md:right-auto top-0 md:top-auto mx-auto md:mx-0 w-[95%] md:w-[400px] lg:w-[510px] max-w-full md:max-w-[510px] min-w-[230px] md:min-w-[250px] mb-0 md:mb-8 bg-white rounded-b-[8px] md:rounded-[4px] shadow-lg md:p-0' >
+                  <div className="flex items-center justify-between max-md:flex-col max-md:gap-[5px] mb-2 md:p-4">
+                    <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Choose your filters</h1>
+                    <button 
+                      onClick={() => {
+                        setStatusFilter('');
+                        setTypeFilter('');
+                        setFilter(false);
+                      }} 
+                      className='underline text-[14px] text-[#4E37FB] font-inter font-semibold'
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                  <div className='border-t-[1px] w-full mb-1'></div>
+                  <div className="w-full p-4">
+                    <p className='mb-1 font-inter font-semibold text-[14px] leading-[20px]'>Status</p>
+                    <div className='flex lg:items-center gap-[10px] mb-6 max-md:flex-col'>
+                      <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
+                        <input 
+                          type="checkbox" 
+                          checked={statusFilter === 'Active'}
+                          onChange={(e) => setStatusFilter(e.target.checked ? 'Active' : '')}
+                          className='' 
+                        />
+                        Active
+                      </div>
+                      <div className='flex items-center border gap-[4px] px-3 py-1 rounded-[4px]'>
+                        <input 
+                          type="checkbox" 
+                          checked={statusFilter === 'Inactive'}
+                          onChange={(e) => setStatusFilter(e.target.checked ? 'Inactive' : '')}
+                          className='' 
+                        />
+                        Inactive
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <p className='mb-1 font-inter font-semibold text-[14px] leading-[20px]'>Loan type</p>
+                      <div className='relative w-full'>
+                        <select 
+                          className='w-full appearance-none h-[45px] border border-[#D0D5DD] outline-none p-[10px] rounded-[4px]'
+                          value={typeFilter}
+                          onChange={(e) => setTypeFilter(e.target.value)}
+                        >
+                          <option value="">All types</option>
+                          <option value="Flat Rate">Flat Rate</option>
+                          <option value="Percentage Rate">Percentage Rate</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                          <FaAngleDown className="w-[16px] h-[16px] text-[#8E8E93]" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className='border-t-[1px] w-full mb-1'></div>
+                  <div className='flex gap-[8px] justify-end items-end p-2 md:p-4 mb-2 '>
+                    <button onClick={() => setFilter(!filter)} className='bg-[#F3F8FF] flex h-[40px] cursor-pointer w-[67px] rounded-[4px] items-center gap-[9px] justify-center'>
+                      <p className='text-[14px] font-inter text-[#4E37FB] font-semibold' >Close</p>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className='flex flex-wrap gap-[10px] md:gap-[20px] w-full md:w-auto'>
@@ -164,9 +305,9 @@ const Page = () => {
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
 
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-50'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer rounded-[4px]">CSV</p>
               </div>}
             </div>
 

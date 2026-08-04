@@ -14,6 +14,25 @@ import {
 import { fetchRepayments, fetchCustomers, fetchAgents, updateRepaymentStatus, deleteRepayment, fetchRepaymentStats, createRepayment, fetchLoans, fetchLoanPackages, fetchLoanById } from '../../../../../../../services/api';
 import Swal from 'sweetalert2';
 
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `<div class="print-table-area"><div class="print-header"><div class="print-header-title">${title}</div><div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div></div><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div></div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) { portal = document.createElement('div'); portal.id = 'print-portal'; document.body.appendChild(portal); }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
 interface Repayment {
   id: number;
   transactionId: string;
@@ -42,8 +61,19 @@ interface Agent {
 
 interface LoanItem {
   id: number;
+  customerId?: number;
   customerName: string;
   accountNumber?: string;
+  packageName?: string;
+  package?: string;
+  loanPackage?: string;
+  loanAmount?: number;
+  totalAmount?: number;
+  remainingAmount?: number;
+  amountPaid?: number;
+  status?: string;
+  agentId?: number;
+  branch?: string;
 }
 
 const CreateRepaymentModal = ({
@@ -62,6 +92,49 @@ const CreateRepaymentModal = ({
   loanPackages: any[];
 }) => {
   const [submitting, setSubmitting] = useState(false);
+
+  // Filter for active/approved loans
+  const approvedLoans = React.useMemo(() => {
+    const active = loans.filter((l: any) => {
+      const st = (l.status || '').toLowerCase();
+      return st === 'active' || st === 'approved';
+    });
+    return active.length > 0 ? active : loans;
+  }, [loans]);
+
+  // Approved customers (only customers with approved loans)
+  const approvedCustomers = React.useMemo(() => {
+    const map = new Map<string, { id?: number; name: string; accountNumber: string }>();
+    approvedLoans.forEach((l: any) => {
+      const name = l.customerName || '';
+      if (!name) return;
+      const key = String(l.customerId || name).toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          id: l.customerId,
+          name: name,
+          accountNumber: l.accountNumber || '',
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [approvedLoans]);
+
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id?: number; name: string; accountNumber: string } | null>(null);
+
+  // Customer's approved loans (for package dropdown)
+  const customerApprovedLoans = React.useMemo(() => {
+    if (!selectedCustomer) return [];
+    return approvedLoans.filter((l: any) => {
+      if (selectedCustomer.id && l.customerId) {
+        return String(l.customerId) === String(selectedCustomer.id);
+      }
+      return (l.customerName || '').toLowerCase() === selectedCustomer.name.toLowerCase();
+    });
+  }, [selectedCustomer, approvedLoans]);
+
   const [form, setForm] = useState({
     loanId: '',
     customerName: '',
@@ -77,43 +150,67 @@ const CreateRepaymentModal = ({
     notes: ''
   });
 
-  useEffect(() => {
-    if (loans.length > 0 && form.loanId) {
-      const loan = loans.find((l) => String(l.id) === form.loanId);
-      if (loan) {
-        setForm((prev) => ({ ...prev, customerName: loan.customerName }));
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.loanId]);
+  const handleSelectCustomer = (cust: { id?: number; name: string; accountNumber: string }) => {
+    setSelectedCustomer(cust);
+    setCustomerSearchTerm(cust.name);
+    setShowCustomerDropdown(false);
+    setForm(prev => ({
+      ...prev,
+      customerName: cust.name,
+      loanId: '',
+      accountNumber: cust.accountNumber || '',
+      packageName: '',
+      packageAmount: '',
+      outstandingAmount: '',
+      amountToPay: '',
+      agentId: '',
+      branch: ''
+    }));
+  };
 
-  useEffect(() => {
-    if (form.packageName) {
-      const pkg = loanPackages.find((p:any) => p.name === form.packageName);
-      if (pkg) {
-        setForm((prev)=> ({ ...prev, packageAmount: String(pkg.loanAmount || pkg.amount || '') }));
-      }
-    }
-  }, [form.packageName, loanPackages]);
-
-  const loadOutstanding = async (loanId: string) => {
-    try {
-      const data:any = await fetchLoanById(parseInt(loanId));
-      const out = data.data?.outstandingAmount ?? (parseFloat(data.data?.totalAmount || 0) - parseFloat(data.data?.amountPaid || 0));
-      setForm(prev=> ({ 
-        ...prev, 
-        outstandingAmount: String(out || 0),
-        agentId: data.data?.agentId ? String(data.data.agentId) : prev.agentId,
-        branch: data.data?.branch ? String(data.data.branch) : prev.branch,
-        accountNumber: data.data?.accountNumber ? String(data.data.accountNumber) : prev.accountNumber,
-        packageName: data.data?.packageName || prev.packageName,
-        packageAmount: data.data?.totalAmount ? String(data.data.totalAmount) : prev.packageAmount
+  const handleSelectPackage = (loanIdStr: string) => {
+    const loan = customerApprovedLoans.find((l: any) => String(l.id) === loanIdStr);
+    if (loan) {
+      const pkgName = loan.packageName || loan.package || (loan as any).loanPackage || (loan as any).Package?.name || (`Loan #${loan.id}`);
+      // Outstanding = loanAmount + interest - amountPaid
+      const loanAmt = Number(loan.loanAmount || 0);
+      const interestRate = Number((loan as any).interestRate || 0);
+      const interest = loanAmt * interestRate / 100;
+      const total = loanAmt + interest;  // loanAmount + interest
+      const paid = Number(loan.amountPaid || 0);
+      const outstanding = total - paid;  // loanAmount + interest - amountPaid
+      
+      setForm(prev => ({
+        ...prev,
+        loanId: String(loan.id),
+        packageName: pkgName,
+        packageAmount: String(total),
+        outstandingAmount: String(outstanding > 0 ? outstanding : 0),
+        accountNumber: loan.accountNumber || selectedCustomer?.accountNumber || prev.accountNumber,
+        agentId: loan.agentId ? String(loan.agentId) : prev.agentId,
+        branch: loan.branch || prev.branch,
+        amountToPay: outstanding > 0 ? String(outstanding) : String(total)
       }));
-    } catch {}
+    } else {
+      setForm(prev => ({
+        ...prev,
+        loanId: '',
+        packageName: '',
+        packageAmount: '',
+        outstandingAmount: '',
+        amountToPay: ''
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.loanId) {
+      return Swal.fire('Warning', 'Please select an approved loan package', 'warning');
+    }
+    if (!form.amountToPay || parseFloat(form.amountToPay) <= 0) {
+      return Swal.fire('Warning', 'Please enter a valid repayment amount', 'warning');
+    }
     setSubmitting(true);
     try {
       await createRepayment({
@@ -136,6 +233,11 @@ const CreateRepaymentModal = ({
     }
   };
 
+  const filteredCustomerList = approvedCustomers.filter(c => 
+    c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+    (c.accountNumber && c.accountNumber.toLowerCase().includes(customerSearchTerm.toLowerCase()))
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4 overflow-auto">
       <div className="bg-white rounded-[6px] w-full max-w-[520px] shadow-lg max-h-[90vh] overflow-y-auto">
@@ -144,46 +246,82 @@ const CreateRepaymentModal = ({
           <button onClick={onClose} className="text-sm underline">Close</button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
-          <div>
-            <label className="block text-sm mb-1">Customer</label>
-            <select
-              value={form.customerName}
+          {/* Searchable Customer Input */}
+          <div className="relative">
+            <label className="block text-sm mb-1 font-medium">Customer (Approved Loans Only)</label>
+            <input
+              type="text"
+              value={customerSearchTerm}
               onChange={(e) => {
-                const selectedName = e.target.value;
-                // Find a loan that matches this customer to auto-fill loanId
-                const linkedLoan = loans.find((l) => l.customerName === selectedName);
-                const nextState = { ...form, customerName: selectedName, loanId: linkedLoan ? String(linkedLoan.id) : '', accountNumber: linkedLoan?.accountNumber || '' };
-                setForm(nextState);
-                if (linkedLoan) {
-                  loadOutstanding(String(linkedLoan.id));
-                } else {
-                  setForm((prev) => ({ ...prev, outstandingAmount: '', accountNumber: '' }));
+                setCustomerSearchTerm(e.target.value);
+                setShowCustomerDropdown(true);
+                if (selectedCustomer && e.target.value !== selectedCustomer.name) {
+                  setSelectedCustomer(null);
+                  setForm(prev => ({ ...prev, loanId: '', customerName: '', packageName: '', packageAmount: '', outstandingAmount: '', accountNumber: '' }));
                 }
               }}
-              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
+              onFocus={() => setShowCustomerDropdown(true)}
+              placeholder="Search approved loan customer by name or acct no..."
+              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-3 outline-none focus:border-[#4E37FB]"
               required
+            />
+            {showCustomerDropdown && (
+              <div className="absolute z-20 mt-1 w-full bg-white border border-[#E5E7EB] rounded-[4px] max-h-52 overflow-auto shadow-lg">
+                {filteredCustomerList.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    {approvedCustomers.length === 0 ? 'No approved loan customers found' : 'No matching customer'}
+                  </div>
+                ) : (
+                  filteredCustomerList.map((c, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectCustomer(c)}
+                      className="w-full text-left px-3 py-2 hover:bg-[#F3F8FF] text-sm border-b last:border-b-0"
+                    >
+                      <div className="font-medium text-gray-900">{c.name}</div>
+                      {c.accountNumber && <div className="text-xs text-gray-500">Acct: {c.accountNumber}</div>}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Customer's Approved Loan Packages */}
+          <div>
+            <label className="block text-sm mb-1 font-medium">Approved Loan Package</label>
+            <select
+              value={form.loanId}
+              onChange={(e) => handleSelectPackage(e.target.value)}
+              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 outline-none focus:border-[#4E37FB]"
+              required
+              disabled={!selectedCustomer}
             >
-              <option value="">Select customer</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.fullName}>{c.fullName}</option>
-              ))}
+              <option value="">
+                {!selectedCustomer ? 'Select a customer first' : customerApprovedLoans.length === 0 ? 'No active loan package found' : 'Select approved loan package'}
+              </option>
+              {customerApprovedLoans.map((l: any) => {
+                const name = l.packageName || l.package || (l as any).loanPackage || (l as any).Package?.name || (`Loan #${l.id}`);
+                const lAmt = Number(l.loanAmount || 0);
+                const iRate = Number((l as any).interestRate || 0);
+                const totalWithInterest = lAmt + (lAmt * iRate / 100);
+                return (
+                  <option key={l.id} value={l.id}>
+                    {name} — ₦{totalWithInterest.toLocaleString()}
+                  </option>
+                );
+              })}
             </select>
           </div>
-          <div>
-            <label className="block text-sm mb-1 font-medium">Package name</label>
-            <input
-              value={form.packageName}
-              readOnly
-              className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed"
-              placeholder="Auto-filled from loan"
-            />
-          </div>
+
+          {/* Package Amount & Outstanding */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm mb-1 font-medium">Package amount</label>
               <input
-                type="number"
-                value={form.packageAmount}
+                type="text"
+                value={form.packageAmount ? `₦${Number(form.packageAmount).toLocaleString()}` : ''}
                 readOnly
                 className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed"
                 placeholder="Auto-filled"
@@ -192,27 +330,32 @@ const CreateRepaymentModal = ({
             <div>
               <label className="block text-sm mb-1 font-medium">Outstanding amount</label>
               <input
-                type="number"
-                value={form.outstandingAmount}
+                type="text"
+                value={form.outstandingAmount ? `₦${Number(form.outstandingAmount).toLocaleString()}` : ''}
                 readOnly
                 className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-50 cursor-not-allowed text-[#D92D20] font-semibold"
-                placeholder="Outstanding"
+                placeholder="Auto-filled"
               />
             </div>
           </div>
+
+          {/* Amount to Pay */}
           <div>
-            <label className="block text-sm mb-1 font-medium">Amount to pay</label>
+            <label className="block text-sm mb-1 font-medium">Amount to pay (₦)</label>
             <input
               type="number"
               value={form.amountToPay}
-              onChange={(e)=> setForm({ ...form, amountToPay: e.target.value })}
+              onChange={(e) => setForm({ ...form, amountToPay: e.target.value })}
               className="w-full h-[40px] border border-[#4E37FB] rounded-[4px] px-2 focus:ring-1 focus:ring-[#4E37FB] outline-none"
+              placeholder="Enter repayment amount"
               required
             />
           </div>
+
+          {/* Account Number & Reference */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1 font-medium">Account number</label>
+              <label className="block text-sm mb-1 font-medium font-inter">Account number</label>
               <input
                 value={form.accountNumber}
                 readOnly
@@ -221,18 +364,21 @@ const CreateRepaymentModal = ({
               />
             </div>
             <div>
-              <label className="block text-sm mb-1 font-medium">Reference</label>
+              <label className="block text-sm mb-1 font-medium font-inter">Reference</label>
               <input
                 value={form.reference}
                 onChange={(e) => setForm({ ...form, reference: e.target.value })}
                 className="w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2"
-                placeholder="Optional"
+                placeholder="Optional reference"
               />
             </div>
           </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="h-[40px] px-4 rounded-[4px] border">Cancel</button>
-            <button type="submit" disabled={submitting} className="h-[40px] px-4 rounded-[4px] bg-[#4E37FB] text-white disabled:opacity-50">{submitting ? 'Saving...' : 'Post repayment'}</button>
+            <button type="submit" disabled={submitting} className="h-[40px] px-4 rounded-[4px] bg-[#4E37FB] text-white disabled:opacity-50 font-medium">
+              {submitting ? 'Saving...' : 'Post repayment'}
+            </button>
           </div>
         </form>
       </div>
@@ -248,6 +394,7 @@ const Page = () => {
   const [filter, setFilter] = useState(false);
   const [show, setShow] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedAgent, setSelectedAgent] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -267,7 +414,11 @@ const Page = () => {
   useEffect(() => {
     fetchData();
     fetchStats();
-  }, [currentPage, itemsPerPage, selectedStatus, fromDate, toDate]);
+  }, [currentPage, itemsPerPage, selectedStatus, selectedAgent, fromDate, toDate]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, selectedAgent, searchTerm, fromDate, toDate, itemsPerPage]);
 
   useEffect(() => {
     fetchLoanPackages({ limit: 100 }).then((res:any)=> setLoanPackages(res.data || res.packages || res || [])).catch(()=>setLoanPackages([]));
@@ -279,6 +430,7 @@ const Page = () => {
       const [repaymentsData, customersData, agentsData, loansResp] = await Promise.all([
         fetchRepayments({
           status: selectedStatus !== 'All' ? selectedStatus : undefined,
+          agentId: selectedAgent !== 'All' ? selectedAgent : undefined,
           search: searchTerm || undefined,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
@@ -287,14 +439,14 @@ const Page = () => {
         }),
         fetchCustomers(),
         fetchAgents(),
-        fetchLoans({})
+        fetchLoans({ limit: 1000 })
       ]);
 
       setRepayments(repaymentsData.data || []);
       setTotalPages(repaymentsData.pagination?.totalPages || 1);
       setCustomers(customersData.data || customersData.customers || customersData || []);
       setAgents(agentsData.data || []);
-      setLoans((loansResp.loans || loansResp?.data || []).map((l: any) => ({ id: l.id, customerName: l.customerName, accountNumber: l.accountNumber })));
+      setLoans(loansResp.loans || loansResp?.data || loansResp || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       Swal.fire('Error', 'Failed to fetch data', 'error');
@@ -357,20 +509,31 @@ const Page = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Number(amount) || 0);
+    } catch {
+      return `₦${Number(amount || 0).toLocaleString()}`;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return '—';
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -391,6 +554,18 @@ const Page = () => {
     setCurrentPage(1);
   };
 
+  // ── Export handlers ───────────────────────────────────────
+  const repHeaders = ['Transaction ID', 'Customer', 'Account No.', 'Package', 'Amount', 'Branch', 'Agent', 'Date', 'Status'];
+  const getRepRows = () => repayments.map(r => [
+    r.transactionId, r.customerName,
+    (r as any).accountNumber || (r as any).loan?.accountNumber || 'N/A',
+    r.package || 'N/A', formatCurrency(r.amount),
+    r.branch || 'N/A', r.agentName || 'N/A', formatDate(r.date), r.status
+  ]);
+  const handleExportPDF = () => { setShow(false); exportTableToPDF('Loan Repayments', repHeaders, getRepRows(), repayments.length); };
+  const handleExportCSV = () => { setShow(false); exportToCSV('Loan_Repayments', repHeaders, getRepRows()); };
+
+
   return (
     <div className='w-full'>
       <div className='flex flex-wrap justify-between gap-4 md:gap-0 max-md:flex-col max-md:gap-[10px]'>
@@ -409,7 +584,7 @@ const Page = () => {
           <div className="flex flex-wrap flex-col md:flex-row p-4 gap-4 md:gap-0 items-stretch md:items-center justify-between">
             <div className='w-full md:w-[330px]'>
               <p className='pb-2'>Agent</p>
-              <Select onValueChange={(value) => setSelectedStatus(value)}>
+              <Select value={selectedAgent} onValueChange={(value) => setSelectedAgent(value)}>
                 <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
@@ -562,9 +737,9 @@ const Page = () => {
                 <p className='text-[#4E37FB] font-medium text-[14px]'>Export</p>
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-50'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
               </div>}
             </div>
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-1 border border-[#E5E7EB] rounded-[4px] px-3">

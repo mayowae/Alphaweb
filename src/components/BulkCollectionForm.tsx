@@ -55,13 +55,13 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
   const fetchData = async () => {
     try {
       const [customersRes, packagesRes] = await Promise.all([
-        fetchCustomers(),
-        fetchPackages()
+        fetchCustomers().catch(() => ({ customers: [] })),
+        fetchPackages('Collection').catch(() => ({ packages: [] }))
       ]);
       setCustomers(customersRes.customers || []);
-      // Show ALL packages regardless of type/category
-      const allPkgs = (packagesRes.packages || packagesRes || []) as Package[];
-      setPackages(allPkgs);
+      const rawPkgs = (packagesRes.packages || packagesRes.data || packagesRes || []) as Package[];
+      const collectionPkgs = rawPkgs.filter((p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'collection');
+      setPackages(collectionPkgs);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }

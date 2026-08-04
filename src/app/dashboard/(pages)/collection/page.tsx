@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Download, Calendar, Clock, CheckCircle, X } from 'lucide-react';
-import { fetchCollections, createCollection, fetchCustomers } from '../../../../../services/api';
+import { fetchCollections, createCollection, fetchCustomers, fetchPackages } from '../../../../../services/api';
 import SingleCollectionForm from '../../../../../components/SingleCollectionForm';
 import BulkCollectionForm from '../../../../../components/BulkCollectionForm';
 import Swal from 'sweetalert2';
@@ -29,15 +29,17 @@ const CreateCollectionModal = ({ isOpen, onClose, onSuccess }: {
     type: '',
   });
   const [customers, setCustomers] = useState<any[]>([]);
+  const [collectionPackages, setCollectionPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers()
-        .then((res) => {
-          setCustomers(res.customers || res || []);
-        })
+        .then((res) => setCustomers(res.customers || res || []))
         .catch(() => setCustomers([]));
+      fetchPackages('Collection')
+        .then((res: any) => setCollectionPackages(res.packages || []))
+        .catch(() => setCollectionPackages([]));
     }
   }, [isOpen]);
 
@@ -123,19 +125,24 @@ const CreateCollectionModal = ({ isOpen, onClose, onSuccess }: {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Collection Type</label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              required
-            >
-              <option value="">Select Type</option>
-              <option value="Loan Repayment">Loan Repayment</option>
-              <option value="Savings Collection">Savings Collection</option>
-              <option value="Investment Return">Investment Return</option>
-              <option value="Fee Collection">Fee Collection</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Collection Package</label>
+            {collectionPackages.length === 0 ? (
+              <div className="w-full border border-amber-300 bg-amber-50 rounded-md px-3 py-2 text-sm text-amber-700">
+                No Collection packages available. Please create a Collection package first.
+              </div>
+            ) : (
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="">Select Package</option>
+                {collectionPackages.map((pkg: any) => (
+                  <option key={pkg.id} value={pkg.name}>{pkg.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex justify-end space-x-2 pt-4">
             <button
@@ -245,6 +252,32 @@ export default function CollectionPage() {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    const headers = ['ID', 'Customer Name', 'Type', 'Amount', 'Due Date', 'Status', 'Date Created'];
+    const rows = filteredCollections.map(c => [
+      `"${c.id}"`,
+      `"${c.customerName}"`,
+      `"${c.type}"`,
+      `"${c.amount}"`,
+      `"${c.dueDate}"`,
+      `"${c.status}"`,
+      `"${c.dateCreated}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'collections.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -364,10 +397,15 @@ export default function CollectionPage() {
                 <Filter size={16} />
                 Filter
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                <Download size={16} />
-                Export
-              </button>
+              <select
+                defaultValue="Export"
+                onChange={(e) => { handleExport(e.target.value); e.target.value = 'Export'; }}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+              >
+                <option value="Export">Export</option>
+                <option value="PDF">PDF</option>
+                <option value="CSV">CSV</option>
+              </select>
             </div>
           </div>
         </div>

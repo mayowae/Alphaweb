@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Download, TrendingUp, DollarSign, Calendar, X } from 'lucide-react';
-import { fetchInvestments, createInvestment, fetchCustomers } from '../../../../../services/api';
+import { fetchInvestments, createInvestment, fetchCustomers, fetchPackages } from '../../../../../services/api';
 import Swal from 'sweetalert2';
 
 interface Investment {
@@ -27,15 +27,17 @@ const CreateInvestmentModal = ({ isOpen, onClose, onSuccess }: {
     duration: '',
   });
   const [customers, setCustomers] = useState<any[]>([]);
+  const [investmentPackages, setInvestmentPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers()
-        .then((res) => {
-          setCustomers(res.customers || res || []);
-        })
+        .then((res) => setCustomers(res.customers || res || []))
         .catch(() => setCustomers([]));
+      fetchPackages('Investment')
+        .then((res: any) => setInvestmentPackages(res.packages || []))
+        .catch(() => setInvestmentPackages([]));
     }
   }, [isOpen]);
 
@@ -112,18 +114,23 @@ const CreateInvestmentModal = ({ isOpen, onClose, onSuccess }: {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Investment Plan</label>
-            <select
-              value={formData.plan}
-              onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              required
-            >
-              <option value="">Select Plan</option>
-              <option value="Bronze Plan">Bronze Plan (5% ROI)</option>
-              <option value="Silver Plan">Silver Plan (8% ROI)</option>
-              <option value="Gold Plan">Gold Plan (12% ROI)</option>
-              <option value="Platinum Plan">Platinum Plan (15% ROI)</option>
-            </select>
+            {investmentPackages.length === 0 ? (
+              <div className="w-full border border-amber-300 bg-amber-50 rounded-md px-3 py-2 text-sm text-amber-700">
+                No Investment packages available. Please create an Investment package first.
+              </div>
+            ) : (
+              <select
+                value={formData.plan}
+                onChange={(e) => setFormData({ ...formData, plan: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="">Select Plan</option>
+                {investmentPackages.map((pkg: any) => (
+                  <option key={pkg.id} value={pkg.name}>{pkg.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Duration (Months)</label>
@@ -240,6 +247,32 @@ export default function InvestmentPage() {
   const activeInvestments = investments.filter(inv => inv.status === 'Active').length;
   const maturedInvestments = investments.filter(inv => inv.status === 'Matured').length;
 
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    const headers = ['ID', 'Customer Name', 'Plan', 'Amount', 'Duration', 'Status', 'Date Created'];
+    const rows = filteredInvestments.map(inv => [
+      `"${inv.id}"`,
+      `"${inv.customerName}"`,
+      `"${inv.plan}"`,
+      `"${inv.amount}"`,
+      `"${inv.duration}"`,
+      `"${inv.status}"`,
+      `"${inv.dateCreated}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'investments.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -349,10 +382,15 @@ export default function InvestmentPage() {
                 <Filter size={16} />
                 Filter
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                <Download size={16} />
-                Export
-              </button>
+              <select
+                defaultValue="Export"
+                onChange={(e) => { handleExport(e.target.value); e.target.value = 'Export'; }}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+              >
+                <option value="Export">Export</option>
+                <option value="PDF">PDF</option>
+                <option value="CSV">CSV</option>
+              </select>
             </div>
           </div>
         </div>

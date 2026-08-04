@@ -7,7 +7,8 @@ import {
   fetchCustomers, 
   fetchAgents, 
   fetchBranches,
-  fetchPackages 
+  fetchPackages,
+  fetchInvestmentApplications
 } from '../../services/api';
 import Swal from 'sweetalert2';
 
@@ -42,7 +43,10 @@ interface Package {
   type: string;
   amount: number;
   packageCategory?: string;
+  duration?: number | string;
+  defaultDays?: number | string;
 }
+
 
 const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
   isOpen,
@@ -61,14 +65,36 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
     notes: ''
   });
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [investmentCustomers, setInvestmentCustomers] = useState<any[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<any[]>([]);
   const [filteredAgents, setFilteredAgents] = useState<Agent[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
+  const [isAmountFixed, setIsAmountFixed] = useState(false);
+
+  // When package changes, auto-fill amount from package
+  useEffect(() => {
+    if (formData.package) {
+      const selectedPkg = packages.find(p => p.name === formData.package);
+      if (selectedPkg) {
+        const fixed = selectedPkg.type?.toLowerCase() === 'fixed' || 
+                      selectedPkg.name.toLowerCase().includes('fixed');
+        setIsAmountFixed(fixed);
+        // Always fill amount from package amount
+        if (selectedPkg.amount) {
+          setFormData(prev => ({ ...prev, amount: String(selectedPkg.amount) }));
+        }
+      } else {
+        setIsAmountFixed(false);
+      }
+    } else {
+      setIsAmountFixed(false);
+    }
+  }, [formData.package, packages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -101,13 +127,15 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
 
   const fetchData = async () => {
     try {
-      const [customersRes, agentsRes, branchesRes, packagesRes] = await Promise.all([
+      const [customersRes, agentsRes, branchesRes, packagesRes, appsRes] = await Promise.all([
         fetchCustomers(),
         fetchAgents(),
         fetchBranches(),
-        fetchPackages()
+        fetchPackages(),
+        fetchInvestmentApplications({ status: 'Approved' })
       ]);
-      setCustomers(customersRes.customers || []);
+      const allCustomers = customersRes.customers || [];
+      setCustomers(allCustomers);
       setAgents(agentsRes.agents || []);
       setBranches(branchesRes.branches || []);
       // Filter packages to only show investment packages
@@ -115,6 +143,26 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
         pkg.packageCategory === 'Investment' || !pkg.packageCategory
       );
       setPackages(investmentPackages);
+
+      // Build list of approved investment customers with their app details
+      const approvedApps: any[] = appsRes.applications || [];
+      const invCustomerMap = new Map<string, any>();
+      for (const app of approvedApps) {
+        const name = app.customerName || app.customer?.fullName || '';
+        if (name && !invCustomerMap.has(name)) {
+          const cust = allCustomers.find((c: any) => c.fullName === name);
+          invCustomerMap.set(name, {
+            id: cust?.id || app.customerId,
+            fullName: name,
+            accountNumber: app.accountNumber || cust?.accountNumber || '',
+            packageName: app.packageName || '',
+            branch: app.branch || '',
+            agentName: app.agent?.fullName || app.agentName || ''
+          });
+        }
+      }
+      setInvestmentCustomers(Array.from(invCustomerMap.values()));
+      setFilteredCustomers(Array.from(invCustomerMap.values()));
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -128,11 +176,11 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
     }));
 
     if (name === 'customer') {
-      const filtered = customers.filter(customer =>
-        customer.fullName.toLowerCase().includes(value.toLowerCase())
-      );
+      const filtered = value.length === 0
+        ? investmentCustomers
+        : investmentCustomers.filter(c => c.fullName.toLowerCase().includes(value.toLowerCase()));
       setFilteredCustomers(filtered);
-      setShowCustomerDropdown(value.length > 0);
+      setShowCustomerDropdown(true);
     }
 
     if (name === 'agent') {
@@ -152,6 +200,26 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
     }));
     setShowCustomerDropdown(false);
     setShowAgentDropdown(false);
+  };
+
+  const handleCustomerSelect = (customer: any) => {
+    // Find the matching package in loaded packages list
+    const matchedPackage = packages.find(p => p.name === customer.packageName);
+    const autoAmount = matchedPackage?.amount ? String(matchedPackage.amount) : '';
+    // Only use agentName if it's different from the customer's own name
+    const resolvedAgent = (customer.agentName && customer.agentName.trim().toLowerCase() !== customer.fullName.trim().toLowerCase())
+      ? customer.agentName
+      : '';
+    setFormData(prev => ({
+      ...prev,
+      customer: customer.fullName,
+      accountNumber: customer.accountNumber || '',
+      package: matchedPackage ? matchedPackage.name : (customer.packageName || ''),
+      amount: autoAmount,
+      branch: customer.branch || prev.branch,
+      agent: resolvedAgent
+    }));
+    setShowCustomerDropdown(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -233,24 +301,40 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
                 name="customer"
                 value={formData.customer}
                 onChange={handleInputChange}
+                onFocus={() => {
+                  setFilteredCustomers(
+                    formData.customer.length === 0
+                      ? investmentCustomers
+                      : investmentCustomers.filter(c => c.fullName.toLowerCase().includes(formData.customer.toLowerCase()))
+                  );
+                  setShowCustomerDropdown(true);
+                }}
+                onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
                 placeholder="Search customer..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                autoComplete="off"
               />
-              {showCustomerDropdown && filteredCustomers.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                  {filteredCustomers.map((customer) => (
-                    <div
-                      key={customer.id}
-                      onClick={() => {
-                        handleSelectChange('customer', customer.fullName);
-                        setFormData(prev => ({ ...prev, accountNumber: customer.accountNumber || '' }));
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      {customer.fullName}{customer.accountNumber ? ` • ${customer.accountNumber}` : ''}
-                    </div>
-                  ))}
+              {showCustomerDropdown && (
+                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {filteredCustomers.length === 0 ? (
+                    <div className="px-3 py-2 text-gray-400 text-sm">No approved investment customers found</div>
+                  ) : (
+                    filteredCustomers.map((customer) => (
+                      <div
+                        key={customer.id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleCustomerSelect(customer)}
+                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                      >
+                        <div className="font-medium text-gray-800">{customer.fullName}</div>
+                        <div className="text-xs text-gray-500">
+                          {customer.accountNumber && <span>Acc: {customer.accountNumber}</span>}
+                          {customer.packageName && <span className="ml-2">• {customer.packageName}</span>}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -282,6 +366,9 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Investment Package</option>
+                {formData.package && !packages.find(p => p.name === formData.package) && (
+                  <option value={formData.package}>{formData.package}</option>
+                )}
                 {packages.map((pkg) => (
                   <option key={pkg.id} value={pkg.name}>
                     {pkg.name} - ₦{pkg.amount?.toLocaleString()}
@@ -292,8 +379,9 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
 
             {/* Amount */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount *
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                <span>Amount *</span>
+                {Boolean(formData.package) && <span className="text-xs text-indigo-600 font-normal">Auto-filled (editable)</span>}
               </label>
               <input
                 type="number"
@@ -306,6 +394,67 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+              {(() => {
+                const selectedPkg = packages.find(p => p.name === formData.package);
+                const dailyRate = selectedPkg?.amount || 0;
+                const packageDuration = selectedPkg?.duration ? Number(selectedPkg.duration) : 180;
+                const amt = parseFloat(formData.amount || '0');
+                if (dailyRate > 0 && amt > 0) {
+                  const totalDays = Math.floor(amt / dailyRate);
+                  const remainder = amt % dailyRate;
+                  const formattedRate = Number(dailyRate).toLocaleString('en-NG');
+
+                  if (totalDays === 0) {
+                    return (
+                      <p className="text-xs text-orange-500 font-medium mt-1.5">
+                        ⚠️ Amount is less than 1 day's rate of ₦{formattedRate}
+                      </p>
+                    );
+                  }
+
+                  if (totalDays <= packageDuration) {
+                    // Simple case — within one cycle
+                    const remaining = packageDuration - totalDays;
+                    return (
+                      <div className="mt-1.5 text-xs space-y-0.5">
+                        <p className="text-indigo-600 font-medium">
+                          💡 Covers <strong className="text-indigo-700">{totalDays} day{totalDays === 1 ? '' : 's'}</strong> at ₦{formattedRate}/day
+                        </p>
+                        <p className="text-gray-400">
+                          {remaining} day{remaining === 1 ? '' : 's'} remaining in current cycle ({packageDuration} days)
+                        </p>
+                        {remainder > 0 && (
+                          <p className="text-orange-400">⚠️ ₦{remainder.toLocaleString('en-NG')} leftover (not a full day)</p>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    // Spans multiple cycles
+                    const fullCycles = Math.floor(totalDays / packageDuration);
+                    const extraDays = totalDays % packageDuration;
+                    return (
+                      <div className="mt-1.5 text-xs space-y-0.5 bg-indigo-50 border border-indigo-200 rounded-md p-2">
+                        <p className="text-indigo-700 font-semibold">💡 Breakdown ({totalDays} days total):</p>
+                        {Array.from({ length: fullCycles }).map((_, i) => (
+                          <p key={i} className="text-green-600">
+                            ✅ Cycle {i + 1}: {packageDuration} days — ₦{(packageDuration * dailyRate).toLocaleString('en-NG')} (complete)
+                          </p>
+                        ))}
+                        {extraDays > 0 && (
+                          <p className="text-blue-600">
+                            🔄 Cycle {fullCycles + 1}: {extraDays} day{extraDays === 1 ? '' : 's'} — ₦{(extraDays * dailyRate).toLocaleString('en-NG')}
+                          </p>
+                        )}
+                        {remainder > 0 && (
+                          <p className="text-orange-400">⚠️ ₦{remainder.toLocaleString('en-NG')} leftover (not a full day)</p>
+                        )}
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
+
             </div>
 
             {/* Transaction Type */}
@@ -329,8 +478,8 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
 
             {/* Branch */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                <span>Branch</span>
               </label>
               <select
                 name="branch"
@@ -349,8 +498,8 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
 
             {/* Agent */}
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Agent
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                <span>Agent</span>
               </label>
               <input
                 type="text"
@@ -372,6 +521,7 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
                   {filteredAgents.map((agent) => (
                     <div
                       key={agent.id}
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         handleSelectChange('agent', agent.fullName);
                         setFormData(prev => ({ ...prev, branch: agent.branch }));
@@ -411,7 +561,8 @@ const InvestmentTransactionForm: React.FC<InvestmentTransactionFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-black bg-blue-500 border border-transparent rounded-md "
+              disabled={loading}
+              className={`px-4 py-2 text-sm font-medium border border-transparent rounded-md ${loading ? 'bg-gray-400 text-gray-200 cursor-not-allowed' : 'text-black bg-blue-500 hover:bg-blue-600'}`}
             >
               {loading ? 'Processing...' : editData ? 'Update' : 'Create'}
             </button>

@@ -27,7 +27,7 @@ export default function VerifyOtp() {
     try {
       setIsLoading(true);
       await collaboratorVerifyOtp(email, fullOtp);
-      Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
+      await Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
       router.push('/collaborator/change-password');
     } catch (err:any) {
       Swal.fire({ icon: "error", title: "Verification failed", text: err?.message || 'Unable to verify OTP' });

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Download, DollarSign, Calendar, Percent, X } from 'lucide-react';
-import { fetchLoans, createLoan, fetchCustomers } from '../../../../../services/api';
+import { fetchLoans, createLoan, fetchCustomers, fetchPackages } from '../../../../../services/api';
 import Swal from 'sweetalert2';
 
 interface Loan {
@@ -26,17 +26,20 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
     interestRate: '',
     duration: '',
     dueDate: '',
+    loanPackage: '',
   });
   const [customers, setCustomers] = useState<any[]>([]);
+  const [loanPackages, setLoanPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchCustomers()
-        .then((res) => {
-          setCustomers(res.customers || res || []);
-        })
+        .then((res) => setCustomers(res.customers || res || []))
         .catch(() => setCustomers([]));
+      fetchPackages('Loan')
+        .then((res: any) => setLoanPackages(res.packages || []))
+        .catch(() => setLoanPackages([]));
     }
   }, [isOpen]);
 
@@ -51,6 +54,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
         interestRate: parseFloat(formData.interestRate),
         duration: parseInt(formData.duration, 10),
         dueDate: formData.dueDate,
+        packageName: formData.loanPackage,
       });
 
       Swal.fire({
@@ -59,7 +63,7 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
         text: 'Loan has been created successfully.',
       });
 
-      setFormData({ customerName: '', amount: '', interestRate: '', duration: '', dueDate: '' });
+      setFormData({ customerName: '', amount: '', interestRate: '', duration: '', dueDate: '', loanPackage: '' });
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -102,14 +106,23 @@ const CreateLoanModal = ({ isOpen, onClose, onSuccess }: {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-            <input
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              required
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Loan Package</label>
+            {loanPackages.length === 0 ? (
+              <div className="w-full border border-amber-300 bg-amber-50 rounded-md px-3 py-2 text-sm text-amber-700">
+                No Loan packages available. Please create a Loan package first.
+              </div>
+            ) : (
+              <select
+                value={formData.loanPackage}
+                onChange={(e) => setFormData({ ...formData, loanPackage: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select Loan Package (optional)</option>
+                {loanPackages.map((pkg: any) => (
+                  <option key={pkg.id} value={pkg.name}>{pkg.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Loan Amount</label>
@@ -249,6 +262,32 @@ export default function LoanPage() {
   const completedLoans = loans.filter(loan => loan.status === 'Completed').length;
   const defaultedLoans = loans.filter(loan => loan.status === 'Defaulted').length;
 
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    const headers = ['ID', 'Customer Name', 'Amount', 'Interest Rate', 'Duration', 'Status', 'Date Created'];
+    const rows = filteredLoans.map(l => [
+      `"${l.id}"`,
+      `"${l.customerName}"`,
+      `"${l.amount}"`,
+      `"${l.interestRate}"`,
+      `"${l.duration}"`,
+      `"${l.status}"`,
+      `"${l.dateCreated}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'loans.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -358,10 +397,15 @@ export default function LoanPage() {
                 <Filter size={16} />
                 Filter
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                <Download size={16} />
-                Export
-              </button>
+              <select
+                defaultValue="Export"
+                onChange={(e) => { handleExport(e.target.value); e.target.value = 'Export'; }}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+              >
+                <option value="Export">Export</option>
+                <option value="PDF">PDF</option>
+                <option value="CSV">CSV</option>
+              </select>
             </div>
           </div>
         </div>

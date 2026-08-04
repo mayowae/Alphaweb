@@ -16,6 +16,48 @@ import {
   SelectGroup
 } from "@/components/ui/select"
 
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `
+    <div class="print-table-area">
+      <div class="print-header">
+        <div class="print-header-title">${title}</div>
+        <div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div>
+      </div>
+      <table>
+        <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div>
+    </div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) {
+    portal = document.createElement('div');
+    portal.id = 'print-portal';
+    document.body.appendChild(portal);
+  }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 interface Collection {
   id: number;
   customerName: string;
@@ -99,6 +141,10 @@ const Page = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedAgent, selectedStatus, searchTerm, fromDate, toDate, rowsPerPage]);
+
   // Filter collections based on search, agent, status, and date range
   const filteredCollections = collections.filter(collection => {
     const matchesSearch = collection.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -126,18 +172,53 @@ const Page = () => {
   const paginatedCollections = filteredCollections.slice(startIndex, startIndex + parseInt(rowsPerPage));
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+      }).format(Number(amount) || 0);
+    } catch {
+      return `₦${Number(amount || 0).toLocaleString()}`;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return '—';
+    }
+  };
+
+  // ── Export handlers ───────────────────────────────────────
+  const collHeaders = ['Transaction ID', 'Package', 'Account Number', 'Amount', 'Customer', 'Agent', 'Date', 'Status', 'Branch'];
+  const getCollRows = () => filteredCollections.map(c => [
+    c.transactionId || '',
+    (c as any).packageName || c.type || '',
+    c.accountNumber || '',
+    formatCurrency(c.amount),
+    c.customerName,
+    c.agentName || '',
+    formatDate(c.dateCreated),
+    c.status === 'Collected' ? 'Completed' : c.status,
+    c.branch || ''
+  ]);
+
+  const handleExportPDF = () => {
+    setShow(false);
+    exportTableToPDF('Collections', collHeaders, getCollRows(), filteredCollections.length);
+  };
+
+  const handleExportCSV = () => {
+    setShow(false);
+    exportToCSV('Collections', collHeaders, getCollRows());
   };
 
   const getStatusColor = (status: string) => {
@@ -280,9 +361,9 @@ const Page = () => {
                 <p className='text-[#4E37FB] font-medium text-[14px]'>Export</p>
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-50'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
               </div>}
             </div>
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-1 border border-[#E5E7EB] rounded-[4px] px-3">

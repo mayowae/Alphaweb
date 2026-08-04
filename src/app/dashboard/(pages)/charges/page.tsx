@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Search, Pencil, Ellipsis, ArrowRight, ArrowLeft, ChevronUp, ChevronDown, X } from 'lucide-react';
+
+const toInputDate = (display: string) => {
+  const d = new Date(display);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+};
 
 // Interfaces for data and component props
 interface Charge {
@@ -52,6 +58,8 @@ interface ChargesHistoryTableProps {
   rowsPerPage: number;
   searchTerm: string;
   statusFilter: string;
+  onMarkAsPaid: (id: number) => void;
+  onReassign: (row: HistoryItem) => void;
 }
 
 // Sidebar component props
@@ -90,24 +98,21 @@ const SortableHeader = <T,>({ title, sortKey, sortConfig, onSort }: SortableHead
   );
 };
 
-// Reusable Sidebar component
+// Reusable Sidebar component — only mount when open so closed overlays never block page clicks
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+
     return (
-        <div
-            className={`fixed inset-0 z-50 transform ${
-                isOpen ? 'translate-x-0' : 'translate-x-full'
-            } transition-transform duration-300 ease-in-out`}
-        >
-            {/* Overlay */}
+        <div className="fixed inset-0 z-50">
             <div
-                className="absolute inset-0 transition-opacity duration-300"
+                className="absolute inset-0 bg-black/30"
                 onClick={onClose}
-            ></div>
-            {/* Sidebar content */}
+                aria-hidden="true"
+            />
             <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl flex flex-col">
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-                    <button onClick={onClose} className="p-1 rounded-md text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                    <button type="button" onClick={onClose} className="p-1 rounded-md text-gray-400 hover:text-gray-600 transition-colors duration-200">
                         <X size={24} />
                     </button>
                 </div>
@@ -235,6 +240,7 @@ const AssignChargeSidebar: React.FC<{
     const [amount, setAmount] = useState(initial?.amount || '');
     const [dueDate, setDueDate] = useState(initial?.dueDate || '');
     const [customer, setCustomer] = useState(initial?.customer || '');
+    const [assignToAll, setAssignToAll] = useState(false);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -243,18 +249,33 @@ const AssignChargeSidebar: React.FC<{
         setAmount(initial?.amount || '');
         setDueDate(initial?.dueDate || '');
         setCustomer(initial?.customer || '');
+        setAssignToAll(initial?.customer === 'all');
       }
     }, [isOpen, initial?.chargeName, initial?.amount, initial?.dueDate, initial?.customer]);
 
+    const handleAssignAllToggle = (checked: boolean) => {
+      setAssignToAll(checked);
+      if (checked) {
+        setCustomer('all');
+      } else {
+        setCustomer('');
+      }
+    };
+
     const handleAssign = async () => {
-        if (!chargeName || !amount || !dueDate || !customer) {
-          Swal.fire({ icon: 'error', title: 'All fields are required' });
+        const targetCustomer = assignToAll ? 'all' : customer;
+        if (!chargeName || !amount || !dueDate || !targetCustomer) {
+          Swal.fire({ icon: 'error', title: 'All fields are required', text: 'Please select a charge, due date, and customer(s).' });
           return;
         }
         setLoading(true);
         try {
-          await assignCharge({ chargeName, amount, dueDate, customer });
-          Swal.fire({ icon: 'success', title: 'Charge assigned' });
+          await assignCharge({ chargeName, amount, dueDate, customer: targetCustomer });
+          Swal.fire({ 
+            icon: 'success', 
+            title: 'Charge Assigned', 
+            text: assignToAll ? `Charge assigned to all ${customers.length} customers successfully.` : 'Charge assigned successfully.' 
+          });
           onSuccess();
           onClose();
         } catch (err:any) {
@@ -265,7 +286,7 @@ const AssignChargeSidebar: React.FC<{
     };
 
     return (
-        <Sidebar isOpen={isOpen} onClose={onClose} title="Assign charges">
+        <Sidebar isOpen={isOpen} onClose={onClose} title={initial?.customer ? 'Reassign charge' : 'Assign charges'}>
             <div className="space-y-6">
                 <div>
                     <label htmlFor="assignChargeName" className="block text-sm font-medium text-gray-700">Charge name</label>
@@ -320,20 +341,44 @@ const AssignChargeSidebar: React.FC<{
                     />
                 </div>
                 <div>
-                    <label htmlFor="customer" className="block text-sm font-medium text-gray-700">Customer(s)</label>
-                    <select
-                        id="customer"
-                        name="customer"
-                        value={customer}
-                        onChange={(e) => setCustomer(e.target.value)}
-                        className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        style={{outline: 'none'}}
-                    >
-                        <option value="">Select customer</option>
-                        {customers.map((cust:any) => (
-                          <option key={cust.id} value={cust.fullName}>{cust.fullName}</option>
-                        ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-1">
+                      <label htmlFor="customer" className="block text-sm font-medium text-gray-700">Customer(s)</label>
+                      <label className="inline-flex items-center gap-1.5 text-xs text-indigo-600 font-medium cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={assignToAll}
+                          onChange={(e) => handleAssignAllToggle(e.target.checked)}
+                          className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                        />
+                        <span>Assign to ALL customers ({customers.length})</span>
+                      </label>
+                    </div>
+                    {assignToAll ? (
+                      <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-800 flex items-center justify-between">
+                        <span>⚡ Charge will be assigned to <strong>all {customers.length} registered customers</strong></span>
+                      </div>
+                    ) : (
+                      <select
+                          id="customer"
+                          name="customer"
+                          value={customer}
+                          onChange={(e) => {
+                            if (e.target.value === 'all') {
+                              handleAssignAllToggle(true);
+                            } else {
+                              setCustomer(e.target.value);
+                            }
+                          }}
+                          className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                          style={{outline: 'none'}}
+                      >
+                          <option value="">Select customer</option>
+                          <option value="all">⚡ ALL Customers ({customers.length} total)</option>
+                          {customers.map((cust:any) => (
+                            <option key={cust.id} value={cust.fullName}>{cust.fullName}</option>
+                          ))}
+                      </select>
+                    )}
                 </div>
             </div>
             <div className="mt-8">
@@ -348,7 +393,7 @@ const AssignChargeSidebar: React.FC<{
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                     )}
-                    {loading ? 'Assigning...' : 'Assign charges'}
+                    {loading ? 'Assigning...' : assignToAll ? `Assign to ALL (${customers.length} customers)` : 'Assign charges'}
                 </button>
             </div>
         </Sidebar>
@@ -357,12 +402,12 @@ const AssignChargeSidebar: React.FC<{
 
 
 // Import API functions
-import { fetchCharges, fetchChargeHistory, createCharge, assignCharge, fetchCustomers, updateCharge } from '../../../../../services/api';
+import { fetchCharges, fetchChargeHistory, createCharge, assignCharge, fetchCustomers, updateCharge, updateChargeAssignmentStatus } from '../../../../../services/api';
 import Swal from 'sweetalert2';
 
 const StatusPill: React.FC<{ status: string }> = ({ status }) => {
-  const isPaid = status === 'Paid';
-  const colorClass = isPaid ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600';
+  const isApplied = status === 'Applied' || status === 'Paid';
+  const colorClass = isApplied ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600';
   return (
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}
@@ -372,15 +417,40 @@ const StatusPill: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-const ChargesTable: React.FC<ChargesTableProps & { onEdit: (row: Charge) => void }> = ({ data, sortConfig, onSort, rowsPerPage, searchTerm, onEdit }) => {
+const ChargesTable: React.FC<ChargesTableProps & { onEdit: (row: Charge) => void; onAssign: (row: Charge) => void }> = ({ data, sortConfig, onSort, rowsPerPage, searchTerm, onEdit, onAssign }) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const filteredData = data.filter(item =>
     Object.values(item).some(value =>
       String(value).toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
+
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 44;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < menuHeight + 8 ? rect.top - menuHeight - 4 : rect.bottom + 4;
+    setMenuPos({ top, left: Math.max(8, rect.right - 160) });
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="rounded-lg border border-gray-200 overflow-x-auto overflow-y-visible">
       <table className="w-full text-left">
         <thead className="bg-gray-50">
           <tr>
@@ -428,10 +498,10 @@ const ChargesTable: React.FC<ChargesTableProps & { onEdit: (row: Charge) => void
                 <td className="p-4 text-sm text-gray-500">{row.lastUpdated}</td>
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => onEdit(row)} className="p-2 rounded hover:bg-gray-100 transition-colors duration-200" aria-label="Edit">
+                    <button type="button" onClick={() => onEdit(row)} className="p-2 rounded hover:bg-gray-100 transition-colors duration-200" aria-label="Edit">
                       <img src="/icons/lucide_edit.svg" alt="Edit" />
                     </button>
-                    <button className="p-2 rounded hover:bg-gray-100 transition-colors duration-200" aria-label="More">
+                    <button type="button" onClick={(e) => openMenu(e, row.id)} className="p-2 rounded hover:bg-gray-100 transition-colors duration-200" aria-label="More">
                       <img src="/icons/dots-bold.svg" alt="More" />
                     </button>
                   </div>
@@ -447,11 +517,40 @@ const ChargesTable: React.FC<ChargesTableProps & { onEdit: (row: Charge) => void
           )}
         </tbody>
       </table>
+
+      {openMenuId !== null && (
+        <div
+          ref={menuRef}
+          className="fixed z-[9999] w-40 rounded-md shadow-lg bg-white ring-1 ring-black/5 border border-gray-100"
+          style={{ top: menuPos.top, left: menuPos.left }}
+        >
+          {(() => {
+            const row = filteredData.find((r) => r.id === openMenuId);
+            if (!row) return null;
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenuId(null);
+                  onAssign(row);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+              >
+                Assign to customer
+              </button>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };
 
-const ChargesHistoryTable: React.FC<ChargesHistoryTableProps> = ({ data, sortConfig, onSort, rowsPerPage, searchTerm, statusFilter }) => {
+const ChargesHistoryTable: React.FC<ChargesHistoryTableProps> = ({ data, sortConfig, onSort, rowsPerPage, searchTerm, statusFilter, onMarkAsPaid, onReassign }) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const filteredData = data.filter(item => {
     const matchesSearch = Object.values(item).some(value =>
       String(value).toLowerCase().includes(searchTerm.toLowerCase())
@@ -460,8 +559,31 @@ const ChargesHistoryTable: React.FC<ChargesHistoryTableProps> = ({ data, sortCon
     return matchesSearch && matchesStatus;
   });
 
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
+
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, id: number) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 88;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < menuHeight + 8
+      ? rect.top - menuHeight - 4
+      : rect.bottom + 4;
+    setMenuPos({ top, left: Math.max(8, rect.right - 160) });
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="rounded-lg border border-gray-200 overflow-x-auto overflow-y-visible">
       <table className="w-full text-left">
         <thead className="bg-gray-50">
           <tr>
@@ -524,17 +646,13 @@ const ChargesHistoryTable: React.FC<ChargesHistoryTableProps> = ({ data, sortCon
                   <StatusPill status={row.status} />
                 </td>
                 <td className="p-4 text-right">
-                  <div className="relative inline-block text-left">
-                    <details>
-                      <summary className="list-none cursor-pointer inline-flex items-center justify-center p-2 rounded hover:bg-gray-100 transition-colors duration-200">
-                        <img src="/icons/dots-bold.svg" alt="Options" />
-                      </summary>
-                      <div className="absolute right-0 mt-2 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Mark as Paid</button>
-                        <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Reassign</button>
-                      </div>
-                    </details>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => openMenu(e, row.id)}
+                    className="inline-flex items-center justify-center p-2 rounded hover:bg-gray-100 transition-colors duration-200"
+                  >
+                    <img src="/icons/dots-bold.svg" alt="Options" />
+                  </button>
                 </td>
               </tr>
             ))
@@ -547,10 +665,48 @@ const ChargesHistoryTable: React.FC<ChargesHistoryTableProps> = ({ data, sortCon
           )}
         </tbody>
       </table>
+
+      {openMenuId !== null && (
+        <div
+          ref={menuRef}
+          className="fixed z-[9999] w-40 rounded-md shadow-lg bg-white ring-1 ring-black/5 border border-gray-100"
+          style={{ top: menuPos.top, left: menuPos.left }}
+        >
+          {(() => {
+            const row = filteredData.find((r) => r.id === openMenuId);
+            if (!row) return null;
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenuId(null);
+                  onReassign(row);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+              >
+                Reassign
+              </button>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 };
 
+const handleReassignRow = (
+  row: HistoryItem,
+  setReassignInitial: React.Dispatch<React.SetStateAction<{ chargeName?: string; amount?: string; dueDate?: string; customer?: string } | undefined>>,
+  setIsAssignChargeSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>
+) => {
+  setReassignInitial({
+    chargeName: row.chargeName,
+    amount: String(row.amount).replace(/[^\d.-]/g, ''),
+    dueDate: toInputDate(row.dueDate),
+    customer: row.customerName,
+  });
+  setIsAssignChargeSidebarOpen(true);
+};
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('Charges');
@@ -655,6 +811,48 @@ const App = () => {
     setCurrentPage(1);
   };
 
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    // CSV
+    if (activeTab === 'Charges') {
+      const headers = ['Charge Name', 'Type', 'Amount', 'Active Customers', 'Last Updated'];
+      const rows = filteredData.map((item: any) => [
+        `"${item.chargeName || ''}"`,
+        `"${item.type || ''}"`,
+        `"${item.amount || ''}"`,
+        `"${item.activeCustomers || ''}"`,
+        `"${item.lastUpdated || ''}"`,
+      ]);
+      const csv = [headers.join(','), ...rows.map((r: string[]) => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'charges.csv'; a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = ['Customer Name', 'Account Number', 'Charge Name', 'Amount', 'Due Date', 'Date Applied', 'Status'];
+      const rows = filteredData.map((item: any) => [
+        `"${item.customerName || ''}"`,
+        `"${item.accountNumber || ''}"`,
+        `"${item.chargeName || ''}"`,
+        `"${item.amount || ''}"`,
+        `"${item.dueDate || ''}"`,
+        `"${item.dateApplied || ''}"`,
+        `"${item.status || ''}"`,
+      ]);
+      const csv = [headers.join(','), ...rows.map((r: string[]) => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'charges-history.csv'; a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -710,6 +908,7 @@ const App = () => {
           </div>
           <div className="flex flex-col gap-4 mt-4 md:mt-0 md:flex-row">
             <button
+              type="button"
               onClick={() => setIsCreateChargeSidebarOpen(true)}
               className="bg-white text-indigo-600 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-gray-50 active:scale-[.98]"
             >
@@ -717,6 +916,7 @@ const App = () => {
               Create charges
             </button>
             <button
+              type="button"
               onClick={() => { setReassignInitial(undefined); setIsAssignChargeSidebarOpen(true); }}
               className="bg-indigo-600 text-white rounded-lg px-4 py-2.5 shadow-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 hover:bg-indigo-700 active:scale-[.98]"
             >
@@ -727,9 +927,10 @@ const App = () => {
         </div>
 
         {/* Tabs and Controls */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 overflow-visible">
           <div className="flex items-center border-b border-gray-200 mb-6">
             <button
+              type="button"
               className={`pb-4 px-4 text-sm font-medium ${
                 activeTab === 'Charges'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
@@ -744,6 +945,7 @@ const App = () => {
               Charges
             </button>
             <button
+              type="button"
               className={`pb-4 px-4 text-sm font-medium ${
                 activeTab === 'Charges history'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
@@ -793,9 +995,18 @@ const App = () => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
-              <button onClick={() => setIsAssignChargeSidebarOpen(true)} className="bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm font-medium text-sm transition-all duration-200 hover:bg-gray-50 active:scale-[.98] w-full sm:w-auto">
-                Reassign
-              </button>
+              {activeTab === 'Charges history' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReassignInitial(undefined);
+                    setIsAssignChargeSidebarOpen(true);
+                  }}
+                  className="bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-4 py-2.5 shadow-sm font-medium text-sm transition-all duration-200 hover:bg-indigo-100 active:scale-[.98] w-full sm:w-auto"
+                >
+                  Reassign
+                </button>
+              )}
               <div className="relative w-full sm:w-64">
                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -809,6 +1020,20 @@ const App = () => {
                   className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+              <div className="relative w-full sm:w-auto">
+                <select
+                  defaultValue="Export"
+                  onChange={(e) => { handleExport(e.target.value); e.target.value = 'Export'; }}
+                  className="block w-full rounded-lg border border-gray-300 pl-4 pr-10 py-2.5 text-gray-900 focus:ring-indigo-500 focus:border-indigo-500 text-sm appearance-none cursor-pointer"
+                >
+                  <option value="Export">Export</option>
+                  <option value="PDF">PDF</option>
+                  <option value="CSV">CSV</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <ChevronDown className="h-4 w-4" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -821,6 +1046,15 @@ const App = () => {
               rowsPerPage={rowsPerPage}
               searchTerm={searchTerm}
               onEdit={(row) => { setEditState({ id: row.id, chargeName: row.chargeName, type: row.type, amount: row.amount.replace(/[^\d.-]/g,'') }); setIsEditOpen(true); }}
+              onAssign={(row) => {
+                setReassignInitial({
+                  chargeName: row.chargeName,
+                  amount: String(row.amount).replace(/[^\d.-]/g, ''),
+                  dueDate: new Date().toISOString().split('T')[0],
+                  customer: '',
+                });
+                setIsAssignChargeSidebarOpen(true);
+              }}
             />
           ) : (
             <ChargesHistoryTable
@@ -830,6 +1064,26 @@ const App = () => {
               rowsPerPage={rowsPerPage}
               searchTerm={searchTerm}
               statusFilter={statusFilter}
+              onMarkAsPaid={async (id) => {
+                try {
+                  const result = await Swal.fire({
+                    title: 'Confirm Payment',
+                    text: 'Mark this charge as paid? The amount will be deducted from the customer collection wallet.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Mark as Paid',
+                    confirmButtonColor: '#4f46e5'
+                  });
+                  if (result.isConfirmed) {
+                    await updateChargeAssignmentStatus(id, 'Paid');
+                    Swal.fire({ icon: 'success', title: 'Charge marked as paid' });
+                    fetchData();
+                  }
+                } catch (err: any) {
+                  Swal.fire({ icon: 'error', title: 'Failed', text: err?.message || 'Failed to update charge status' });
+                }
+              }}
+              onReassign={(row) => handleReassignRow(row, setReassignInitial, setIsAssignChargeSidebarOpen)}
             />
           )}
 

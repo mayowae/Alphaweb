@@ -53,13 +53,13 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
   const fetchData = async () => {
     try {
       const [customersRes, packagesRes] = await Promise.all([
-        fetchCustomers(),
-        fetchPackages()
+        fetchCustomers().catch(() => ({ customers: [] })),
+        fetchPackages('Collection').catch(() => ({ packages: [] }))
       ]);
       setCustomers(customersRes.customers || []);
-      // Show ALL packages regardless of type/category
-      const allPkgs = (packagesRes.packages || packagesRes || []) as Package[];
-      setPackages(allPkgs);
+      const rawPkgs = (packagesRes.packages || packagesRes.data || packagesRes || []) as Package[];
+      const collectionPkgs = rawPkgs.filter((p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'collection');
+      setPackages(collectionPkgs);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -249,22 +249,32 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
                 return false;
               })()}
             >
-              <option value="">Select Package</option>
-              {packages
-                .filter(pkg => {
-                  // If a customer is selected and has a packageId, only show that package
-                  const selectedCustomer = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                  if (selectedCustomer?.packageId) {
-                    return pkg.id.toString() === selectedCustomer.packageId.toString();
-                  }
-                  return true;
-                })
-                .map((pkg) => (
-                  <option key={pkg.id} value={pkg.id}>
-                    {pkg.name} - ₦{pkg.amount?.toLocaleString()}
-                  </option>
-                ))}
+              {packages.length === 0 ? (
+                <option value="">No Collection package created yet</option>
+              ) : (
+                <>
+                  <option value="">Select Package</option>
+                  {packages
+                    .filter(pkg => {
+                      const selectedCustomer = customers.find(c => c.id.toString() === formData.selectedCustomerId);
+                      if (selectedCustomer?.packageId) {
+                        return pkg.id.toString() === selectedCustomer.packageId.toString();
+                      }
+                      return true;
+                    })
+                    .map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.name} - ₦{pkg.amount?.toLocaleString()}
+                      </option>
+                    ))}
+                </>
+              )}
             </select>
+            {packages.length === 0 && (
+              <p className="text-xs text-amber-700 mt-1">
+                ⚠️ No Collection packages found. Please create a Collection package under <strong>Package &gt; Collection</strong> first.
+              </p>
+            )}
           </div>
 
           <div>

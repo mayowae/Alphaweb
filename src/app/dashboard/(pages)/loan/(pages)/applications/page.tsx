@@ -15,6 +15,25 @@ import { fetchLoans, fetchCustomers, fetchAgents, createLoan, updateLoanStatus, 
 import Swal from 'sweetalert2';
 import LoadingButton from '../../../../../../../components/LoadingButton';
 
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `<div class="print-table-area"><div class="print-header"><div class="print-header-title">${title}</div><div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div></div><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div></div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) { portal = document.createElement('div'); portal.id = 'print-portal'; document.body.appendChild(portal); }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
 interface LoanItem {
   id: number;
   customerName: string;
@@ -82,6 +101,10 @@ const Page = () => {
   }, [selectedStatus, searchTerm, fromDate, toDate, currentPage, itemsPerPage]);
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, searchTerm, fromDate, toDate, itemsPerPage]);
+
+  useEffect(() => {
     fetchLoanPackages({ limit: 100 }).then((res:any)=> setPackages(res.data || res.packages || res || [])).catch(()=>setPackages([]));
   }, []);
 
@@ -146,34 +169,50 @@ const Page = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN'
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN'
+      }).format(Number(amount) || 0);
+    } catch {
+      return `₦${Number(amount || 0).toLocaleString()}`;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return '—';
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Approved':
-        return 'bg-green-100 text-green-800';
-      case 'Rejected':
-        return 'bg-red-100 text-red-800';
-      case 'Completed':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Approved': return 'bg-green-100 text-green-800';
+      case 'Rejected': return 'bg-red-100 text-red-800';
+      case 'Completed': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // ── Export handlers ───────────────────────────────────────
+  const loanAppHeaders = ['Customer', 'Account No.', 'Loan Amount', 'Interest Rate', 'Duration', 'Agent', 'Branch', 'Date Issued', 'Status'];
+  const getLoanAppRows = () => loans.map(l => [
+    l.customerName, l.accountNumber || 'N/A', formatCurrency(l.loanAmount),
+    `${l.interestRate}%`, `${l.duration} days`, l.agentName || 'N/A',
+    l.branch || 'N/A', formatDate(l.dateIssued), l.status
+  ]);
+  const handleExportPDF = () => { setShow(false); exportTableToPDF('Loan Applications', loanAppHeaders, getLoanAppRows(), loans.length); };
+  const handleExportCSV = () => { setShow(false); exportToCSV('Loan_Applications', loanAppHeaders, getLoanAppRows()); };
 
   return (
     <div className='w-[100%]'>
@@ -320,9 +359,9 @@ const Page = () => {
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
 
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-50'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
               </div>}
             </div>
 
@@ -385,18 +424,37 @@ const Page = () => {
                           <button
                             key={c.id}
                             type='button'
-                            onClick={()=>{
-                              setNewLoan({
-                                ...newLoan,
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const matchingAgent = (agents as any[]).find((a:any) =>
+                                a.id === c.agentId || (a.fullName && c.agentName && a.fullName.toLowerCase() === c.agentName.toLowerCase())
+                              );
+                              setNewLoan(prev => ({
+                                ...prev,
                                 customerName: c.fullName,
-                                accountNumber: c.accountNumber || ''
-                              });
+                                accountNumber: c.accountNumber || '',
+                                agentId: matchingAgent ? matchingAgent.id.toString() : (c.agentId ? String(c.agentId) : prev.agentId),
+                                branch: matchingAgent ? matchingAgent.branch : (c.branchName || c.branch || prev.branch)
+                              }));
                               setShowCustomerDropdown(false);
                             }}
-                            className='w-full text-left px-3 py-2 hover:bg-gray-50 text-sm'
+                            onClick={()=>{
+                              const matchingAgent = (agents as any[]).find((a:any) =>
+                                a.id === c.agentId || (a.fullName && c.agentName && a.fullName.toLowerCase() === c.agentName.toLowerCase())
+                              );
+                              setNewLoan(prev => ({
+                                ...prev,
+                                customerName: c.fullName,
+                                accountNumber: c.accountNumber || '',
+                                agentId: matchingAgent ? matchingAgent.id.toString() : (c.agentId ? String(c.agentId) : prev.agentId),
+                                branch: matchingAgent ? matchingAgent.branch : (c.branchName || c.branch || prev.branch)
+                              }));
+                              setShowCustomerDropdown(false);
+                            }}
+                            className='w-full text-left px-3 py-2 hover:bg-gray-50 text-sm cursor-pointer'
                           >
-                            <div className='font-medium'>{c.fullName}</div>
-                            <div className='text-gray-500'>Acct: {c.accountNumber || 'N/A'}</div>
+                            <div className='font-medium text-gray-900'>{c.fullName}</div>
+                            <div className='text-gray-500 text-xs'>Acct: {c.accountNumber || 'N/A'}</div>
                           </button>
                         ))}
                       </div>
@@ -408,43 +466,139 @@ const Page = () => {
                   <input value={newLoan.accountNumber} onChange={(e)=>setNewLoan({...newLoan, accountNumber:e.target.value})} placeholder='Account number' className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2' />
                 </div>
                 <div>
-                  <label className='text-sm'>Package Name</label>
+                  <label className='text-sm font-medium text-gray-700 mb-1 block'>Loan Package</label>
                   <select value={(newLoan as any).packageName || ''} onChange={(e)=>{
-                    const pkg = packages.find((p:any)=>p.name===e.target.value);
-                    setNewLoan({...newLoan, loanAmount: pkg ? String(pkg.loanAmount || pkg.amount || '') : newLoan.loanAmount, duration: pkg ? String(pkg.loanPeriod || pkg.duration || '') : newLoan.duration } as any);
-                    setNewLoan(prev=>({ ...(prev as any), packageName: e.target.value } as any));
-                  }} className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2'>
-                    <option value=''>Select package</option>
-                    {packages.map((p:any)=>(<option key={p.id} value={p.name}>{p.name}</option>))}
+                    const pkgName = e.target.value;
+                    const pkg = packages.find((p:any)=>p.name===pkgName);
+                    
+                    let interestVal = newLoan.interestRate;
+                    let interestLbl = 'Interest Rate (%)';
+                    let interestDisp = '';
+
+                    if (pkg) {
+                      const type = String(pkg.type || '').toLowerCase();
+                      const isFlat = type.includes('flat') || 
+                                     (pkg.interestAmount !== undefined && pkg.interestAmount !== null && Number(pkg.interestAmount) > 0 && !pkg.loanInterestRate);
+                      
+                      if (isFlat) {
+                        const flatAmt = pkg.interestAmount ?? pkg.interest_amount ?? pkg.interestRate ?? 0;
+                        interestVal = String(flatAmt);
+                        interestLbl = 'Interest (Flat Amount)';
+                        interestDisp = `₦${Number(flatAmt).toLocaleString()}`;
+                      } else {
+                        const pctRate = pkg.loanInterestRate ?? pkg.loan_interest_rate ?? pkg.interestRate ?? pkg.interest_rate ?? 0;
+                        interestVal = String(pctRate);
+                        interestLbl = 'Interest Rate (%)';
+                        interestDisp = `${pctRate}%`;
+                      }
+                    }
+
+                    setNewLoan({
+                      ...newLoan,
+                      packageName: pkgName,
+                      loanAmount: pkg ? String(pkg.loanAmount || pkg.amount || '') : newLoan.loanAmount,
+                      duration: pkg ? String(pkg.loanPeriod || pkg.duration || '') : newLoan.duration,
+                      interestRate: pkg ? interestVal : newLoan.interestRate,
+                      interestLabel: interestLbl,
+                      interestDisplay: interestDisp
+                    } as any);
+                  }} className={`w-full h-[40px] border rounded-[4px] px-2 text-sm bg-white ${
+                    packages.length === 0 ? 'border-amber-300 text-amber-800 bg-amber-50' : 'border-[#D0D5DD]'
+                  }`}>
+                    {packages.length === 0 ? (
+                      <option value=''>No Loan package created yet</option>
+                    ) : (
+                      <>
+                        <option value=''>Select Loan package</option>
+                        {packages.map((p:any)=>(<option key={p.id} value={p.name}>{p.name}</option>))}
+                      </>
+                    )}
                   </select>
+                  {packages.length === 0 && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      ⚠️ No Loan packages found. Please create a Loan package under <strong>Package &gt; Loan</strong> before applying.
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className='text-sm'>Loan Amount</label>
-                  <input type='number' value={newLoan.loanAmount} onChange={(e)=>setNewLoan({...newLoan, loanAmount:e.target.value})} placeholder='Amount' className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2' />
+                  <label className='text-sm flex justify-between'>
+                    <span>Loan Amount</span>
+                    {Boolean((newLoan as any).packageName) && <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>}
+                  </label>
+                  <input
+                    type='number'
+                    value={newLoan.loanAmount}
+                    onChange={(e)=>setNewLoan({...newLoan, loanAmount:e.target.value})}
+                    placeholder='Amount'
+                    readOnly={Boolean((newLoan as any).packageName)}
+                    className={`w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 ${
+                      Boolean((newLoan as any).packageName) ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : ''
+                    }`}
+                  />
                 </div>
                 <div>
-                  <label className='text-sm'>Interest Rate (%)</label>
-                  <input type='number' value={newLoan.interestRate} onChange={(e)=>setNewLoan({...newLoan, interestRate:e.target.value})} placeholder='e.g. 10' className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2' />
+                  <label className='text-sm flex justify-between'>
+                    <span>{(newLoan as any).interestLabel || 'Interest Rate (%)'}</span>
+                    {Boolean((newLoan as any).packageName) && <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>}
+                  </label>
+                  <input
+                    type={(newLoan as any).packageName ? 'text' : 'number'}
+                    value={
+                      (newLoan as any).packageName && (newLoan as any).interestDisplay
+                        ? (newLoan as any).interestDisplay
+                        : newLoan.interestRate
+                    }
+                    onChange={(e)=>setNewLoan({...newLoan, interestRate:e.target.value})}
+                    placeholder='e.g. 10'
+                    readOnly={Boolean((newLoan as any).packageName)}
+                    className={`w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 ${
+                      Boolean((newLoan as any).packageName) ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : ''
+                    }`}
+                  />
                 </div>
                 <div>
-                  <label className='text-sm'>Duration (days)</label>
-                  <input type='number' value={newLoan.duration} onChange={(e)=>setNewLoan({...newLoan, duration:e.target.value})} placeholder='e.g. 180' className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2' />
+                  <label className='text-sm flex justify-between'>
+                    <span>Duration (days)</span>
+                    {Boolean((newLoan as any).packageName) && <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>}
+                  </label>
+                  <input
+                    type='number'
+                    value={newLoan.duration}
+                    onChange={(e)=>setNewLoan({...newLoan, duration:e.target.value})}
+                    placeholder='e.g. 180'
+                    readOnly={Boolean((newLoan as any).packageName)}
+                    className={`w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 ${
+                      Boolean((newLoan as any).packageName) ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : ''
+                    }`}
+                  />
                 </div>
                 <div>
                   <label className='text-sm'>Due Date</label>
                   <input type='date' value={newLoan.dueDate} onChange={(e)=>setNewLoan({...newLoan, dueDate:e.target.value})} className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2' />
                 </div>
                 <div>
-                  <label className='text-sm'>Agent</label>
-                  <select value={newLoan.agentId} onChange={(e)=>{
-                    const val = e.target.value;
-                    const selected = (agents as any[]).find((a:any) => a.id.toString() === val);
-                    setNewLoan({
-                      ...newLoan,
-                      agentId: val,
-                      branch: selected?.branch || newLoan.branch
-                    });
-                  }} className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2'>
+                  <label className='text-sm flex justify-between'>
+                    <span>Agent</span>
+                    {Boolean(newLoan.customerName && (customers as any[]).some((c:any) => c.fullName?.toLowerCase() === newLoan.customerName.trim().toLowerCase())) && (
+                      <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>
+                    )}
+                  </label>
+                  <select
+                    value={newLoan.agentId}
+                    disabled={Boolean(newLoan.customerName && (customers as any[]).some((c:any) => c.fullName?.toLowerCase() === newLoan.customerName.trim().toLowerCase()))}
+                    onChange={(e)=>{
+                      const val = e.target.value;
+                      const selected = (agents as any[]).find((a:any) => a.id.toString() === val);
+                      setNewLoan({
+                        ...newLoan,
+                        agentId: val,
+                        branch: selected?.branch || newLoan.branch
+                      });
+                    }}
+                    className={`w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 ${
+                      Boolean(newLoan.customerName && (customers as any[]).some((c:any) => c.fullName?.toLowerCase() === newLoan.customerName.trim().toLowerCase())) ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : ''
+                    }`}
+                  >
                     <option value=''>Select agent</option>
                     {agents.map((a:any) => (
                       <option key={a.id} value={a.id.toString()}>{a.fullName}</option>
@@ -452,8 +606,21 @@ const Page = () => {
                   </select>
                 </div>
                 <div>
-                  <label className='text-sm'>Branch</label>
-                  <input value={newLoan.branch} onChange={(e)=>setNewLoan({...newLoan, branch:e.target.value})} placeholder='Branch' className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2' />
+                  <label className='text-sm flex justify-between'>
+                    <span>Branch</span>
+                    {Boolean(newLoan.customerName && (customers as any[]).some((c:any) => c.fullName?.toLowerCase() === newLoan.customerName.trim().toLowerCase())) && (
+                      <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>
+                    )}
+                  </label>
+                  <input
+                    value={newLoan.branch}
+                    onChange={(e)=>setNewLoan({...newLoan, branch:e.target.value})}
+                    placeholder='Branch'
+                    readOnly={Boolean(newLoan.customerName && (customers as any[]).some((c:any) => c.fullName?.toLowerCase() === newLoan.customerName.trim().toLowerCase()))}
+                    className={`w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 ${
+                      Boolean(newLoan.customerName && (customers as any[]).some((c:any) => c.fullName?.toLowerCase() === newLoan.customerName.trim().toLowerCase())) ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : ''
+                    }`}
+                  />
                 </div>
                 <div className='md:col-span-2'>
                   <label className='text-sm'>Notes</label>
@@ -579,13 +746,6 @@ const Page = () => {
                             </button>
                           </>
                         )}
-                        <button
-                          onClick={() => handleDelete(loan.id)}
-                          className="p-1 text-red-600 hover:bg-red-100 rounded"
-                          title="Delete"
-                        >
-                          <FaTrash size={16} />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -663,12 +823,6 @@ const Page = () => {
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={() => handleDelete(loan.id)}
-                        className="px-3 py-1 bg-red-600 text-white rounded text-sm"
-                      >
-                        Delete
-                      </button>
                     </div>
                   </div>
                 </div>

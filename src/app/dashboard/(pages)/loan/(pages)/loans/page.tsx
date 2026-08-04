@@ -15,6 +15,25 @@ import { fetchLoans, fetchCustomers, fetchAgents, updateLoanStatus, deleteLoan, 
 import Swal from 'sweetalert2';
 import LoadingButton from '../../../../../../../components/LoadingButton';
 
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `<div class="print-table-area"><div class="print-header"><div class="print-header-title">${title}</div><div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div></div><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div></div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) { portal = document.createElement('div'); portal.id = 'print-portal'; document.body.appendChild(portal); }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
 interface Loan {
   id: number;
   customerName: string;
@@ -53,6 +72,7 @@ const Page = () => {
   const [filter, setFilter] = useState(false);
   const [show, setShow] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedAgent, setSelectedAgent] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -86,14 +106,19 @@ const Page = () => {
   useEffect(() => {
     fetchData();
     fetchStats();
-  }, [currentPage, itemsPerPage, selectedStatus, fromDate, toDate]);
+  }, [currentPage, itemsPerPage, selectedStatus, selectedAgent, fromDate, toDate]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, selectedAgent, searchTerm, fromDate, toDate, itemsPerPage]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [loansData, customersData, agentsData] = await Promise.all([
         fetchLoans({
-          status: 'Active',
+          status: selectedStatus === 'All' ? undefined : selectedStatus,
+          agentId: selectedAgent === 'All' ? undefined : selectedAgent,
           search: searchTerm || undefined,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
@@ -170,20 +195,31 @@ const Page = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Number(amount) || 0);
+    } catch {
+      return `₦${Number(amount || 0).toLocaleString()}`;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return '—';
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -204,6 +240,17 @@ const Page = () => {
     setItemsPerPage(parseInt(value));
     setCurrentPage(1);
   };
+
+  // ── Export handlers ───────────────────────────────────────
+  const loansHeaders = ['Customer', 'Account No.', 'Loan Amount', 'Outstanding', 'Due Date', 'Agent', 'Date Added', 'Status'];
+  const getLoansRows = () => loans.map(l => [
+    l.customerName, l.accountNumber || 'N/A', formatCurrency(l.loanAmount),
+    formatCurrency(l.totalAmount || (Number(l.loanAmount || 0) + (Number(l.loanAmount || 0) * (Number(l.interestRate || 0) / 100)))), formatDate(l.dueDate), l.agentName || 'N/A',
+    formatDate(l.dateIssued), l.status
+  ]);
+  const handleExportPDF = () => { setShow(false); exportTableToPDF('Loans', loansHeaders, getLoansRows(), loans.length); };
+  const handleExportCSV = () => { setShow(false); exportToCSV('Loans', loansHeaders, getLoansRows()); };
+
 
   const handleCreateLoan = async () => {
     try {
@@ -251,7 +298,7 @@ const Page = () => {
           <div className="flex flex-wrap flex-col md:flex-row p-4 gap-4 md:gap-0 items-stretch md:items-center justify-between">
             <div className='w-full md:w-[330px]'>
               <p className='pb-2'>Agent</p>
-              <Select onValueChange={(value) => setSelectedStatus(value)}>
+              <Select value={selectedAgent} onValueChange={(value) => setSelectedAgent(value)}>
                 <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
@@ -344,9 +391,9 @@ const Page = () => {
                 <p className='text-[#4E37FB] font-medium text-[14px]'>Export</p>
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-50'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
               </div>}
             </div>
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-1 border border-[#E5E7EB] rounded-[4px] px-3">
@@ -505,7 +552,7 @@ const Page = () => {
                     <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Loan amount</th>
                     <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
                       <div className="flex items-center gap-[3px]">
-                        Amount
+                        Outstanding
                         <div className="flex flex-col gap-[1px] shrink-0">
                           <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
                           <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
@@ -549,7 +596,7 @@ const Page = () => {
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.customerName}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.accountNumber || 'N/A'}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(loan.loanAmount)}</td>
-                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(loan.totalAmount)}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(Number(loan.loanAmount || 0) + (Number(loan.loanAmount || 0) * (Number(loan.interestRate || 0) / 100)))}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(loan.dueDate)}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.agentName || 'N/A'}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(loan.dateIssued)}</td>
@@ -607,7 +654,7 @@ const Page = () => {
                     <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">{loan.customerName}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">{loan.accountNumber || 'N/A'}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Loan amount:</span><span className="font-semibold">{formatCurrency(loan.loanAmount)}</span></div>
-                    <div className="flex justify-between text-sm text-gray-600"><span>Total amount:</span><span className="font-semibold">{formatCurrency(loan.totalAmount)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Outstanding:</span><span className="font-semibold">{formatCurrency(loan.totalAmount || (Number(loan.loanAmount || 0) + (Number(loan.loanAmount || 0) * (Number(loan.interestRate || 0) / 100))))}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Due date:</span><span className="font-semibold">{formatDate(loan.dueDate)}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">{loan.agentName || 'N/A'}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Date added:</span><span className="font-semibold">{formatDate(loan.dateIssued)}</span></div>

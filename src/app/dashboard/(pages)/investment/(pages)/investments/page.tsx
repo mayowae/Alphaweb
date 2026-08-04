@@ -5,12 +5,11 @@ import Image from 'next/image';
 import { 
   fetchInvestmentApplications, 
   fetchCustomers, 
-  fetchAgents, 
+  fetchAgents,
   updateInvestmentApplicationStatus,
   deleteInvestmentApplication 
 } from '@/services/api';
 import Swal from 'sweetalert2';
-// Form is not rendered on investments page
 import {
   Select,
   SelectContent,
@@ -19,6 +18,25 @@ import {
   SelectValue,
   SelectGroup
 } from "@/components/ui/select"
+
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `<div class="print-table-area"><div class="print-header"><div class="print-header-title">${title}</div><div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div></div><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div></div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) { portal = document.createElement('div'); portal.id = 'print-portal'; document.body.appendChild(portal); }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
 
 interface InvestmentApplication {
   id: number;
@@ -62,10 +80,8 @@ interface Agent {
 const Page = () => {
   const [show, setShow] = useState<boolean>(false)
   const [applications, setApplications] = useState<InvestmentApplication[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  // No create/edit on investments page
   const [selectedAgent, setSelectedAgent] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('Approved');
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -75,15 +91,20 @@ const Page = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Fetch data on component mount
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, selectedAgent, fromDate, toDate, itemsPerPage]);
+
+  // Fetch data whenever relevant state changes
   useEffect(() => {
     fetchData();
-  }, [currentPage, selectedStatus, fromDate, toDate]);
+  }, [currentPage, selectedStatus, selectedAgent, fromDate, toDate, itemsPerPage]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [applicationsRes, customersRes, agentsRes] = await Promise.all([
+      const [applicationsRes, agentsRes] = await Promise.all([
         fetchInvestmentApplications({
           status: selectedStatus === 'all' ? undefined : selectedStatus,
           search: searchTerm || undefined,
@@ -92,20 +113,18 @@ const Page = () => {
           page: currentPage,
           limit: itemsPerPage
         }),
-        fetchCustomers(),
         fetchAgents()
       ]);
       
       setApplications(applicationsRes.applications || []);
       setTotalPages(applicationsRes.pagination?.totalPages || 1);
-      setCustomers(customersRes.customers || []);
       setAgents(agentsRes.agents || []);
     } catch (error: any) {
       console.error('Failed to fetch data:', error);
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: error.message || 'Failed to load applications data',
+        text: error.message || 'Failed to load investments data',
       });
     } finally {
       setLoading(false);
@@ -117,96 +136,68 @@ const Page = () => {
     fetchData();
   };
 
-  const handleStatusUpdate = async (applicationId: number, newStatus: string, rejectionReason?: string) => {
-    try {
-      await updateInvestmentApplicationStatus(applicationId, {
-        status: newStatus,
-        rejectionReason
+  // Client-side filter by agent (if not supported server-side)
+  const displayedApplications = selectedAgent === 'all'
+    ? applications
+    : applications.filter(a => {
+        const name = a.agent?.fullName || a.agentName || '';
+        return name === selectedAgent;
       });
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Status Updated',
-        text: `Application ${newStatus.toLowerCase()} successfully`,
-      });
-      
-      fetchData(); // Refresh data
-    } catch (error: any) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error.message || 'Failed to update status',
-      });
-    }
-  };
-
-  const handleDelete = async (applicationId: number) => {
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: "You won't be able to revert this!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!'
-    });
-
-    if (result.isConfirmed) {
-      try {
-        await deleteInvestmentApplication(applicationId);
-        Swal.fire(
-          'Deleted!',
-          'Application has been deleted.',
-          'success'
-        );
-        fetchData(); // Refresh data
-      } catch (error: any) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: error.message || 'Failed to delete application',
-        });
-      }
-    }
-  };
-
-  // No edit handlers on investments page
 
   // Calculate totals
-  const approvedApplications = applications.filter(app => app.status === 'Approved');
-  const totalApplications = approvedApplications.length;
-  const activeInvestments = totalApplications;
+  const approvedApplications = displayedApplications.filter(app => app.status === 'Approved');
+  const activeInvestments = approvedApplications.length;
   const totalAmount = approvedApplications.reduce((sum, app) => sum + Number(app.targetAmount || 0), 0);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+      }).format(Number(amount) || 0);
+    } catch {
+      return `₦${Number(amount || 0).toLocaleString()}`;
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return '—';
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Approved':
-        return 'bg-green-100 text-green-800';
-      case 'Rejected':
-        return 'bg-red-100 text-red-800';
-      case 'Completed':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Approved': return 'bg-green-100 text-green-800';
+      case 'Rejected': return 'bg-red-100 text-red-800';
+      case 'Completed': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // ── Export handlers ───────────────────────────────────────
+  const invHeaders = ['Customer', 'Account No.', 'Target Amount', 'Duration', 'Agent', 'Date Applied', 'Status'];
+  const getInvRows = () => approvedApplications.map(a => [
+    a.customer?.fullName || a.customerName,
+    a.accountNumber || 'N/A',
+    formatCurrency(a.targetAmount),
+    `${a.duration} days`,
+    a.agent?.fullName || a.agentName || 'N/A',
+    formatDate(a.dateApplied),
+    a.status
+  ]);
+  const handleExportPDF = () => { setShow(false); exportTableToPDF('Investments', invHeaders, getInvRows(), approvedApplications.length); };
+  const handleExportCSV = () => { setShow(false); exportToCSV('Investments', invHeaders, getInvRows()); };
 
   if (loading) {
     return (
@@ -224,7 +215,6 @@ const Page = () => {
           <h1 className='font-inter font-semibold leading-[32px] text-[20px] md:text-[24px]'>Investments</h1>
           <p className='leading-[24px] font-inter font-normal text-[#717680] text-[13px] md:text-[14px] '>View and manage customer investment applications. Track performance and monitor returns.</p>
         </div>
-        {/* Create Application button removed on investments page */}
       </div>
 
       <div className='bg-white shadow-sm mt-6 w-full relative'>
@@ -284,16 +274,18 @@ const Page = () => {
         <div className='flex flex-wrap flex-col md:flex-row items-center justify-between gap-4 md:gap-10 p-2 md:p-5'>
           <div className='flex flex-wrap flex-col md:flex-row items-center gap-2 md:gap-5 w-full md:w-auto'>
 
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <Select value={selectedAgent} onValueChange={setSelectedAgent}>
               <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
-                <SelectValue placeholder="All Status" />
+                <SelectValue placeholder="All Agents" />
               </SelectTrigger>
               <SelectContent className="w-full md:w-[185px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
                 <SelectGroup>
-                  <SelectItem value="all" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Status</SelectItem>
-                  <SelectItem value="Active" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Active</SelectItem>
-                  <SelectItem value="Matured" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Matured</SelectItem>
-                  <SelectItem value="Cancelled" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Cancelled</SelectItem>
+                  <SelectItem value="all" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Agents</SelectItem>
+                  {agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.fullName} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">
+                      {agent.fullName}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -318,9 +310,9 @@ const Page = () => {
                 <p className='text-[#4E37FB] font-medium text-[14px]'>Export</p>
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
-              {show && <div onClick={() => setShow(!show)} className='absolute w-full md:w-[105px] bg-white rounded-[4px] shadow-lg z-10'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-full md:w-[105px] bg-white rounded-[4px] shadow-lg z-10'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
               </div>}
             </div>
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-1 border border-[#E5E7EB] rounded-[4px] px-3">
@@ -374,7 +366,11 @@ const Page = () => {
               </tr>
             </thead>
             <tbody>
-              {approvedApplications.map((application) => (
+              {approvedApplications.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-8 text-center text-gray-500">No investments found</td>
+                </tr>
+              ) : approvedApplications.map((application) => (
                 <tr key={application.id} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal">
                     {application.customer?.fullName || application.customerName}
@@ -399,18 +395,48 @@ const Page = () => {
                       {application.status}
                     </span>
                   </td>
-                  
                 </tr>
               ))}
-              {applications.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-gray-500">
-                    No applications found
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
+
+          {/* Mobile stacked rows */}
+          {approvedApplications.map((application) => (
+            <div key={application.id} className="md:hidden block border-b p-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Customer:</span>
+                  <span className="font-semibold">{application.customer?.fullName || application.customerName}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Account Number:</span>
+                  <span className="font-semibold">{application.accountNumber || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Target Amount:</span>
+                  <span className="font-semibold">{formatCurrency(application.targetAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Duration:</span>
+                  <span className="font-semibold">{application.duration} days</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Agent:</span>
+                  <span className="font-semibold">{application.agent?.fullName || application.agentName || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Date Applied:</span>
+                  <span className="font-semibold">{formatDate(application.dateApplied)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Status:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(application.status)}`}>
+                    {application.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
 
@@ -440,8 +466,6 @@ const Page = () => {
           </button>
         </div>
       </div>
-
-      {/* Form removed on investments page */}
     </div>
   )
 }

@@ -26,13 +26,15 @@ export default function VerifyOtp() {
     try {
       setIsLoading(true);
       await verifyOtp(String(email).trim(), fullOtp);
-      Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
-      
-      // Check if this is a forgot password flow
-      const urlParams = new URLSearchParams(window.location.search);
-      const isForgotPassword = urlParams.get('flow') === 'forgot-password';
+
+      const savedFlow = typeof window !== 'undefined' ? localStorage.getItem('auth_flow') : null;
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const isForgotPassword = savedFlow === 'forgot-password' || (urlParams && urlParams.get('flow') === 'forgot-password');
+
+      await Swal.fire({ icon: "success", title: "Verified", text: "Email verified successfully." });
       
       if (isForgotPassword) {
+        localStorage.removeItem('auth_flow');
         router.push('/change-password');
       } else {
         router.push('/login');

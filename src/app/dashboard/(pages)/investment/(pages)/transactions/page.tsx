@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react'
-import { FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa'
 import { FaAngleDown } from 'react-icons/fa';
 import Image from 'next/image';
 import {
@@ -20,7 +20,25 @@ import {
 } from '@/services/api';
 import Swal from 'sweetalert2';
 
-// Define the interface locally to avoid import issues
+// ── Export helpers ──────────────────────────────────────────
+function exportTableToPDF(title: string, headers: string[], rows: (string | number)[][], rowCount: number) {
+  const now = new Date().toLocaleString('en-NG', { dateStyle: 'long', timeStyle: 'short' });
+  const tableRows = rows.map(row =>
+    `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`
+  ).join('');
+  const html = `<div class="print-table-area"><div class="print-header"><div class="print-header-title">${title}</div><div class="print-header-meta">Generated: ${now}<br/>Total records: ${rowCount}</div></div><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table><div class="print-footer">AlphaKolect &mdash; Confidential &mdash; ${now}</div></div>`;
+  let portal = document.getElementById('print-portal');
+  if (!portal) { portal = document.createElement('div'); portal.id = 'print-portal'; document.body.appendChild(portal); }
+  portal.innerHTML = html;
+  window.print();
+  setTimeout(() => { if (portal) portal.innerHTML = ''; }, 1000);
+}
+function exportToCSV(title: string, headers: string[], rows: (string | number)[][]) {
+  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
 interface InvestmentTransaction {
   id: number;
   customer: string;
@@ -30,7 +48,7 @@ interface InvestmentTransaction {
   branch: string;
   agent: string;
   transactionDate: string;
-  date?: string; // Fallback for sample data
+  date?: string;
   status?: 'pending' | 'completed' | 'cancelled';
   transactionType?: 'deposit' | 'withdrawal' | 'interest' | 'penalty';
   notes?: string;
@@ -46,151 +64,49 @@ const Page = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [agents, setAgents] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     agent: '',
     branch: '',
-    package: '',
     fromDate: '',
     toDate: '',
     search: ''
   });
 
-  // Sample data for demonstration - replace with actual API calls
-  const sampleData: InvestmentTransaction[] = [
-    { 
-      id: 1, 
-      customer: 'James Gibbins', 
-      accountNumber: '9345456565', 
-      package: 'Investment Package Alpha4000', 
-      amount: 1000, 
-      branch: "Yaro Area branch", 
-      agent: 'Kola Adefarattti', 
-      transactionDate: "2024-07-23T00:00:00Z",
-      date: "23, July 2024",
-      status: 'completed',
-      transactionType: 'deposit'
-    },
-    { 
-      id: 2, 
-      customer: 'Sarah Johnson', 
-      accountNumber: '9345456566', 
-      package: 'Loan Package Alpha5000', 
-      amount: 2500, 
-      branch: "Main Branch", 
-      agent: 'John Smith', 
-      transactionDate: "2024-07-24T00:00:00Z",
-      date: "24, July 2024",
-      status: 'pending',
-      transactionType: 'withdrawal'
-    },
-    { 
-      id: 3, 
-      customer: 'Michael Brown', 
-      accountNumber: '9345456567', 
-      package: 'Collection Package Alpha3000', 
-      amount: 750, 
-      branch: "Downtown Branch", 
-      agent: 'Jane Doe', 
-      transactionDate: "2024-07-25T00:00:00Z",
-      date: "25, July 2024",
-      status: 'completed',
-      transactionType: 'interest'
-    },
-    { 
-      id: 4, 
-      customer: 'Emily Davis', 
-      accountNumber: '9345456568', 
-      package: 'Investment Package Beta2000', 
-      amount: 1500, 
-      branch: "Central Branch", 
-      agent: 'Mike Wilson', 
-      transactionDate: "2024-07-26T00:00:00Z",
-      date: "26, July 2024",
-      status: 'completed',
-      transactionType: 'deposit'
-    },
-    { 
-      id: 5, 
-      customer: 'David Miller', 
-      accountNumber: '9345456569', 
-      package: 'Loan Package Gamma1000', 
-      amount: 3000, 
-      branch: "North Branch", 
-      agent: 'Lisa Anderson', 
-      transactionDate: "2024-07-27T00:00:00Z",
-      date: "27, July 2024",
-      status: 'pending',
-      transactionType: 'withdrawal'
-    }
-  ];
-
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Check if user is authenticated
       const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;
-      if (!user) {
-        setTransactions([]);
-        setAgents([]);
-        setBranches([]);
-        return;
-      }
+      if (!user) { setTransactions([]); setAgents([]); setBranches([]); return; }
 
-      // Parse user to check if token exists
       let userData;
       try {
         userData = JSON.parse(user);
-        if (!userData.token) {
-          console.log('No authentication token found - showing empty state');
-          setTransactions([]);
-          setAgents([]);
-          setBranches([]);
-          return;
-        }
-      } catch (parseError) {
-        console.log('Invalid user data - showing empty state');
-        setTransactions([]);
-        setAgents([]);
-        setBranches([]);
-        return;
+        if (!userData.token) { setTransactions([]); setAgents([]); setBranches([]); return; }
+      } catch {
+        setTransactions([]); setAgents([]); setBranches([]); return;
       }
 
-      // Build params without sending status=all which filters out everything on backend
       const params: any = {};
       if (filters.search) params.search = filters.search;
       if (filters.fromDate) params.fromDate = filters.fromDate;
       if (filters.toDate) params.toDate = filters.toDate;
       if (filters.agent && filters.agent !== 'all') params.agentId = filters.agent;
       if (filters.branch && filters.branch !== 'all') params.branch = filters.branch;
-      if (filters.package && filters.package !== 'all') params.transactionType = filters.package;
 
-      const response = await fetchInvestmentTransactions(params);
-      
-      setTransactions(response.transactions || []);
-      
-      // Fetch agents and branches for filters
-      const [agentsRes, branchesRes] = await Promise.all([
+      const [response, agentsRes, branchesRes] = await Promise.all([
+        fetchInvestmentTransactions(params),
         fetchAgents(),
         fetchBranches()
       ]);
+      
+      setTransactions(response.transactions || []);
       setAgents(agentsRes.agents || []);
       setBranches(branchesRes.branches || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      // If it's an authentication error, show empty state
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('Access token is required') || 
-          errorMessage.includes('Invalid or expired token') ||
-          errorMessage.includes('jwt malformed') ||
-          errorMessage.includes('Authentication required')) {
-        console.log('Authentication error - showing empty state');
-        setTransactions([]);
-        setAgents([]);
-        setBranches([]);
-      } else {
-        console.log('Other error - showing empty state');
-        setTransactions([]); // Show empty state for other errors
-      }
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -198,12 +114,12 @@ const Page = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  // Refetch data when filters change
-  useEffect(() => {
-    fetchData();
   }, [filters]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, itemsPerPage]);
 
   const handleCreate = () => {
     setEditData(null);
@@ -238,20 +154,36 @@ const Page = () => {
   };
 
   const handleFormSuccess = () => {
-    fetchData(); // Refresh the data
-    setShowForm(false); // Close the form
+    fetchData();
+    setShowForm(false);
   };
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // No need for client-side filtering since backend handles it
-  const filteredTransactions = transactions;
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return '—';
+    }
+  };
 
+  // Sort descending by date
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dateA = new Date(a.transactionDate || a.date || 0).getTime();
+    const dateB = new Date(b.transactionDate || b.date || 0).getTime();
+    if (dateB !== dateA) return dateB - dateA;
+    return b.id - a.id;
+  });
 
-  //const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
-
+  // Client-side pagination
+  const totalPages = Math.max(1, Math.ceil(sortedTransactions.length / itemsPerPage));
+  const paginatedTransactions = sortedTransactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const formatCurrency = (amount: number) => {
     try {
@@ -265,6 +197,17 @@ const Page = () => {
     }
   };
 
+  // ── Export handlers ───────────────────────────────────────
+  const txHeaders = ['ID', 'Customer', 'Account No.', 'Package', 'Amount', 'Branch', 'Agent', 'Date', 'Status'];
+  const getTxRows = () => sortedTransactions.map(t => [
+    t.id, t.customer, t.accountNumber, t.package,
+    formatCurrency(t.amount), t.branch, t.agent,
+    formatDate(t.transactionDate || t.date),
+    t.status || 'pending'
+  ]);
+  const handleExportPDF = () => { setShow(false); exportTableToPDF('Investment Transactions', txHeaders, getTxRows(), sortedTransactions.length); };
+  const handleExportCSV = () => { setShow(false); exportToCSV('Investment_Transactions', txHeaders, getTxRows()); };
+
   return (
     <div className='w-full'>
       <div className='flex flex-wrap justify-between gap-4 md:gap-0 max-md:flex-col max-md:gap-[10px]'>
@@ -275,12 +218,7 @@ const Page = () => {
         <div className='flex gap-2'>
           <button
             onClick={handleCreate}
-            disabled={typeof window !== 'undefined' && (!window.localStorage.getItem('user') || !JSON.parse(window.localStorage.getItem('user') || '{}').token)}
-            className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
-              typeof window !== 'undefined' && (!window.localStorage.getItem('user') || !JSON.parse(window.localStorage.getItem('user') || '{}').token)
-                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                : 'bg-[#4E37FB] text-white hover:bg-[#3B2BC7]'
-            }`}
+            className='bg-[#4E37FB] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-[#3B2BC7] transition-colors'
           >
             <FaPlus size={14} />
             Create Transaction
@@ -292,7 +230,7 @@ const Page = () => {
         <div>
           <div className="flex flex-wrap flex-col md:flex-row p-4 gap-4 md:gap-0 items-stretch md:items-center justify-between">
             <div className='w-full md:w-[330px]'>
-              <p className='pb-2'>Agent</p>
+              <p className='pb-2 text-[14px] font-inter'>Agent</p>
               <Select onValueChange={(value) => handleFilterChange('agent', value)}>
                 <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                   <SelectValue placeholder="All Agents" />
@@ -309,22 +247,6 @@ const Page = () => {
                 </SelectContent>
               </Select>
             </div>
-            {/* <div className='w-full md:w-[330px]'>
-              <p className='pb-2'>Package</p>
-              <Select onValueChange={(value) => handleFilterChange('package', value)}>
-                <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
-                  <SelectValue placeholder="All Packages" />
-                </SelectTrigger>
-                <SelectContent className="w-full md:w-[330px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
-                  <SelectGroup>
-                    <SelectItem value="all" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">All Packages</SelectItem>
-                    <SelectItem value="collection" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Collection</SelectItem>
-                    <SelectItem value="loan" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Loan</SelectItem>
-                    <SelectItem value="investment" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Investment</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div> */}
             <div className="outline-none leading-[24px] rounded-[4px] w-full md:w-[330px] font-inter text-[14px] bg-white transition-all">
               <p className="text-[14px] font-inter pb-2">From</p>
               <input
@@ -348,12 +270,12 @@ const Page = () => {
           <div className="flex flex-wrap flex-col md:flex-row p-4 gap-4 md:gap-[20px]">
             <div className="bg-[#FFF8E5] px-5 py-4 rounded-[4px] w-full md:w-[229px] h-[82px] mb-2 md:mb-0">
               <p className='text-[#737373] font-inter font-normal'>Total transactions</p>
-              <h1 className='font-inter font-semibold text-[20px]'>{filteredTransactions.length}</h1>
+              <h1 className='font-inter font-semibold text-[20px]'>{sortedTransactions.length}</h1>
             </div>
             <div className="bg-[#FFF8E5] px-5 py-4 rounded-[4px] w-full md:w-[229px] h-[82px]">
               <p className='text-[#737373] font-inter font-normal'>Total amount</p>
               <h1 className='font-inter font-semibold text-[20px]'>
-                {formatCurrency(filteredTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0))}
+                {formatCurrency(sortedTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0))}
               </h1>
             </div>
           </div>
@@ -366,7 +288,7 @@ const Page = () => {
 
             <Select onValueChange={(value) => handleFilterChange('branch', value)}>
               <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
-                <SelectValue placeholder="All branch" />
+                <SelectValue placeholder="All Branches" />
               </SelectTrigger>
               <SelectContent className="w-full md:w-[185px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
                 <SelectGroup>
@@ -380,14 +302,15 @@ const Page = () => {
               </SelectContent>
             </Select>
 
-            <Select >
+            <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
               <SelectTrigger className="h-[40px] outline-none leading-[24px] rounded-[4px] w-full md:w-[185px] border border-[#D0D5DD] font-inter text-[14px] bg-white  transition-all">
                 <SelectValue placeholder="Show 10 per row" />
               </SelectTrigger>
               <SelectContent className="w-full md:w-[185px] bg-white mt-1 rounded-[4px] shadow-lg p-0 border-none">
                 <SelectGroup>
-                  <SelectItem value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]  ">Show 10 per row</SelectItem>
-                  <SelectItem value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">Show 15 per row</SelectItem>
+                  <SelectItem value="10" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 10 per row</SelectItem>
+                  <SelectItem value="15" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 15 per row</SelectItem>
+                  <SelectItem value="25" className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">Show 25 per row</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -399,9 +322,9 @@ const Page = () => {
                 <p className='text-[#4E37FB] font-medium text-[14px]'>Export</p>
                 <FaAngleDown className="w-[16px] h-[16px] text-[#4E37FB] my-[auto] " />
               </button>
-              {show && <div onClick={() => setShow(!show)} className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg'>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
-                <p className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
+              {show && <div className='absolute w-[90vw] max-w-[150px] min-w-[90px] md:w-[105px] bg-white rounded-[4px] shadow-lg z-10'>
+                <p onClick={handleExportPDF} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px] ">PDF</p>
+                <p onClick={handleExportCSV} className="px-4 py-2 font-inter text-[13px] text-[#101828] hover:bg-gray-50 cursor-pointer transition-colors rounded-[4px]">CSV</p>
               </div>}
             </div>
             <div className="flex items-center h-[40px] w-full md:w-[311px] gap-1 border border-[#E5E7EB] rounded-[4px] px-3">
@@ -418,7 +341,7 @@ const Page = () => {
         </div>
 
         <div className='overflow-auto w-full'>
-          <table className="table-auto w-full whitespace-nowrap">
+          <table className="table-auto w-full whitespace-nowrap hidden md:table">
             <thead className="bg-gray-50 border-b border-[#D9D4D4]">
               <tr className="h-[40px] text-left">
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
@@ -433,12 +356,8 @@ const Page = () => {
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Customer</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Account number</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Package</th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  Amount
-                </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
-                  Branch
-                </th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Amount</th>
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Branch</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
                   <div className="flex items-center gap-[3px]">
                     Agent
@@ -448,13 +367,15 @@ const Page = () => {
                     </div>
                   </div>
                 </th>
-                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] "><div className="flex items-center gap-[3px]">
-                  Date
-                  <div className="flex flex-col gap-[1px] shrink-0">
-                    <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
-                    <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">
+                  <div className="flex items-center gap-[3px]">
+                    Date
+                    <div className="flex flex-col gap-[1px] shrink-0">
+                      <Image src="/icons/uparr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                      <Image src="/icons/downarr.svg" alt="uparrow" width={8} height={8} className="shrink-0" />
+                    </div>
                   </div>
-                </div></th>
+                </th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Status</th>
                 <th className="px-5 py-2 text-[12px] leading-[18px] font-lato font-normal text-[#141414] ">Actions</th>
               </tr>
@@ -462,35 +383,26 @@ const Page = () => {
             <tbody className="border-b border-[#D9D4D4] w-full">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-5 py-8 text-center text-gray-500">
-                    Loading transactions...
-                  </td>
+                  <td colSpan={10} className="px-5 py-8 text-center text-gray-500">Loading transactions...</td>
                 </tr>
-              ) : filteredTransactions.length === 0 ? (
+              ) : paginatedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-5 py-8 text-center text-gray-500">
-                    {typeof window !== 'undefined' && (!window.localStorage.getItem('user') || !JSON.parse(window.localStorage.getItem('user') || '{}').token)
-                      ? 'Please log in to view investment transactions' 
-                      : 'No transactions found'
-                    }
-                  </td>
+                  <td colSpan={10} className="px-5 py-8 text-center text-gray-500">No transactions found</td>
                 </tr>
               ) : (
-                filteredTransactions.map((item, index) => (
+                paginatedTransactions.map((item) => (
                   <tr key={item.id} className="bg-white transition-all duration-500 hover:bg-gray-50">
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
-                      {item.id}
-                    </td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{item.id}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{item.customer}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{item.accountNumber}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{item.package}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
-                      N{item.amount.toLocaleString()}
+                      {formatCurrency(item.amount)}
                     </td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{item.branch}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{item.agent}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
-                      {item.transactionDate ? new Date(item.transactionDate).toLocaleDateString() : item.date}
+                      {formatDate(item.transactionDate || item.date)}
                     </td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
                       <span className={`px-2 py-1 rounded-full text-xs ${
@@ -523,12 +435,12 @@ const Page = () => {
                 ))
               )}
             </tbody>
-
           </table>
+
           {/* Mobile stacked rows */}
-          {!loading && filteredTransactions.length > 0 && (
+          {!loading && paginatedTransactions.length > 0 && (
             <div className="md:hidden block">
-              {filteredTransactions.map((item) => (
+              {paginatedTransactions.map((item) => (
                 <div key={item.id} className="border-b p-4">
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between text-sm text-gray-600">
@@ -549,7 +461,7 @@ const Page = () => {
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Amount:</span>
-                      <span className="font-semibold">N{item.amount.toLocaleString()}</span>
+                      <span className="font-semibold">{formatCurrency(item.amount)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Branch:</span>
@@ -561,9 +473,7 @@ const Page = () => {
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Date:</span>
-                      <span className="font-semibold">
-                        {item.transactionDate ? new Date(item.transactionDate).toLocaleDateString() : item.date}
-                      </span>
+                      <span className="font-semibold">{formatDate(item.transactionDate || item.date)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Status:</span>
@@ -602,18 +512,22 @@ const Page = () => {
         <div className="flex flex-wrap flex-col md:flex-row pb-4 justify-between items-center gap-2 mt-4 px-2 md:px-6">
           {/* Prev Button */}
           <button
-            className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center mb-2 md:mb-0 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             <Image src="/icons/left.svg" alt="Prev" width={10} height={10} className="mr-1" />
             Previous
           </button>
           {/* Page Numbers */}
           <div className="flex gap-2 items-center justify-center">
-            <p>1234</p>
+            <p>Page {currentPage} of {totalPages}</p>
           </div>
           {/* Next Button */}
           <button
-            className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="flex items-center px-3 py-2 text-sm border border-[#D0D5DD] font-medium rounded-md w-full md:w-[100px] justify-center hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Next
             <Image src="/icons/right.svg" alt="Next" width={10} height={10} className="ml-1" />

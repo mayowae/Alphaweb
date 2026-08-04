@@ -9,7 +9,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { fetchAgents, fetchBranches, addCustomer, fetchPackages } from '../../../../../services/api';
+import { fetchAgents, fetchBranches, addCustomer, fetchPackages, updateCustomer } from '../../../../../services/api';
 
 const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCustomerAdded?: () => void }> = ({ isOpen, onClose, onCustomerAdded }) => {
     const [formState, setFormState] = useState({
@@ -47,8 +47,10 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
-        if (id === 'package') {
-            // Store both name and ID for the package field
+        if (id === 'branch') {
+            // Reset agent when branch changes
+            setFormState(prev => ({ ...prev, branch: value, agent: '' }));
+        } else if (id === 'package') {
             const selectedPkg = packages.find((p: any) => p.name === value);
             setFormState(prev => ({
                 ...prev,
@@ -59,6 +61,15 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
             setFormState(prev => ({ ...prev, [id]: value }));
         }
     };
+
+    // Filter agents to only those belonging to the selected branch
+    const filteredAgents = formState.branch
+        ? agents.filter((a: any) => {
+            const agentBranch = (a.branch || '').toLowerCase().trim();
+            const selectedBranch = formState.branch.toLowerCase().trim();
+            return agentBranch === selectedBranch;
+        })
+        : agents;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -96,22 +107,17 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
         }
     };
 
+    if (!isOpen) return null;
+
     return (
         <>
-            {/* Overlay */}
             <div
-                className={`fixed inset-0 bg-gray-900 bg-opacity-50 z-40 transition-opacity duration-300 ${
-                    isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                }`}
+                className="fixed inset-0 bg-gray-900/50 z-40"
                 onClick={onClose}
-            ></div>
+                aria-hidden="true"
+            />
 
-            {/* Sidebar */}
-            <div
-                className={`fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
-                    isOpen ? 'translate-x-0' : 'translate-x-full'
-                } flex flex-col`}
-            >
+            <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-xl z-50 flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-800">Add customer</h2>
@@ -160,11 +166,13 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
                                     id="agent"
                                     value={formState.agent}
                                     onChange={handleChange}
-                                    className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer"
-                                    disabled={loading}
+                                    className="block w-full rounded-md border border-gray-300 pl-4 pr-10 py-3 text-gray-900 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none cursor-pointer disabled:bg-gray-50 disabled:text-gray-400"
+                                    disabled={loading || !formState.branch}
                                 >
-                                    <option value="">Select Agent</option>
-                                    {agents.map((a) => (
+                                    <option value="">
+                                        {!formState.branch ? 'Select branch first' : filteredAgents.length === 0 ? 'No agents in this branch' : 'Select Agent'}
+                                    </option>
+                                    {filteredAgents.map((a: any) => (
                                         <option key={a.id || a._id} value={a.fullName || a.name}>{a.fullName || a.name}</option>
                                     ))}
                                 </select>
@@ -310,14 +318,128 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
 
 import { fetchCustomers } from '../../../../../services/api';
 
+const ReassignSidebar: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    agents: any[];
+    branches: any[];
+    onSubmit: (agentId: string, branchId: string) => Promise<void>;
+    loading: boolean;
+    count: number;
+}> = ({ isOpen, onClose, agents, branches, onSubmit, loading, count }) => {
+    const [agentId, setAgentId] = useState('');
+    const [branchId, setBranchId] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setAgentId('');
+            setBranchId('');
+        }
+    }, [isOpen]);
+
+    // Filter agents by selected branch
+    // Check by branch name, branchId, branch_id, or branch string ID
+    const selectedBranchObj = branches.find((b: any) => String(b.id) === branchId || String(b.branchId) === branchId);
+    const selectedBranchName = selectedBranchObj
+        ? (selectedBranchObj.name || selectedBranchObj.branchName || '').toLowerCase().trim()
+        : '';
+
+    const filteredAgents = branchId
+        ? agents.filter((a: any) => {
+            const agentBranchName = (a.branch || a.branchName || '').toLowerCase().trim();
+            const agentBranchId = String(a.branchId || a.branch_id || '');
+            if (selectedBranchName && agentBranchName === selectedBranchName) return true;
+            if (agentBranchId && agentBranchId === branchId) return true;
+            return false;
+        })
+        : agents;
+
+    const handleBranchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setBranchId(e.target.value);
+        setAgentId(''); // reset agent whenever branch changes
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <>
+            <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} aria-hidden="true" />
+            <aside className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-xl z-50 flex flex-col">
+                <div className="flex items-center justify-between p-6 border-b">
+                    <h2 className="text-xl font-semibold text-gray-800">Reassign customers</h2>
+                    <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <LuX className="h-6 w-6" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                    <p className="text-sm text-gray-500">{count} customer(s) selected</p>
+
+                    {/* Branch first */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Assign to branch</label>
+                        <select value={branchId} onChange={handleBranchChange} className="block w-full rounded-md border border-gray-300 px-4 py-3 text-sm">
+                            <option value="">Select branch</option>
+                            {branches.map((b) => (
+                                <option key={b.id} value={b.id}>{b.name || b.branchName}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Agent second — filtered by branch */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                            Assign to agent
+                            {branchId && filteredAgents.length === 0 && (
+                                <span className="ml-2 text-xs font-normal text-amber-600">(No agents in this branch)</span>
+                            )}
+                        </label>
+                        <select
+                            value={agentId}
+                            onChange={(e) => setAgentId(e.target.value)}
+                            className="block w-full rounded-md border border-gray-300 px-4 py-3 text-sm"
+                        >
+                            <option value="">Select agent (optional if assigning branch)</option>
+                            {filteredAgents.map((a) => (
+                                <option key={a.id} value={a.id}>{a.fullName || a.name}</option>
+                            ))}
+                        </select>
+                        {branchId && filteredAgents.length > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">{filteredAgents.length} agent(s) in this branch</p>
+                        )}
+                    </div>
+                </div>
+                <div className="p-6 border-t">
+                    <button
+                        type="button"
+                        disabled={loading || (!agentId && !branchId)}
+                        onClick={() => onSubmit(agentId, branchId)}
+                        className="w-full px-4 py-3 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                        {loading ? 'Updating...' : 'Update assignment'}
+                    </button>
+                </div>
+            </aside>
+        </>
+    );
+};
+
 export default function CustomersPage() {
     const [customers, setCustomers] = useState<any[]>([]);
     const [selectedCustomers, setSelectedCustomers] = useState<any>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isReassignOpen, setIsReassignOpen] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterBranch, setFilterBranch] = useState('');
+    const [filterAgent, setFilterAgent] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [agents, setAgents] = useState<any[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
     const [sortConfig, setSortConfig] = useState<any>({ key: null, direction: 'ascending' });
     const [loading, setLoading] = useState(false);
+    const [reassignLoading, setReassignLoading] = useState(false);
 
     const refreshCustomers = () => {
         setLoading(true);
@@ -331,10 +453,31 @@ export default function CustomersPage() {
 
     useEffect(() => {
         refreshCustomers();
+        Promise.all([fetchAgents().catch(() => []), fetchBranches().catch(() => [])]).then(([agentsRes, branchesRes]) => {
+            setAgents(agentsRes?.agents || agentsRes || []);
+            setBranches(branchesRes?.branches || branchesRes || []);
+        });
     }, []);
 
+    const filteredCustomers = useMemo(() => {
+        return customers.filter((c) => {
+            const haystack = [
+                c.fullName, c.name, c.account, c.accountNumber,
+                c.branchName, c.branch?.name, c.agentName, c.agent?.fullName,
+                c.packageName, c.status
+            ].map((v) => String(v || '').toLowerCase()).join(' ');
+            const matchesSearch = !searchQuery || haystack.includes(searchQuery.toLowerCase());
+            const branchVal = c.branchName || c.branch?.name || '';
+            const agentVal = c.agentName || c.agent?.fullName || c.agent?.name || '';
+            const matchesBranch = !filterBranch || branchVal === filterBranch;
+            const matchesAgent = !filterAgent || agentVal === filterAgent;
+            const matchesStatus = !filterStatus || c.status === filterStatus;
+            return matchesSearch && matchesBranch && matchesAgent && matchesStatus;
+        });
+    }, [customers, searchQuery, filterBranch, filterAgent, filterStatus]);
+
     const sortedCustomers = useMemo(() => {
-        let sortableItems = [...customers];
+        let sortableItems = [...filteredCustomers];
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
                 if (sortConfig.key === 'date') {
@@ -358,7 +501,66 @@ export default function CustomersPage() {
             });
         }
         return sortableItems;
-    }, [customers, sortConfig]);
+    }, [filteredCustomers, sortConfig]);
+
+    const uniqueBranches = useMemo(() => {
+        const names = customers.map((c) => c.branchName || c.branch?.name).filter(Boolean);
+        return [...new Set(names)] as string[];
+    }, [customers]);
+
+    const uniqueAgents = useMemo(() => {
+        const names = customers.map((c) => c.agentName || c.agent?.fullName || c.agent?.name).filter(Boolean);
+        return [...new Set(names)] as string[];
+    }, [customers]);
+
+    const handleExport = (format: string) => {
+        if (format === 'CSV') {
+            const headers = ['Account Number', 'Full Name', 'Branch', 'Agent', 'Package', 'Date Created', 'Status'];
+            const rows = sortedCustomers.map((c) => [
+                c.account || c.accountNumber || '',
+                c.name || c.fullName || '',
+                c.branchName || c.branch?.name || '',
+                c.agentName || c.agent?.fullName || '',
+                c.packageName || c.package || '',
+                c.date || (c.createdAt ? new Date(c.createdAt).toLocaleDateString() : ''),
+                c.status || '',
+            ]);
+            const csv = [headers, ...rows]
+                .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } else if (format === 'PDF') {
+            window.print();
+        }
+    };
+
+    const handleBulkReassign = async (agentId: string, branchId: string) => {
+        setReassignLoading(true);
+        try {
+            await Promise.all(
+                selectedCustomers.map((id: number) =>
+                    updateCustomer(id, {
+                        ...(agentId ? { agentId } : {}),
+                        ...(branchId ? { branchId } : {}),
+                    })
+                )
+            );
+            Swal.fire({ icon: 'success', title: 'Customers reassigned successfully' });
+            setIsReassignOpen(false);
+            setSelectedCustomers([]);
+            refreshCustomers();
+        } catch (err: any) {
+            Swal.fire({ icon: 'error', title: 'Reassign failed', text: err?.message || 'Could not reassign customers' });
+        } finally {
+            setReassignLoading(false);
+        }
+    };
 
     // Pagination logic now uses the sorted data
     const totalPages: number = Math.ceil(sortedCustomers.length / itemsPerPage);
@@ -436,16 +638,25 @@ export default function CustomersPage() {
                 </div>
                 <div className="flex items-center justify-end space-x-2 w-full">
                     <div className="relative w-full sm:w-auto bg-[#e9e6ff] text-indigo-500 rounded-lg">
-                        <select className="block w-full bg-[#e9e6ff] appearance-none rounded-lg text-indigo-500 pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option>Export</option>
-                            <option>PDF</option>
-                            <option>CSV</option>
+                        <select
+                            className="block w-full bg-[#e9e6ff] appearance-none rounded-lg text-indigo-500 pl-4 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                            defaultValue=""
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val) handleExport(val);
+                                e.target.value = '';
+                            }}
+                        >
+                            <option value="" disabled>Export</option>
+                            <option value="PDF">PDF</option>
+                            <option value="CSV">CSV</option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500 pt-5">
                             <LuChevronDown className="h-5 w-5" />
                         </div>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setIsSidebarOpen(true)}
                         aria-label="Add customer"
                         className="flex items-center px-4 py-3 bg-indigo-600 text-white rounded-lg shadow-sm font-medium text-sm hover:bg-indigo-700 transition-colors"
@@ -459,8 +670,14 @@ export default function CustomersPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
                 <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
                     <div className="flex w-full lg:w-auto items-stretch lg:items-center gap-4">
-                        <button className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-50 transition-colors w-full lg:w-auto">
-                            <img src="/icons/filter.png" />
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters((v) => !v)}
+                            className={`flex items-center justify-center gap-2 px-3 py-2 border rounded-md text-sm transition-colors w-full lg:w-auto ${
+                                showFilters ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                        >
+                            <img src="/icons/filter.png" alt="" />
                             Filter
                         </button>
                         <div className="flex items-center rounded-md border border-gray-300 shadow-sm p-1.5 focus:ring-indigo-500 focus:border-indigo-500 w-full lg:w-auto">
@@ -473,17 +690,69 @@ export default function CustomersPage() {
                         </div>
                     </div>
                     <div className="flex w-full lg:w-auto items-stretch lg:items-center gap-4">
-                        <button className="px-3 py-2 border border-gray-300 text-indigo-700 rounded-md text-sm hover:bg-gray-50 transition-colors w-full lg:w-auto">
-                            Reassign
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (selectedCustomers.length === 0) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'Select Customers',
+                                        text: 'Please select one or more customers using the checkboxes on the left before clicking Reassign.',
+                                        confirmButtonColor: '#4F46E5'
+                                    });
+                                    return;
+                                }
+                                setIsReassignOpen(true);
+                            }}
+                            className={`px-3 py-2 border rounded-md text-sm transition-colors w-full lg:w-auto ${
+                                selectedCustomers.length === 0
+                                    ? 'border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer'
+                                    : 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-medium'
+                            }`}
+                        >
+                            Reassign{selectedCustomers.length > 0 ? ` (${selectedCustomers.length})` : ''}
                         </button>
                         <div className="relative w-full lg:w-64">
-                            <input type="text" placeholder="Search" className="pl-8 pr-4 border py-2 w-full text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                            <input
+                                type="text"
+                                placeholder="Search"
+                                value={searchQuery}
+                                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                className="pl-8 pr-4 border py-2 w-full text-sm rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                            />
                             <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
                     </div>
                 </div>
+
+                {showFilters && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Branch</label>
+                            <select value={filterBranch} onChange={(e) => { setFilterBranch(e.target.value); setCurrentPage(1); }} className="w-full border rounded-md px-3 py-2 text-sm">
+                                <option value="">All branches</option>
+                                {uniqueBranches.map((b) => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Agent</label>
+                            <select value={filterAgent} onChange={(e) => { setFilterAgent(e.target.value); setCurrentPage(1); }} className="w-full border rounded-md px-3 py-2 text-sm">
+                                <option value="">All agents</option>
+                                {uniqueAgents.map((a) => <option key={a} value={a}>{a}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Status</label>
+                            <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="w-full border rounded-md px-3 py-2 text-sm">
+                                <option value="">All status</option>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
@@ -611,8 +880,16 @@ export default function CustomersPage() {
                 </button>
             </div>
 
-            {/* New Add Customer Sidebar */}
             <AddCustomerSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onCustomerAdded={refreshCustomers} />
+            <ReassignSidebar
+                isOpen={isReassignOpen}
+                onClose={() => setIsReassignOpen(false)}
+                agents={agents}
+                branches={branches}
+                count={selectedCustomers.length}
+                loading={reassignLoading}
+                onSubmit={handleBulkReassign}
+            />
         </div>
     );
 }

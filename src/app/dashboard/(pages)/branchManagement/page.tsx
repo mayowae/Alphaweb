@@ -512,6 +512,31 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
     </div>
   );
 };
+
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    // CSV export
+    const headers = ['Branch Name', 'State', 'Location', 'Agents', 'Customers'];
+    const rows = sortedBranches.map(b => [
+      `"${b.name}"`,
+      `"${b.state}"`,
+      `"${b.location}"`,
+      `"${b.agents}"`,
+      `"${b.customers}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'branches.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setRowsPerPage(Number(event.target.value));
@@ -628,10 +653,14 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
 
             {/* Export Dropdown */}
             <div className="relative w-full sm:w-auto bg-[#e9e6ff] text-indigo-500 rounded-lg">
-              <select className="block w-full bg-[#e9e6ff] appearance-none rounded-lg text-indigo-200 pl-4 pr-10 py-3 text-sm focus:outline-none">
-                <option>Export</option>
-                <option>PDF</option>
-                <option>CSV</option>
+              <select
+                className="block w-full bg-[#e9e6ff] appearance-none rounded-lg text-indigo-200 pl-4 pr-10 py-3 text-sm focus:outline-none"
+                defaultValue="Export"
+                onChange={(e) => { handleExport(e.target.value); e.target.value = 'Export'; }}
+              >
+                <option value="Export">Export</option>
+                <option value="PDF">PDF</option>
+                <option value="CSV">CSV</option>
               </select>
               <div className="pointer-events-none absolute pt-5 inset-y-0 right-0 flex items-center px-2 text-indigo-500">
                 <LuChevronDown className="h-5 w-5" />
@@ -719,15 +748,9 @@ const CreateBranchSidebar: React.FC<CreateBranchSidebarProps> = ({ isOpen, onClo
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => handleEdit(branch.id)}
-                      className="text-gray-500 hover:text-[#6b47ff] transition-colors mr-2"
+                      className="text-gray-500 hover:text-[#6b47ff] transition-colors"
                     >
                       <Edit className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(branch.id)}
-                      className="text-gray-500 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="h-5 w-5" />
                     </button>
                   </td>
                 </tr>

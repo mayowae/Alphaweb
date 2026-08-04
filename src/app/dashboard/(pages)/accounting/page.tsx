@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Filter, Download, Calendar, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
+import { Plus, Search, Filter, Download, Calendar, TrendingUp, TrendingDown, DollarSign, Activity, ChevronDown } from 'lucide-react';
 import { getUserTransactions, getUserSummary, getUserStats, createTransaction } from '../../../../../services/api';
 import Swal from 'sweetalert2';
 
@@ -219,6 +219,32 @@ export default function AccountingPage() {
     });
   };
 
+  const handleExport = (format: string) => {
+    if (format === 'CSV') {
+      const headers = ['Transaction ID', 'Type', 'Description', 'Amount', 'Date', 'Status'];
+      const rows = filteredTransactions.map((tx) => [
+        tx.id,
+        tx.type,
+        tx.description,
+        tx.amount,
+        tx.date ? new Date(tx.date).toLocaleDateString() : '',
+        tx.status,
+      ]);
+      const csv = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'PDF') {
+      window.print();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -333,14 +359,24 @@ export default function AccountingPage() {
               </select>
             </div>
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                <Filter size={16} />
-                Filter
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                <Download size={16} />
-                Export
-              </button>
+              <div className="relative bg-[#e9e6ff] text-indigo-500 rounded-lg">
+                <select
+                  className="block bg-[#e9e6ff] appearance-none rounded-lg text-indigo-500 pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer border border-indigo-200"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) handleExport(val);
+                    e.target.value = '';
+                  }}
+                >
+                  <option value="" disabled>Export</option>
+                  <option value="PDF">PDF</option>
+                  <option value="CSV">CSV</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-indigo-500">
+                  <ChevronDown className="h-4 w-4" />
+                </div>
+              </div>
             </div>
           </div>
         </div>

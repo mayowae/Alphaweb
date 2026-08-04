@@ -37,6 +37,7 @@ export default function SignUp() {
   const [currency, setCurrency] = useState("N (NGN)");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<{ id: number; name: string } | null>(null);
   const router = useRouter();
 
   const signup = async () => {
@@ -52,7 +53,16 @@ export default function SignUp() {
     setIsLoading(true);
     setButtonState('loading');
     try {
-      const userData = { businessName, businessAlias, phoneNumber, email, currency, password, confirmPassword };
+      const userData = {
+        businessName,
+        businessAlias,
+        phoneNumber,
+        email,
+        currency,
+        password,
+        confirmPassword,
+        planId: selectedPlan?.id || 1
+      };
       const result = await registerUser(userData);
       localStorage.setItem('email', email);
       setButtonState('success');
@@ -73,20 +83,46 @@ export default function SignUp() {
   };
 
   useEffect(() => {
-    // document.body.style.backgroundImage = "url('/images/body-bg.png')";
-    // document.body.style.backgroundRepeat = "no-repeat";
-    // document.body.style.backgroundSize = "cover";
-    // document.body.style.backgroundPosition = "center";
-    // document.body.style.backgroundColor = "#4E37FB";
+    const params = new URLSearchParams(window.location.search);
+    const urlPlanId = params.get("planId") || params.get("plan");
+    const urlPlanName = params.get("planName");
 
-    // return () => {
-    //     document.body.style.backgroundImage = "";
-    //     document.body.style.backgroundRepeat = "";
-    //     document.body.style.backgroundSize = "";
-    //     document.body.style.backgroundPosition = "";
-    //     document.body.style.backgroundColor = "";
-    // };
-  }, []);
+    let finalPlan: { id: number; name: string } | null = null;
+
+    if (urlPlanId) {
+      const id = parseInt(urlPlanId) || 1;
+      let name = urlPlanName || "Starter Pack";
+      if (id === 1) name = "Starter Pack";
+      else if (id === 2) name = "Growth Pack";
+      else if (id === 3) name = "Mid-level Pack";
+      else if (id === 4) name = "Large Pack";
+      else if (id === 5) name = "Enterprise Pack";
+      finalPlan = { id, name };
+    } else {
+      const stored = localStorage.getItem("selectedPlan");
+      if (stored) {
+        try {
+          finalPlan = JSON.parse(stored);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    if (!finalPlan) {
+      Swal.fire({
+        icon: "warning",
+        title: "No Package Selected",
+        text: "Please select a package first to continue with registration.",
+        confirmButtonColor: "#4E37FB"
+      }).then(() => {
+        router.push("/pricing");
+      });
+    } else {
+      setSelectedPlan(finalPlan);
+      localStorage.setItem("selectedPlan", JSON.stringify(finalPlan));
+    }
+  }, [router]);
   return (
     <div className="flex flex-col md:flex-row w-full h-screen overflow-hidden">
       <div className="w-full md:w-6/12 auth-side-bg h-screen hidden md:flex items-center justify-center">
@@ -106,8 +142,15 @@ export default function SignUp() {
               <img src="/images/logo.png" alt="" />
             </div>
             <div className="card-body mt-3">
-              <h1 className="card-title text-center text-black">Signup to Alphakolect</h1>
-              <p className="card-description text-center mt-2">Fill the form below to get started</p>
+               <h1 className="card-title text-center text-black">Signup to Alphakolect</h1>
+               {selectedPlan && (
+                 <div className="mt-2 text-center">
+                   <span className="inline-block px-3 py-1 bg-indigo-50 border border-indigo-100 text-[#4E37FB] text-xs font-semibold rounded-full">
+                     Plan: {selectedPlan.name}
+                   </span>
+                 </div>
+               )}
+               <p className="card-description text-center mt-2">Fill the form below to get started</p>
               <form action="">
                     <div className="form-group">
                         <label htmlFor="name" className="form-label">Business name</label>

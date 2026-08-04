@@ -646,6 +646,32 @@ export default function Page() {
   const viewAgent = (agent_id:any)=>{
     router.push(`/dashboard/view-agent/${agent_id}`);
   }
+
+  const handleExport = (format: string) => {
+    if (!format || format === 'Export') return;
+    if (format === 'PDF') {
+      window.print();
+      return;
+    }
+    // CSV export
+    const headers = ['Full Name', 'Phone Number', 'Branch', 'Customers', 'Date Created', 'Status'];
+    const rows = sortedAgents.map(a => [
+      `"${a.fullName}"`,
+      `"${a.phoneNumber}"`,
+      `"${a.branch}"`,
+      `"${a.customers}"`,
+      `"${a.dateCreated}"`,
+      `"${a.status}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'agents.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch data function
@@ -806,10 +832,14 @@ export default function Page() {
           </div>
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
             <div className="relative w-full sm:w-auto">
-              <select className="block w-full appearance-none rounded-lg border border-gray-300 pl-4 pr-10 py-3 text-gray-900 sm:text-sm">
-                <option>Export</option>
-                <option>PDF</option>
-                <option>CSV</option>
+              <select
+                className="block w-full appearance-none rounded-lg border border-gray-300 pl-4 pr-10 py-3 text-gray-900 sm:text-sm"
+                defaultValue="Export"
+                onChange={(e) => { handleExport(e.target.value); e.target.value = 'Export'; }}
+              >
+                <option value="Export">Export</option>
+                <option value="PDF">PDF</option>
+                <option value="CSV">CSV</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <ChevronDown className="h-5 w-5" />

@@ -15,13 +15,13 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
   const [formData, setFormData] = useState({
     id: 0,
     name: '',
-    type: 'Fixed',
+    type: 'Flat Rate',
     amount: '',
     loanAmount: '',
     loanInterestRate: '',
     interestAmount: '',
     loanPeriod: '',
-    defaultAmount: '500.00',
+    defaultAmount: '500',
     gracePeriod: '0',
     loanCharges: '0.00',
     benefits: ['Loan facility', 'Flexible repayment'],
@@ -38,18 +38,19 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
         id: packageData.id || 0,
         name: packageData.name || '',
         type: packageData.type || 'Flat Rate',
-        amount: packageData.amount?.toString() || '',
+        amount: packageData.amount?.toString() || packageData.loanAmount?.toString() || '',
         loanAmount: packageData.loanAmount?.toString() || packageData.amount?.toString() || '',
         loanInterestRate: packageData.loanInterestRate?.toString() || '',
-        interestAmount: packageData.interestAmount?.toString() || '',
-        loanPeriod: packageData.loanPeriod?.toString() || '',
-        defaultAmount: packageData.defaultAmount?.toString() || '500.00',
+        interestAmount: packageData.interestAmount?.toString() || (packageData as any).interest_amount?.toString() || '',
+        loanPeriod: packageData.loanPeriod?.toString() || packageData.period?.toString() || packageData.duration?.toString() || '',
+        defaultAmount: packageData.defaultAmount?.toString() || '500',
         gracePeriod: packageData.gracePeriod?.toString() || '0',
         loanCharges: packageData.loanCharges?.toString() || '0.00',
         benefits: packageData.benefits || ['Loan facility', 'Flexible repayment'],
         description: packageData.description || '',
         packageCategory: packageData.packageCategory || 'Loan'
       });
+      setErrors({});
     }
   }, [packageData]);
 
@@ -99,7 +100,7 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
         id: formData.id,
         name: formData.name,
         type: formData.type,
-        amount: parseFloat(formData.loanAmount), // Use loan amount as the main amount
+        amount: parseFloat(formData.loanAmount),
         seedAmount: parseFloat(formData.loanAmount),
         seedType: 'Loan amount',
         period: parseInt(formData.loanPeriod),
@@ -130,21 +131,20 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
   return (
    <>
      {/* Overlay backdrop */}
-      {edit &&  (
+      {edit && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/20  z-50 "
+          className="fixed inset-0 bg-black/20 z-50"
         />
       )}
 
-      <div  className={`fixed top-0 right-0 h-screen w-full max-w-full sm:w-[532px] bg-white shadow-xl
+      <div className={`fixed top-0 right-0 h-screen w-full max-w-full sm:w-[532px] bg-white shadow-xl
           transform transition-transform duration-300 ease-in-out z-50
           flex flex-col ${edit ? 'translate-x-0' : 'translate-x-full'}`}>
 
-
           <div className="flex p-4 items-center justify-between">
             <h1 className='text-[20px] font-inter font-semibold leading-[30px] max-md:text-[14px]'>Edit loan package</h1>
-            <Image src="/icons/close.svg" alt="dashboard" width={14} height={14} className="cursor-pointer" onClick={onClose} />
+            <Image src="/icons/close.svg" alt="close" width={14} height={14} className="cursor-pointer" onClick={onClose} />
           </div>
           <div className='border-t-[1px] w-full mb-1'></div>
 
@@ -234,18 +234,19 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
             {errors.loanPeriod && <p className="text-red-500 text-xs mt-1">{errors.loanPeriod}</p>}
           </div>
 
-
-
           <div className="mb-4">
             <p className='mb-1 font-inter font-medium text-[14px] leading-[20px]'>Default amount</p>
             <input 
               type="number" 
               step="0.01"
-              placeholder='1000.00' 
+              placeholder='500.00' 
+              min="500"
               value={formData.defaultAmount}
               onChange={(e) => handleInputChange('defaultAmount', e.target.value)}
-              className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' 
+              className={`w-full h-[45px] border ${errors.defaultAmount ? 'border-red-500' : 'border-[#D0D5DD]'} p-[10px] rounded-[4px] outline-none`} 
             />
+            {errors.defaultAmount && <p className="text-red-500 text-xs mt-1">{errors.defaultAmount}</p>}
+            <p className='text-xs text-gray-500 mt-1'>Minimum: 500 Naira</p>
           </div>
 
           <div className="mb-4">
@@ -269,6 +270,7 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
               onChange={(e) => handleInputChange('loanCharges', e.target.value)}
               className='w-full h-[45px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none' 
             />
+            <p className='text-xs text-gray-500 mt-1'>Note: Charges will be deducted from the customer's first approved loan</p>
           </div>
 
           <div className="mb-4">
@@ -279,10 +281,10 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
               onChange={(e) => handleInputChange('description', e.target.value)}
               className='w-full h-[80px] border border-[#D0D5DD] p-[10px] rounded-[4px] outline-none resize-none' 
             />
-        </div>
+          </div>
         </form>
 
-        <div className='border-t-[1px] w-full mb-1  mt-5'></div>
+        <div className='border-t-[1px] w-full mb-1 mt-5'></div>
 
         <div className='mt-[15px] flex justify-center mb-8'>
           <button 
@@ -301,4 +303,4 @@ const Editpackage = ({ edit, onClose, packageData, onPackageUpdated }: pack) => 
   )
 }
 
-export default Editpackage
+export default Editpackage

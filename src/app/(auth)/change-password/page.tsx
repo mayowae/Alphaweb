@@ -27,7 +27,8 @@ export default function ResetPassword() {
       return;
     }
 
-    const email = localStorage.getItem('email');
+    const rawEmail = localStorage.getItem('email');
+    const email = rawEmail ? String(rawEmail).trim().toLowerCase() : '';
     if (!email) {
       Swal.fire({ icon: "error", title: "Session Expired", text: "Email not found. Please start over." });
       router.push('/forgot-password');

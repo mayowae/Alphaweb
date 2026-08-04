@@ -20,10 +20,11 @@ export default function ForgotPassword() {
 
     try {
       setIsLoading(true);
-      await collaboratorForgotPassword(email);
+      const cleanEmail = String(email).trim().toLowerCase();
+      await collaboratorForgotPassword(cleanEmail);
       
       // Store email for verify-otp and change-password pages
-      localStorage.setItem('collaborator_email', email);
+      localStorage.setItem('collaborator_email', cleanEmail);
       
       Swal.fire({ 
         icon: "success", 

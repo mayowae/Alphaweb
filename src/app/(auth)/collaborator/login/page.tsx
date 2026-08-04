@@ -28,7 +28,8 @@ export default function Login() {
 
     try {
       const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://alphakolect.com';
-      const response = await fetch(`${BASE_URL}/collaborator/login`, {
+      const apiUrl = BASE_URL.endsWith('/api') ? `${BASE_URL}/collaborator/login` : `${BASE_URL}/api/collaborator/login`;
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
