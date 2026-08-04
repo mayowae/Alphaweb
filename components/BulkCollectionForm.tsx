@@ -1,230 +1,320 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Lock, Plus } from 'lucide-react';
-import { createCollection, fetchCustomers, fetchPackages } from '../services/api';
+import { FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
+import { fetchCustomers, fetchPackages, createCollection } from '../services/api';
+import Swal from 'sweetalert2';
 
-type Row = {
-  customerName: string;
-  packageName: string;
-  packageAmount: string;
-  dueDate: string;
-  cycleCounter: string;
-};
-
-const EMPTY_ROW: Row = {
-  customerName: '',
-  packageName: '',
-  packageAmount: '',
-  dueDate: '',
-  cycleCounter: '1',
-};
-
-type Props = {
+interface BulkCollectionFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-};
+}
 
-export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: Props) {
-  const [rows, setRows] = useState<Row[]>([{ ...EMPTY_ROW }]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [collectionPackages, setCollectionPackages] = useState<any[]>([]);
+interface Customer {
+  id: number;
+  fullName: string;
+  accountNumber?: string;
+  packageId?: number | string;
+  packageName?: string;
+}
+
+interface Package {
+  id: number;
+  name: string;
+  amount: number;
+  packageCategory?: string;
+}
+
+interface CollectionRow {
+  id: string;
+  selectedCustomerId: string;
+  customerName: string;
+  selectedPackageId: string;
+  packageName: string;
+  packageAmount: string;
+  cycle: number;
+  cycleCounter: number;
+  dueDate: string;
+}
+
+const createDefaultRow = (): CollectionRow => ({
+  id: Math.random().toString(36).substring(2, 9),
+  selectedCustomerId: '',
+  customerName: '',
+  selectedPackageId: '',
+  packageName: '',
+  packageAmount: '',
+  cycle: 31,
+  cycleCounter: 1,
+  dueDate: new Date().toISOString().split('T')[0]
+});
+
+export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkCollectionFormProps) {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<CollectionRow[]>([createDefaultRow()]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setRows([{ ...EMPTY_ROW }]);
-
-    fetchCustomers()
-      .then((res) => setCustomers((res as any)?.customers || (Array.isArray(res) ? res : [])))
-      .catch(() => setCustomers([]));
-
-    fetchPackages('Collection')
-      .then((res: any) => setCollectionPackages(res.packages || []))
-      .catch(() => setCollectionPackages([]));
+    if (isOpen) {
+      fetchData();
+      setRows([createDefaultRow()]);
+    }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const fetchData = async () => {
+    try {
+      const [customersRes, packagesRes] = await Promise.all([
+        fetchCustomers().catch(() => ({ customers: [] })),
+        fetchPackages('Collection').catch(() => [])
+      ]);
 
-  const updateRow = (idx: number, patch: Partial<Row>) =>
-    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+      const rawCusts = (customersRes as any).customers || (customersRes as any).data || customersRes || [];
+      setCustomers(Array.isArray(rawCusts) ? rawCusts : []);
 
-  const handleCustomerChange = (idx: number, customerName: string) => {
-    const customer = customers.find((c) => (c.fullName || c.name) === customerName);
-    if (customer) {
-      const pkgName = customer.packageName && customer.packageName !== '—' ? customer.packageName : '';
-      const pkgAmt  = customer.packageAmount != null ? String(customer.packageAmount) : '';
-      updateRow(idx, { customerName, packageName: pkgName, packageAmount: pkgAmt });
-    } else {
-      updateRow(idx, { customerName, packageName: '', packageAmount: '' });
+      const rawPkgs = ((packagesRes as any).packages || (packagesRes as any).data || packagesRes || []) as Package[];
+      const collectionPkgs = (Array.isArray(rawPkgs) ? rawPkgs : []).filter(
+        (p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'collection'
+      );
+      setPackages(collectionPkgs);
+    } catch (error) {
+      console.error('Failed to fetch bulk collection form data:', error);
     }
   };
 
-  const addRow    = () => setRows((p) => [...p, { ...EMPTY_ROW }]);
-  const removeRow = (idx: number) => setRows((p) => p.filter((_, i) => i !== idx));
+  const handleCustomerChange = (rowId: string, custId: string) => {
+    setRows(prevRows =>
+      prevRows.map(row => {
+        if (row.id !== rowId) return row;
+        if (!custId) {
+          return { ...row, selectedCustomerId: '', customerName: '', selectedPackageId: '', packageName: '', packageAmount: '' };
+        }
+        const customer = customers.find(c => c.id.toString() === custId);
+        if (!customer) return row;
+
+        let assignedPkg = null;
+        const pkgId = customer.packageId || (customer as any).package_id || (customer as any).PackageId || (customer as any).Package?.id;
+        if (pkgId) assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
+        if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
+          assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
+        }
+        const selectedPkg = assignedPkg || (packages.length > 0 ? packages[0] : null);
+
+        return {
+          ...row,
+          selectedCustomerId: customer.id.toString(),
+          customerName: customer.fullName || (customer as any).name || '',
+          selectedPackageId: selectedPkg ? selectedPkg.id.toString() : '',
+          packageName: selectedPkg ? selectedPkg.name : '',
+          packageAmount: selectedPkg ? selectedPkg.amount.toString() : ''
+        };
+      })
+    );
+  };
+
+  const handlePackageChange = (rowId: string, pkgId: string) => {
+    setRows(prevRows =>
+      prevRows.map(row => {
+        if (row.id !== rowId) return row;
+        const selectedPackage = packages.find(pkg => pkg.id.toString() === pkgId);
+        return {
+          ...row,
+          selectedPackageId: pkgId,
+          packageName: selectedPackage?.name || '',
+          packageAmount: selectedPackage ? selectedPackage.amount.toString() : row.packageAmount
+        };
+      })
+    );
+  };
+
+  const handleFieldChange = (rowId: string, fieldName: keyof CollectionRow, value: any) => {
+    setRows(prevRows => prevRows.map(row => row.id !== rowId ? row : { ...row, [fieldName]: value }));
+  };
+
+  const handleAddRow = () => setRows(prev => [...prev, createDefaultRow()]);
+  const handleRemoveRow = (rowId: string) => { if (rows.length > 1) setRows(prev => prev.filter(r => r.id !== rowId)); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const invalidRow = rows.find(r => !r.selectedCustomerId || !r.packageName || !r.packageAmount);
+    if (invalidRow) {
+      Swal.fire({ icon: 'warning', title: 'Missing Information', text: 'Please select a customer, package, and amount for all rows.' });
+      return;
+    }
     setLoading(true);
     try {
-      for (const r of rows) {
-        if (!r.customerName || !r.packageAmount) continue;
+      for (const row of rows) {
         await createCollection({
-          customerName: r.customerName,
-          amount: Number(r.packageAmount || 0),
-          dueDate: r.dueDate,
-          type: r.packageName || 'Savings Collection',
-          packageName: r.packageName,
+          customerName: row.customerName,
+          amount: parseFloat(row.packageAmount),
+          dueDate: row.dueDate || new Date().toISOString().split('T')[0],
+          type: 'Package Payment',
+          packageName: row.packageName,
+          packageAmount: parseFloat(row.packageAmount),
+          cycle: parseInt(row.cycle.toString()) || 31,
+          cycleCounter: parseInt(row.cycleCounter.toString()) || 1,
+          isFirstCollection: parseInt(row.cycleCounter.toString()) === 1
         });
       }
+      Swal.fire({ icon: 'success', title: 'Success', text: `${rows.length} collection(s) posted successfully!` });
       onSuccess();
       onClose();
+    } catch (error: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to post bulk collection' });
     } finally {
       setLoading(false);
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white w-full max-w-4xl rounded-xl shadow-xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900">Bulk Collection</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-semibold text-gray-900">Bulk Collection</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><FaTimes size={20} /></button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-3 max-h-[60vh] overflow-auto pr-1">
-            {rows.map((r, i) => {
-              const customer = customers.find((c) => (c.fullName || c.name) === r.customerName);
-              const hasPackage = Boolean(customer?.packageName && customer.packageName !== '—');
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="space-y-3">
+            {rows.map((row) => (
+              <div key={row.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-wrap items-end gap-3">
 
-              return (
-                <div key={i} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  {/* Customer */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Customer *</label>
-                    <select
-                      value={r.customerName}
-                      onChange={(e) => handleCustomerChange(i, e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                      required
-                    >
-                      <option value="">Select customer</option>
-                      {customers.map((c: any) => (
-                        <option key={c.id} value={c.fullName || c.name}>{c.fullName || c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Package Name */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">
-                      Package {hasPackage && <Lock className="h-3 w-3 text-gray-400" />}
-                    </label>
-                    {hasPackage ? (
-                      <input
-                        type="text"
-                        value={r.packageName}
-                        readOnly
-                        className="w-full border border-gray-200 bg-white rounded-lg px-2 py-1.5 text-sm text-gray-600 cursor-not-allowed"
-                        title="Prefilled from customer's registered package"
-                      />
-                    ) : (
-                      <select
-                        value={r.packageName}
-                        onChange={(e) => {
-                          const pkg = collectionPackages.find((p: any) => p.name === e.target.value);
-                          updateRow(i, {
-                            packageName: e.target.value,
-                            packageAmount: pkg ? String(pkg.amount) : r.packageAmount,
-                          });
-                        }}
-                        className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                      >
-                        <option value="">Select</option>
-                        {collectionPackages.map((pkg: any) => (
-                          <option key={pkg.id} value={pkg.name}>{pkg.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Package Amount */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1 flex items-center gap-1">
-                      Amount {hasPackage && <Lock className="h-3 w-3 text-gray-400" />}
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₦</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={r.packageAmount}
-                        onChange={(e) => !hasPackage && updateRow(i, { packageAmount: e.target.value })}
-                        readOnly={hasPackage}
-                        className={`w-full border rounded-lg pl-5 pr-2 py-1.5 text-sm ${
-                          hasPackage
-                            ? 'border-gray-200 bg-white text-gray-600 cursor-not-allowed'
-                            : 'border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                        }`}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Due Date */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
-                    <input
-                      type="date"
-                      value={r.dueDate}
-                      onChange={(e) => updateRow(i, { dueDate: e.target.value })}
-                      className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  {/* Remove */}
-                  <div className="flex items-end">
-                    {rows.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeRow(i)}
-                        className="w-full px-2 py-1.5 text-xs text-red-500 border border-red-200 rounded-lg hover:bg-red-50"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
+                {/* Customer */}
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Customer *</label>
+                  <select
+                    value={row.selectedCustomerId}
+                    onChange={(e) => handleCustomerChange(row.id, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    required
+                  >
+                    <option value="">Select customer</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.fullName || (c as any).name}{c.accountNumber ? ` • ${c.accountNumber}` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              );
-            })}
+
+                {/* Package */}
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Package *</label>
+                  <select
+                    value={row.selectedPackageId}
+                    onChange={(e) => handlePackageChange(row.id, e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    required
+                  >
+                    {packages.length === 0 ? (
+                      <option value="">No Collection package</option>
+                    ) : (
+                      <>
+                        <option value="">Select Package</option>
+                        {packages.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Amount */}
+                <div className="w-full sm:w-28">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Amount *</label>
+                  <input
+                    type="number"
+                    value={row.packageAmount}
+                    onChange={(e) => handleFieldChange(row.id, 'packageAmount', e.target.value)}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    required
+                  />
+                </div>
+
+                {/* Cycle */}
+                <div className="w-full sm:w-20">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Cycle</label>
+                  <input
+                    type="number"
+                    value={row.cycle}
+                    onChange={(e) => handleFieldChange(row.id, 'cycle', parseInt(e.target.value) || 31)}
+                    min="1"
+                    max="365"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm text-center"
+                  />
+                </div>
+
+                {/* Cycle Counter */}
+                <div className="w-full sm:w-20">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Counter</label>
+                  <input
+                    type="number"
+                    value={row.cycleCounter}
+                    onChange={(e) => handleFieldChange(row.id, 'cycleCounter', parseInt(e.target.value) || 1)}
+                    min="1"
+                    max="365"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm text-center"
+                  />
+                </div>
+
+                {/* Due Date */}
+                <div className="w-full sm:w-36">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Due Date *</label>
+                  <input
+                    type="date"
+                    value={row.dueDate}
+                    onChange={(e) => handleFieldChange(row.id, 'dueDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    required
+                  />
+                </div>
+
+                {/* Remove row */}
+                {rows.length > 1 && (
+                  <div className="flex items-end pb-1">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveRow(row.id)}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                      title="Remove Row"
+                    >
+                      <FaTrash size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
-          {/* Add Row */}
-          <button
-            type="button"
-            onClick={addRow}
-            className="mt-3 flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800"
-          >
-            <Plus className="h-4 w-4" />
-            Add another customer
-          </button>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={handleAddRow}
+              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-semibold text-sm cursor-pointer"
+            >
+              <FaPlus size={14} />
+              + Add another customer
+            </button>
+          </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+          <div className="flex justify-end space-x-3 pt-6 border-t">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Save All'}
             </button>
