@@ -38,7 +38,8 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
     packageAmount: '',
     numberOfDays: '',
     totalAmount: '',
-    cycleCounter: 1
+    cycleCounter: 1,
+    dueDate: new Date().toISOString().split('T')[0]
   });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -49,6 +50,10 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchData();
+      setFormData(prev => ({
+        ...prev,
+        dueDate: new Date().toISOString().split('T')[0]
+      }));
     }
   }, [isOpen]);
 
@@ -69,10 +74,21 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+
+      if (name === 'packageAmount' || name === 'numberOfDays') {
+        const pkgAmt = name === 'packageAmount' ? parseFloat(value) : parseFloat(prev.packageAmount);
+        const days = name === 'numberOfDays' ? parseInt(value) : parseInt(prev.numberOfDays);
+        if (!isNaN(pkgAmt) && !isNaN(days) && days > 0) {
+          updated.totalAmount = (pkgAmt * days).toString();
+        } else {
+          updated.totalAmount = '';
+        }
+      }
+
+      return updated;
+    });
 
     if (name === 'customerName') {
       const filtered = customers.filter(customer =>
@@ -81,7 +97,6 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
       setFilteredCustomers(filtered);
       setShowCustomerDropdown(value.length > 0);
 
-      // Clear selection when searching
       setFormData(prev => ({
         ...prev,
         selectedCustomerId: '',
@@ -91,29 +106,20 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
         totalAmount: ''
       }));
     }
-
-    // Auto-calculate total amount when package amount or number of days changes
-    if (name === 'packageAmount' || name === 'numberOfDays') {
-      const packageAmount = name === 'packageAmount' ? parseFloat(value) : parseFloat(formData.packageAmount);
-      const days = name === 'numberOfDays' ? parseInt(value) : parseInt(formData.numberOfDays);
-      
-      if (!isNaN(packageAmount) && !isNaN(days) && days > 0) {
-        setFormData(prev => ({
-          ...prev,
-          totalAmount: (packageAmount * days).toString()
-        }));
-      }
-    }
   };
 
   const handlePackageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const packageId = e.target.value;
     const selectedPackage = packages.find(pkg => pkg.id.toString() === packageId);
+    const amt = selectedPackage ? selectedPackage.amount : parseFloat(formData.packageAmount || '0');
+    const days = parseInt(formData.numberOfDays || '0');
+
     setFormData(prev => ({
       ...prev,
       selectedPackageId: packageId,
       packageName: selectedPackage?.name || '',
-      packageAmount: selectedPackage ? selectedPackage.amount.toString() : ''
+      packageAmount: selectedPackage ? selectedPackage.amount.toString() : prev.packageAmount,
+      totalAmount: (!isNaN(amt) && days > 0) ? (amt * days).toString() : prev.totalAmount
     }));
   };
 
@@ -139,16 +145,18 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
       const numberOfDays = parseInt(formData.numberOfDays);
       const packageAmount = parseFloat(formData.packageAmount);
       const currentCounter = parseInt(formData.cycleCounter.toString());
-      const newCycleCounter = calculateCycleCounter(currentCounter, numberOfDays);
+      const baseDate = formData.dueDate ? new Date(formData.dueDate) : new Date();
 
-      // Create multiple collections for bulk posting
       const collections = [];
       for (let i = 0; i < numberOfDays; i++) {
         const dayCounter = ((currentCounter + i - 1) % 31) + 1;
+        const dayDate = new Date(baseDate);
+        dayDate.setDate(dayDate.getDate() + i);
+
         collections.push({
           customerName: formData.customerName,
           amount: packageAmount,
-          dueDate: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          dueDate: dayDate.toISOString().split('T')[0],
           type: 'Package Payment',
           packageName: formData.packageName,
           packageAmount: packageAmount,
@@ -158,7 +166,6 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
         });
       }
 
-      // Post all collections
       for (const collectionData of collections) {
         await createCollection(collectionData);
       }
@@ -228,19 +235,21 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
                         assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
                       }
                       
-                      // Fallback: Try matching by string name if backend provided a packageName but no straight ID
                       if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
                         assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
                       }
                       
+                      const days = parseInt(formData.numberOfDays || '0');
+                      const amt = assignedPkg ? assignedPkg.amount : 0;
+
                       setFormData(prev => ({ 
                         ...prev, 
                         customerName: customer.fullName,
                         selectedCustomerId: customer.id.toString(),
-                        selectedPackageId: assignedPkg ? assignedPkg.id.toString() : '',
-                        packageName: assignedPkg ? assignedPkg.name : '',
-                        packageAmount: assignedPkg ? assignedPkg.amount.toString() : '',
-                        totalAmount: (assignedPkg && formData.numberOfDays) ? (assignedPkg.amount * parseInt(formData.numberOfDays)).toString() : ''
+                        selectedPackageId: assignedPkg ? assignedPkg.id.toString() : (packages.length > 0 ? packages[0].id.toString() : ''),
+                        packageName: assignedPkg ? assignedPkg.name : (packages.length > 0 ? packages[0].name : ''),
+                        packageAmount: assignedPkg ? assignedPkg.amount.toString() : (packages.length > 0 ? packages[0].amount.toString() : ''),
+                        totalAmount: (amt && days > 0) ? (amt * days).toString() : prev.totalAmount
                       }));
                       
                       setShowCustomerDropdown(false);
@@ -262,44 +271,27 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
               name="selectedPackageId"
               value={formData.selectedPackageId}
               onChange={handlePackageChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                (() => {
-                  const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                  if (!c) return false;
-                  if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                  if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                    return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                  }
-                  return false;
-                })() ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               required
-              disabled={(() => {
-                const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                if (!c) return false;
-                if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                  return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                }
-                return false;
-              })()}
             >
-              <option value="">Select Package</option>
-               {packages
-                .filter(pkg => {
-                  // If a customer is selected and has a packageId, only show that package
-                  const selectedCustomer = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                  if (selectedCustomer?.packageId) {
-                    return pkg.id.toString() === selectedCustomer.packageId.toString();
-                  }
-                  return true;
-                })
-                .map((pkg) => (
-                  <option key={pkg.id} value={pkg.id}>
-                    {pkg.name} - ₦{pkg.amount?.toLocaleString()}
-                  </option>
-                ))}
+              {packages.length === 0 ? (
+                <option value="">No Collection package created yet</option>
+              ) : (
+                <>
+                  <option value="">Select Package</option>
+                  {packages.map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.name} - ₦{pkg.amount?.toLocaleString()}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
+            {packages.length === 0 && (
+              <p className="text-xs text-amber-700 mt-1">
+                ⚠️ No Collection packages found. Please create a Collection package under <strong>Package &gt; Collection</strong> first.
+              </p>
+            )}
           </div>
 
           <div>
@@ -314,27 +306,8 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
               placeholder="0.00"
               min="0"
               step="0.01"
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                (() => {
-                  const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                  if (!c) return false;
-                  if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                  if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                    return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                  }
-                  return false;
-                })() ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               required
-              readOnly={(() => {
-                const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                if (!c) return false;
-                if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                  return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                }
-                return false;
-              })()}
             />
           </div>
 
@@ -367,7 +340,7 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
               name="totalAmount"
               value={formData.totalAmount}
               placeholder="Auto-calculated"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 font-semibold"
               readOnly
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -386,12 +359,26 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
               onChange={handleInputChange}
               min="1"
               max="31"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
               readOnly
             />
             <p className="text-xs text-gray-500 mt-1">
               Will increase by the number of days (max 31, then resets to 1)
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Due Date *
+            </label>
+            <input
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              required
+            />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -404,7 +391,8 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-transparent rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-transparent rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
             >
               {loading ? 'Posting...' : 'Post Bulk Collection'}
             </button>

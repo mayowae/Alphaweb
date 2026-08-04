@@ -36,7 +36,8 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
     packageName: '',
     selectedPackageId: '',
     packageAmount: '',
-    cycleCounter: 1
+    cycleCounter: 1,
+    dueDate: new Date().toISOString().split('T')[0]
   });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -47,6 +48,10 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchData();
+      setFormData(prev => ({
+        ...prev,
+        dueDate: new Date().toISOString().split('T')[0]
+      }));
     }
   }, [isOpen]);
 
@@ -97,7 +102,7 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
       ...prev,
       selectedPackageId: packageId,
       packageName: selectedPackage?.name || '',
-      packageAmount: selectedPackage ? selectedPackage.amount.toString() : ''
+      packageAmount: selectedPackage ? selectedPackage.amount.toString() : prev.packageAmount
     }));
   };
 
@@ -118,7 +123,7 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
       const collectionData = {
         customerName: formData.customerName,
         amount: parseFloat(formData.packageAmount),
-        dueDate: new Date().toISOString().split('T')[0],
+        dueDate: formData.dueDate || new Date().toISOString().split('T')[0],
         type: 'Package Payment',
         packageName: formData.packageName,
         packageAmount: parseFloat(formData.packageAmount),
@@ -194,7 +199,6 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
                         assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
                       }
                       
-                      // Fallback: Try matching by string name if backend provided a packageName but no straight ID
                       if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
                         assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
                       }
@@ -203,9 +207,9 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
                         ...prev, 
                         customerName: customer.fullName,
                         selectedCustomerId: customer.id.toString(),
-                        selectedPackageId: assignedPkg ? assignedPkg.id.toString() : '',
-                        packageName: assignedPkg ? assignedPkg.name : '',
-                        packageAmount: assignedPkg ? assignedPkg.amount.toString() : ''
+                        selectedPackageId: assignedPkg ? assignedPkg.id.toString() : (packages.length > 0 ? packages[0].id.toString() : ''),
+                        packageName: assignedPkg ? assignedPkg.name : (packages.length > 0 ? packages[0].name : ''),
+                        packageAmount: assignedPkg ? assignedPkg.amount.toString() : (packages.length > 0 ? packages[0].amount.toString() : '')
                       }));
                       
                       setShowCustomerDropdown(false);
@@ -227,46 +231,19 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
               name="selectedPackageId"
               value={formData.selectedPackageId}
               onChange={handlePackageChange}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                (() => {
-                  const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                  if (!c) return false;
-                  if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                  if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                    return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                  }
-                  return false;
-                })() ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               required
-              disabled={(() => {
-                const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                if (!c) return false;
-                if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                  return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                }
-                return false;
-              })()}
             >
               {packages.length === 0 ? (
                 <option value="">No Collection package created yet</option>
               ) : (
                 <>
                   <option value="">Select Package</option>
-                  {packages
-                    .filter(pkg => {
-                      const selectedCustomer = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                      if (selectedCustomer?.packageId) {
-                        return pkg.id.toString() === selectedCustomer.packageId.toString();
-                      }
-                      return true;
-                    })
-                    .map((pkg) => (
-                      <option key={pkg.id} value={pkg.id}>
-                        {pkg.name} - ₦{pkg.amount?.toLocaleString()}
-                      </option>
-                    ))}
+                  {packages.map((pkg) => (
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.name} - ₦{pkg.amount?.toLocaleString()}
+                    </option>
+                  ))}
                 </>
               )}
             </select>
@@ -289,27 +266,8 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
               placeholder="0.00"
               min="0"
               step="0.01"
-              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                (() => {
-                  const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                  if (!c) return false;
-                  if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                  if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                    return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                  }
-                  return false;
-                })() ? 'bg-gray-100 cursor-not-allowed' : ''
-              }`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               required
-              readOnly={(() => {
-                const c = customers.find(c => c.id.toString() === formData.selectedCustomerId);
-                if (!c) return false;
-                if (c.packageId || (c as any).package_id || (c as any).PackageId) return true;
-                if (c.packageName && c.packageName !== '—' && c.packageName !== '-') {
-                  return !!packages.find(p => p.name.toLowerCase() === c.packageName!.toLowerCase());
-                }
-                return false;
-              })()}
             />
           </div>
 
@@ -324,12 +282,26 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
               onChange={handleInputChange}
               min="1"
               max="31"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
               readOnly
             />
             <p className="text-xs text-gray-500 mt-1">
               Automatically increments by 1 for single collection
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Due Date *
+            </label>
+            <input
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              required
+            />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -342,7 +314,8 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-transparent rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-transparent rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
             >
               {loading ? 'Posting...' : 'Post Single Collection'}
             </button>
