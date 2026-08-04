@@ -7,120 +7,46 @@ const { Role } = require('../models');
  *     description: Role management
  * /roles:
  *   get:
- *     summary: List all roles
+ *     summary: List all roles for authenticated merchant
  *     tags: [Roles]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Roles retrieved successfully
- *         content:
- *           application/json:
- *             example:
- *               message: "Roles retrieved successfully"
- *               roles:
- *                 - id: 1
- *                   roleName: "Admin"
- *                 - id: 2
- *                   roleName: "Manager"
  *   post:
- *     summary: Create role
+ *     summary: Create role for merchant
  *     tags: [Roles]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [roleName]
- *             properties:
- *               roleName: { type: string }
- *               cantView: { type: array, items: { type: string } }
- *               canViewOnly: { type: array, items: { type: string } }
- *               canEdit: { type: array, items: { type: string } }
- *               permissions: { type: object }
- *     responses:
- *       201:
- *         description: Role created successfully
- *         content:
- *           application/json:
- *             example:
- *               message: "Role created successfully"
- *               role:
- *                 id: 3
- *                 roleName: "Auditor"
- *       400:
- *         description: Role name already exists
  * /roles/{id}:
  *   get:
  *     summary: Get role by ID
  *     tags: [Roles]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *         description: Role ID
- *     responses:
- *       200:
- *         description: Role retrieved successfully
- *         content:
- *           application/json:
- *             example:
- *               message: "Role retrieved successfully"
- *               role:
- *                 id: 2
- *                 roleName: "Manager"
- *       404:
- *         description: Role not found
  *   put:
  *     summary: Update role
  *     tags: [Roles]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [id]
- *             properties:
- *               id: { type: integer }
- *               roleName: { type: string }
- *               cantView: { type: array, items: { type: string } }
- *               canViewOnly: { type: array, items: { type: string } }
- *               canEdit: { type: array, items: { type: string } }
- *               permissions: { type: object }
- *     responses:
- *       200:
- *         description: Role updated successfully
- *         content:
- *           application/json:
- *             example:
- *               message: "Role updated successfully"
- *               role:
- *                 id: 2
- *                 roleName: "Manager"
  */
 
 // Create role
 const createRole = async (req, res) => {
   try {
     const { roleName, cantView, canViewOnly, canEdit, permissions } = req.body;
+    const merchantId = req.user?.merchantId || (req.user?.type === 'merchant' ? req.user.id : null);
 
-    // Check if role already exists
-    const existingRole = await Role.findOne({ where: { roleName } });
+    if (!merchantId) {
+      return res.status(400).json({ message: 'merchantId is required' });
+    }
+
+    // Check if role already exists for this merchant
+    const existingRole = await Role.findOne({ where: { roleName, merchantId } });
     if (existingRole) {
       return res.status(400).json({ message: 'Role name already exists' });
     }
 
     // Create role
     const role = await Role.create({
+      merchantId,
       roleName,
       cantView,
       canViewOnly,
@@ -132,6 +58,7 @@ const createRole = async (req, res) => {
       message: 'Role created successfully',
       role: {
         id: role.id,
+        merchantId: role.merchantId,
         roleName: role.roleName,
         cantView: role.cantView,
         canViewOnly: role.canViewOnly,
@@ -149,15 +76,16 @@ const createRole = async (req, res) => {
 const updateRole = async (req, res) => {
   try {
     const { id, roleName, cantView, canViewOnly, canEdit, permissions } = req.body;
+    const merchantId = req.user?.merchantId || (req.user?.type === 'merchant' ? req.user.id : null);
 
     const role = await Role.findByPk(id);
-    if (!role) {
+    if (!role || (merchantId && role.merchantId && role.merchantId !== merchantId)) {
       return res.status(404).json({ message: 'Role not found' });
     }
 
-    // Check if name is being changed and if it's already taken
+    // Check if name is being changed and if it's already taken for this merchant
     if (roleName !== role.roleName) {
-      const existingRole = await Role.findOne({ where: { roleName } });
+      const existingRole = await Role.findOne({ where: { roleName, merchantId } });
       if (existingRole) {
         return res.status(400).json({ message: 'Role name already taken' });
       }
@@ -176,6 +104,7 @@ const updateRole = async (req, res) => {
       message: 'Role updated successfully',
       role: {
         id: role.id,
+        merchantId: role.merchantId,
         roleName: role.roleName,
         cantView: role.cantView,
         canViewOnly: role.canViewOnly,
@@ -189,11 +118,17 @@ const updateRole = async (req, res) => {
   }
 };
 
-// List all roles
+// List all roles for the authenticated merchant
 const listRoles = async (req, res) => {
   try {
+    const merchantId = req.user?.merchantId || (req.user?.type === 'merchant' ? req.user.id : null);
+    
+    // Scoped strictly to the requesting merchant
+    const whereClause = merchantId ? { merchantId } : {};
+
     const roles = await Role.findAll({
-      attributes: ['id', 'roleName', 'cantView', 'canViewOnly', 'canEdit', 'permissions', 'createdAt'],
+      where: whereClause,
+      attributes: ['id', 'merchantId', 'roleName', 'cantView', 'canViewOnly', 'canEdit', 'permissions', 'createdAt'],
       order: [['createdAt', 'DESC']],
     });
 
@@ -211,10 +146,11 @@ const listRoles = async (req, res) => {
 const getRoleById = async (req, res) => {
   try {
     const { id } = req.params;
+    const merchantId = req.user?.merchantId || (req.user?.type === 'merchant' ? req.user.id : null);
 
     const role = await Role.findByPk(id);
 
-    if (!role) {
+    if (!role || (merchantId && role.merchantId && role.merchantId !== merchantId)) {
       return res.status(404).json({ message: 'Role not found' });
     }
 

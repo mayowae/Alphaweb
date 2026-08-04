@@ -319,7 +319,7 @@ const createLoanApplication = async (req, res) => {
       collateral,
       packageName
     } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Check for running loan on this account number
     if (accountNumber) {
@@ -397,17 +397,23 @@ const createLoanApplication = async (req, res) => {
 // Get all loan applications for a merchant
 const getLoanApplications = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { 
       status, 
       search, 
       fromDate, 
       toDate, 
       page = 1, 
-      limit = 10 
+      limit = 10,
+      customerId
     } = req.query;
 
     const whereClause = { merchantId };
+
+    // Add customer filter
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
     
     // Add status filter
     if (status && status !== 'all') {
@@ -433,6 +439,7 @@ const getLoanApplications = async (req, res) => {
         { agentName: { [Op.iLike]: `%${search}%` } }
       ];
     }
+
 
     const offset = (page - 1) * limit;
     
@@ -479,7 +486,7 @@ const getLoanApplications = async (req, res) => {
 const getLoanApplicationById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const application = await LoanApplication.findOne({
       where: { 
@@ -526,7 +533,7 @@ const updateApplicationStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes, rejectionReason } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const staffId = req.user.id; // Assuming staff ID is available
 
     const application = await LoanApplication.findOne({
@@ -577,7 +584,7 @@ const updateApplicationStatus = async (req, res) => {
 const deleteLoanApplication = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const application = await LoanApplication.findOne({
       where: { 

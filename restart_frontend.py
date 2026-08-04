@@ -1,39 +1,27 @@
 import paramiko
-import time
 
-hostname = '159.198.36.24'
-port = 22
-username = 'root'
-password = 'Xr2J2Wx9Unk0l7rI1C'
+HOSTNAME = '159.198.36.24'
+USERNAME = 'root'
+PASSWORD = '87E4J4dIip0r7joTRG'
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname, port=port, username=username, password=password, timeout=30)
+client.connect(HOSTNAME, port=22, username=USERNAME, password=PASSWORD, timeout=30)
+print("Connected")
 
-log = open('restart_output.txt', 'w', encoding='utf-8')
+def run(cmd, desc=''):
+    print(f"\n>>> {desc or cmd}")
+    _, stdout, stderr = client.exec_command(cmd, timeout=60)
+    out = stdout.read().decode('utf-8', errors='replace').encode('ascii', errors='replace').decode('ascii')
+    err = stderr.read().decode('utf-8', errors='replace').encode('ascii', errors='replace').decode('ascii')
+    rc = stdout.channel.recv_exit_status()
+    if out: print(out)
+    if err: print("ERR:", err)
+    return rc
 
-def run(cmd):
-    stdin, stdout, stderr = client.exec_command(cmd)
-    return stdout.read().decode('utf-8', errors='replace') + stderr.read().decode('utf-8', errors='replace')
+# Restart the frontend process so it picks up the new .next build
+run("pm2 restart alphaweb-frontend 2>&1 | cat", "Restart frontend")
+run("pm2 list 2>&1 | cat", "PM2 list")
 
-def p(msg):
-    log.write(str(msg) + '\n')
-    log.flush()
-
-# Kill any process on 3000 then restart PM2 frontend
-run("fuser -k 3000/tcp")
-time.sleep(2)
-run("pm2 restart alphaweb-frontend")
-p("Frontend restarted.")
-time.sleep(5)
-
-# Check it's up
-out = run("netstat -tunlp | grep 3000")
-p("Port 3000 status:\n" + out)
-
-out = run("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/dashboard/subscription")
-p("HTTP status of /dashboard/subscription: " + out)
-
-log.close()
-print("Done - see restart_output.txt")
 client.close()
+print("\nDone!")

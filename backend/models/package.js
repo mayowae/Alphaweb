@@ -13,10 +13,10 @@ module.exports = (sequelize) => {
       comment: 'Package name (e.g., Alpha 1K, Beta 2K)'
     },
     type: {
-      type: DataTypes.ENUM('Fixed', 'Variable', 'Flexible'),
+      type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'Fixed',
-      comment: 'Package type: Fixed, Variable, or Flexible'
+      comment: 'Package type: Fixed, Variable, Flexible, Flat Rate, or Percentage Rate'
     },
     amount: {
       type: DataTypes.DECIMAL(15, 2),
@@ -205,32 +205,32 @@ module.exports = (sequelize) => {
         }
 
         // Set default extra charges if not provided
-        if (!packageData.extraCharges) {
+        if (packageData.extraCharges === undefined || packageData.extraCharges === null) {
           packageData.extraCharges = 0.00;
         }
 
         // Set default penalty if not provided
-        if (!packageData.defaultPenalty) {
+        if (packageData.defaultPenalty === undefined || packageData.defaultPenalty === null) {
           packageData.defaultPenalty = 0.00;
         }
 
         // Set default days if not provided
-        if (!packageData.defaultDays) {
+        if (packageData.defaultDays === undefined || packageData.defaultDays === null) {
           packageData.defaultDays = 0;
         }
 
         // Set default loan charges if not provided
-        if (!packageData.loanCharges) {
+        if (packageData.loanCharges === undefined || packageData.loanCharges === null) {
           packageData.loanCharges = 0.00;
         }
 
         // Set default grace period if not provided
-        if (!packageData.gracePeriod) {
+        if (packageData.gracePeriod === undefined || packageData.gracePeriod === null) {
           packageData.gracePeriod = 0;
         }
 
         // Set default amount if not provided
-        if (!packageData.defaultAmount) {
+        if (packageData.defaultAmount === undefined || packageData.defaultAmount === null) {
           packageData.defaultAmount = 0.00;
         }
 

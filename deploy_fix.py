@@ -4,37 +4,39 @@ import os
 hostname = '159.198.36.24'
 port = 22
 username = 'root'
-password = '96eUC4aTbMu1o3yAP2'
+password = 'yft1x2X89Z0MZrAvM9'
+
+# Local path
+local_file = r'c:\Users\trade\Documents\Alphaweb-main\backend\controllers\dashboardController.js'
+# Remote path
+remote_file = '/home/mayowae/public_html/alphaweb/backend/controllers/dashboardController.js'
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname, port=port, username=username, password=password, timeout=30)
 
-sftp = client.open_sftp()
+try:
+    print(f"Connecting to {hostname}...")
+    client.connect(hostname, port=port, username=username, password=password, timeout=30)
+    print("Connected successfully")
 
-# Local paths
-local_customer_ctrl = r'c:\Users\trade\Documents\Alphaweb-main\backend\controllers\customerController.js'
-local_collection_ctrl = r'c:\Users\trade\Documents\Alphaweb-main\backend\controllers\collectionController.js'
+    # Upload the file
+    sftp = client.open_sftp()
+    print(f"Uploading {local_file} to {remote_file}...")
+    sftp.put(local_file, remote_file)
+    sftp.close()
+    print("Upload complete")
 
-# Remote paths
-project_dir = "/home/mayowae/public_html/alphaweb"
-remote_customer_ctrl = f"{project_dir}/backend/controllers/customerController.js"
-remote_collection_ctrl = f"{project_dir}/backend/controllers/collectionController.js"
+    # Restart the backend
+    print("Restarting alphaweb-backend...")
+    stdin, stdout, stderr = client.exec_command("pm2 restart alphaweb-backend")
+    out = stdout.read().decode('utf-8', errors='replace')
+    err = stderr.read().decode('utf-8', errors='replace')
+    
+    if out: print(f"STDOUT: {out}")
+    if err: print(f"STDERR: {err}")
 
-# Upload files
-print(f"Uploading {local_customer_ctrl}...")
-sftp.put(local_customer_ctrl, remote_customer_ctrl)
-print(f"Uploading {local_collection_ctrl}...")
-sftp.put(local_collection_ctrl, remote_collection_ctrl)
+    client.close()
+    print("Deployment finished successfully")
 
-sftp.close()
-
-# Restart backend
-print("Restarting backend...")
-stdin, stdout, stderr = client.exec_command("pm2 restart all")
-print("PM2 restart output:")
-print(stdout.read().decode('utf-8'))
-print(stderr.read().decode('utf-8'))
-
-client.close()
-print("Deployment complete")
+except Exception as e:
+    print(f"Deployment failed: {e}")

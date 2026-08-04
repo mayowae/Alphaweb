@@ -1,0 +1,205 @@
+[TAILING] Tailing last 100 lines for [alphaweb-backend] process (change the value with --lines option)
+/root/.pm2/logs/alphaweb-backend-out.log last 100 lines:
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | JWT Secret being used: Set
+0|alphaweb | Token being verified: eyJhbGciOiJIUzI1NiIs...
+0|alphaweb | Token decoded successfully: { id: 5, type: 'merchant', email: 'mayowae@msn.com' }
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | Server is running on port 5000
+0|alphaweb | Database connection has been established successfully.
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+0|alphaweb | [DEBUG] db.Subscription type: function
+
+/root/.pm2/logs/alphaweb-backend-error.log last 100 lines:
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|alphaweb | /home/mayowae/public_html/alphaweb/backend/controllers/loanController.js:682
+0|alphaweb |       message: 'Loan status updated successfully',
+0|alphaweb |              ^
+0|alphaweb | 
+0|alphaweb | SyntaxError: Unexpected token ':'
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|alphaweb | /home/mayowae/public_html/alphaweb/backend/controllers/loanController.js:682
+0|alphaweb |       message: 'Loan status updated successfully',
+0|alphaweb |              ^
+0|alphaweb | 
+0|alphaweb | SyntaxError: Unexpected token ':'
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|alphaweb | /home/mayowae/public_html/alphaweb/backend/controllers/loanController.js:682
+0|alphaweb |       message: 'Loan status updated successfully',
+0|alphaweb |              ^
+0|alphaweb | 
+0|alphaweb | SyntaxError: Unexpected token ':'
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|alphaweb | /home/mayowae/public_html/alphaweb/backend/controllers/loanController.js:682
+0|alphaweb |       message: 'Loan status updated successfully',
+0|alphaweb |              ^
+0|alphaweb | 
+0|alphaweb | SyntaxError: Unexpected token ':'
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|alphaweb | /home/mayowae/public_html/alphaweb/backend/controllers/loanController.js:682
+0|alphaweb |       message: 'Loan status updated successfully',
+0|alphaweb |              ^
+0|alphaweb | 
+0|alphaweb | SyntaxError: Unexpected token ':'
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|alphaweb | /home/mayowae/public_html/alphaweb/backend/controllers/loanController.js:682
+0|alphaweb |       message: 'Loan status updated successfully',
+0|alphaweb |              ^
+0|alphaweb | 
+0|alphaweb | SyntaxError: Unexpected token ':'
+0|alphaweb |     at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1495:20)
+0|alphaweb |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|alphaweb |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|alphaweb |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|alphaweb |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+0|alphaweb |     at Hook._require.Module.require (/usr/local/lib/node_modules/pm2/node_modules/require-in-the-middle/index.js:101:39)
+0|alphaweb |     at require (node:internal/modules/helpers:182:18)
+0|alphaweb |     at Object.<anonymous> (/home/mayowae/public_html/alphaweb/backend/server.js:42:24)
+0|alphaweb |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+

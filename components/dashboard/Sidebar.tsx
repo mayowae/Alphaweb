@@ -25,16 +25,22 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
   const [staffPermissions, setStaffPermissions] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('staffPermissions');
-      if (stored) {
-        setStaffPermissions(JSON.parse(stored));
-      } else {
+    const checkPermissions = () => {
+      try {
+        const userType = localStorage.getItem('userType');
+        const stored = localStorage.getItem('staffPermissions');
+        if (userType === 'collaborator' && stored) {
+          setStaffPermissions(JSON.parse(stored));
+        } else {
+          setStaffPermissions(null);
+        }
+      } catch {
         setStaffPermissions(null);
       }
-    } catch {
-      setStaffPermissions(null);
-    }
+    };
+    checkPermissions();
+    window.addEventListener('storage', checkPermissions);
+    return () => window.removeEventListener('storage', checkPermissions);
   }, []);
 
   // Filter sidebar items based on staff permissions
@@ -70,7 +76,7 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
     <React.Fragment key={index}>
       {items.submenu ? (
         <div className=' flex flex-col cursor-pointer' >
-          <div className={`flex items-center gap-[12px] h-full py-2 px-4 ${activeSubmenu === index ? "bg-[#0D0264] rounded-md text-white h-[40px]" : ""}`} onClick={() => {
+          <div className={`flex items-center gap-[12px] min-h-[40px] py-2 px-4 ${activeSubmenu === index ? "bg-[#0D0264] rounded-md text-white" : ""}`} onClick={() => {
             setMenuOpen(menuOpen === index ? null : index);
             setActiveSubmenu(activeSubmenu === index ? null : index);
           }}>
@@ -85,10 +91,10 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
               />}
           </div>
 
-          {menuOpen === index && <div className='flex flex-col h-full pt-2'>
+          {menuOpen === index && <div className='flex flex-col pt-2'>
             {items.submenuitems?.map((item, index) =>{
               return (
-             <Link key={index} href={item.path} className={`flex items-center gap-[12px] h-full py-2 px-4 ${item.path === pathName ? "bg-[#7A69FC] text-white rounded-md h-[40px]" : ""}`}>
+             <Link key={index} href={item.path} className={`flex items-center gap-[12px] min-h-[40px] py-2 px-4 ${item.path === pathName ? "bg-[#7A69FC] text-white rounded-md" : ""}`}>
           <Image src={item.icon} alt={item.title + " icon"}  width={12} height={12}/>
           <span className='text-[14px] leading-6 antialiased'>{item.title}</span>
         </Link>
@@ -98,7 +104,7 @@ const DashBoardSidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
           </div>}
         </div>
       ) : (
-        <Link href={items.path} className={`flex items-center gap-[12px] h-full py-2 px-4 ${items.path === pathName ? "bg-[#7A69FC] text-white rounded-md h-[40px]" : ""}`}>
+        <Link href={items.path} className={`flex items-center gap-[12px] min-h-[40px] py-2 px-4 ${items.path === pathName ? "bg-[#7A69FC] text-white rounded-md" : ""}`}>
           <Image src={items.icon} alt={items.title + " icon"} className='my-[auto]' width={13} height={13} />
           <span className='leading-[24px]  text-[14px] my-[auto] antialiased'>{items.title}</span>
         </Link>

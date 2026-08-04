@@ -280,7 +280,7 @@ function resolveMerchantId(req) {
     if (req.user && req.user.merchantId) {
       return parseInt(req.user.merchantId, 10);
     }
-    if (req.user && req.user.type === 'merchant') {
+    if (req.user && (req.user.type === 'merchant' || req.user.type === 'collaborator' || req.user.type === 'staff')) {
       return parseInt(req.user.id, 10);
     }
     const fallback = req.query?.merchantId || req.body?.merchantId;
@@ -335,35 +335,45 @@ const createPackage = async (req, res) => {
       return res.status(400).json({ success: false, message: 'A package with this name already exists' });
     }
 
+    let parsedBenefits = benefits;
+    if (benefits) {
+      if (Array.isArray(benefits)) {
+        parsedBenefits = benefits;
+      } else if (typeof benefits === 'string') {
+        try { parsedBenefits = JSON.parse(benefits); } catch (_) { parsedBenefits = [benefits]; }
+      }
+    }
+
     const packageData = await Package.create({
       name,
       type: type || 'Fixed',
       amount: parseFloat(amount),
-      seedAmount: seedAmount ? parseFloat(seedAmount) : parseFloat(amount),
+      seedAmount: seedAmount !== undefined && seedAmount !== null && seedAmount !== '' ? parseFloat(seedAmount) : parseFloat(amount),
       seedType: seedType || 'First saving',
       period: parseInt(period) || parseInt(duration) || 360,
       collectionDays: collectionDays || 'Daily',
       duration: parseInt(duration),
-      benefits: Array.isArray(benefits) ? benefits : [benefits],
+      benefits: parsedBenefits || ['Daily savings', 'Low interest loans'],
       description: description || '',
       status: 'Active',
       merchantId,
       dateCreated: new Date(),
-      interestRate: interestRate ? parseFloat(interestRate) : null,
-      extraCharges: extraCharges ? parseFloat(extraCharges) : 0.00,
-      defaultPenalty: defaultPenalty ? parseFloat(defaultPenalty) : 0.00,
-      defaultDays: defaultDays ? parseInt(defaultDays) : 0,
-      defaultPercentageRate: defaultPercentageRate ? parseFloat(defaultPercentageRate) : null,
+      interestRate: interestRate !== undefined && interestRate !== null && interestRate !== '' ? parseFloat(interestRate) : null,
+      extraCharges: extraCharges !== undefined && extraCharges !== null && extraCharges !== '' ? parseFloat(extraCharges) : 0.00,
+      defaultPenalty: defaultPenalty !== undefined && defaultPenalty !== null && defaultPenalty !== '' ? parseFloat(defaultPenalty) : 0.00,
+      defaultDays: defaultDays !== undefined && defaultDays !== null && defaultDays !== '' ? parseInt(defaultDays) : 0,
+      defaultPercentageRate: defaultPercentageRate !== undefined && defaultPercentageRate !== null && defaultPercentageRate !== '' ? parseFloat(defaultPercentageRate) : null,
       // Loan-specific fields
-      loanAmount: loanAmount ? parseFloat(loanAmount) : null,
-      loanInterestRate: loanInterestRate ? parseFloat(loanInterestRate) : null,
-      interestAmount: interestAmount ? parseFloat(interestAmount) : null,
-      loanPeriod: loanPeriod ? parseInt(loanPeriod) : null,
-      defaultAmount: defaultAmount ? parseFloat(defaultAmount) : 0.00,
-      gracePeriod: gracePeriod ? parseInt(gracePeriod) : 0,
-      loanCharges: loanCharges ? parseFloat(loanCharges) : 0.00,
+      loanAmount: loanAmount !== undefined && loanAmount !== null && loanAmount !== '' ? parseFloat(loanAmount) : null,
+      loanInterestRate: loanInterestRate !== undefined && loanInterestRate !== null && loanInterestRate !== '' ? parseFloat(loanInterestRate) : null,
+      interestAmount: interestAmount !== undefined && interestAmount !== null && interestAmount !== '' ? parseFloat(interestAmount) : null,
+      loanPeriod: loanPeriod !== undefined && loanPeriod !== null && loanPeriod !== '' ? parseInt(loanPeriod) : null,
+      defaultAmount: defaultAmount !== undefined && defaultAmount !== null && defaultAmount !== '' ? parseFloat(defaultAmount) : 0.00,
+      gracePeriod: gracePeriod !== undefined && gracePeriod !== null && gracePeriod !== '' ? parseInt(gracePeriod) : 0,
+      loanCharges: loanCharges !== undefined && loanCharges !== null && loanCharges !== '' ? parseFloat(loanCharges) : 0.00,
       packageCategory: packageCategory || 'Investment'
     });
+
 
     res.status(201).json({
       success: true,
@@ -520,30 +530,43 @@ const updatePackage = async (req, res) => {
       });
     }
 
+    let parsedBenefits = packageData.benefits;
+    if (benefits) {
+      if (Array.isArray(benefits)) {
+        parsedBenefits = benefits;
+      } else if (typeof benefits === 'string') {
+        try {
+          parsedBenefits = JSON.parse(benefits);
+        } catch (_) {
+          parsedBenefits = [benefits];
+        }
+      }
+    }
+
     await packageData.update({
       name: name || packageData.name,
       type: type || packageData.type,
-      amount: amount ? parseFloat(amount) : packageData.amount,
-      seedAmount: seedAmount ? parseFloat(seedAmount) : packageData.seedAmount,
+      amount: amount !== undefined && amount !== null && amount !== '' ? parseFloat(amount) : packageData.amount,
+      seedAmount: seedAmount !== undefined && seedAmount !== null && seedAmount !== '' ? parseFloat(seedAmount) : packageData.seedAmount,
       seedType: seedType || packageData.seedType,
-      period: period ? parseInt(period) : packageData.period,
+      period: period !== undefined && period !== null && period !== '' ? parseInt(period) : packageData.period,
       collectionDays: collectionDays || packageData.collectionDays,
-      duration: duration ? parseInt(duration) : packageData.duration,
-      benefits: benefits ? (Array.isArray(benefits) ? benefits : [benefits]) : packageData.benefits,
+      duration: duration !== undefined && duration !== null && duration !== '' ? parseInt(duration) : packageData.duration,
+      benefits: parsedBenefits,
       description: description !== undefined ? description : packageData.description,
       status: status || packageData.status,
-      interestRate: interestRate ? parseFloat(interestRate) : packageData.interestRate,
-      extraCharges: extraCharges ? parseFloat(extraCharges) : packageData.extraCharges,
-      defaultPenalty: defaultPenalty ? parseFloat(defaultPenalty) : packageData.defaultPenalty,
-      defaultDays: defaultDays ? parseInt(defaultDays) : packageData.defaultDays,
+      interestRate: interestRate !== undefined && interestRate !== null && interestRate !== '' ? parseFloat(interestRate) : packageData.interestRate,
+      extraCharges: extraCharges !== undefined && extraCharges !== null && extraCharges !== '' ? parseFloat(extraCharges) : packageData.extraCharges,
+      defaultPenalty: defaultPenalty !== undefined && defaultPenalty !== null && defaultPenalty !== '' ? parseFloat(defaultPenalty) : packageData.defaultPenalty,
+      defaultDays: defaultDays !== undefined && defaultDays !== null && defaultDays !== '' ? parseInt(defaultDays) : packageData.defaultDays,
       // Loan-specific fields
-      loanAmount: loanAmount ? parseFloat(loanAmount) : packageData.loanAmount,
-      loanInterestRate: loanInterestRate ? parseFloat(loanInterestRate) : packageData.loanInterestRate,
-      interestAmount: interestAmount ? parseFloat(interestAmount) : packageData.interestAmount,
-      loanPeriod: loanPeriod ? parseInt(loanPeriod) : packageData.loanPeriod,
-      defaultAmount: defaultAmount ? parseFloat(defaultAmount) : packageData.defaultAmount,
-      gracePeriod: gracePeriod ? parseInt(gracePeriod) : packageData.gracePeriod,
-      loanCharges: loanCharges ? parseFloat(loanCharges) : packageData.loanCharges,
+      loanAmount: loanAmount !== undefined && loanAmount !== null && loanAmount !== '' ? parseFloat(loanAmount) : packageData.loanAmount,
+      loanInterestRate: loanInterestRate !== undefined && loanInterestRate !== null && loanInterestRate !== '' ? parseFloat(loanInterestRate) : packageData.loanInterestRate,
+      interestAmount: interestAmount !== undefined && interestAmount !== null && interestAmount !== '' ? parseFloat(interestAmount) : packageData.interestAmount,
+      loanPeriod: loanPeriod !== undefined && loanPeriod !== null && loanPeriod !== '' ? parseInt(loanPeriod) : packageData.loanPeriod,
+      defaultAmount: defaultAmount !== undefined && defaultAmount !== null && defaultAmount !== '' ? parseFloat(defaultAmount) : packageData.defaultAmount,
+      gracePeriod: gracePeriod !== undefined && gracePeriod !== null && gracePeriod !== '' ? parseInt(gracePeriod) : packageData.gracePeriod,
+      loanCharges: loanCharges !== undefined && loanCharges !== null && loanCharges !== '' ? parseFloat(loanCharges) : packageData.loanCharges,
       packageCategory: packageCategory || packageData.packageCategory
     });
 

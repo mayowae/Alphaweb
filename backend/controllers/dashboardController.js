@@ -8,7 +8,8 @@ const {
   LoanApplication,
   Merchant,
   WalletTransaction,
-  Collection
+  Collection,
+  CustomerWallet
 } = require('../models');
 const { Op, col, where } = require('sequelize');
 
@@ -83,44 +84,48 @@ const { Op, col, where } = require('sequelize');
 // Get dashboard statistics
 const getDashboardStats = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Get counts for various entities
+    const merchant = await Merchant.findByPk(merchantId);
+    const smsBalance = merchant?.sms_balance || 0;
+
     const [
       totalCustomers,
       totalAgents,
       activeLoans,
       activeInvestments,
-      totalCollections,
-      totalDue,
-      smsBalance
+      packageCollectionsSum,
+      loanRepaymentsSum,
+      totalDue
     ] = await Promise.all([
       Customer.count({ where: { merchantId } }),
       Agent.count({ where: { merchantId } }),
       Loan.count({ where: { merchantId, status: 'Active' } }),
       Investment.count({ where: { merchantId, status: 'Active' } }),
+      Collection.sum('amountCollected', { where: { merchantId, status: 'Collected' } }),
       Repayment.sum('amount', { where: { merchantId, status: 'Completed' } }),
-      Loan.sum('remainingAmount', { where: { merchantId, status: 'Active' } }),
-      // SMS balance - calculate based on available balance or set a default
-      // This could be integrated with an actual SMS service API
-      Math.floor(Math.random() * 100) + 50 // Dynamic placeholder for now
+      Loan.sum('remainingAmount', { where: { merchantId, status: 'Active' } })
     ]);
 
-    // Calculate wallet balance from transactions
+    const totalCollections = (parseFloat(packageCollectionsSum || 0) + parseFloat(loanRepaymentsSum || 0));
+
+    // Calculate wallet balance from TransactPay live balance
     const { getWalletBalance: fetchTpBalance } = require('../utils/transactPay');
-    const merchant = await Merchant.findByPk(merchantId);
     
     let walletBalance = 0;
-    let allCollectionWallet = 0;
     let fetchedFromWallet = false;
 
-    if (merchant && merchant.accountNumber) {
-        const tpBalanceData = await fetchTpBalance(merchant.accountNumber);
+    if (merchant) {
+      try {
+        const tpBalanceData = await fetchTpBalance(merchant.currency || 'NGN');
         if (tpBalanceData) {
-            walletBalance = parseFloat(tpBalanceData.availableBalance || tpBalanceData.balance || 0);
-            allCollectionWallet = walletBalance; // Or calculate differently if needed
-            fetchedFromWallet = true;
+          walletBalance = parseFloat(tpBalanceData.availableBalance ?? tpBalanceData.balance ?? 0);
+          fetchedFromWallet = true;
         }
+      } catch (err) {
+        console.error('TransactPay live balance error on dashboard:', err.message);
+      }
     }
 
     if (!fetchedFromWallet) {
@@ -131,18 +136,21 @@ const getDashboardStats = async (req, res) => {
 
         walletTransactions.forEach(transaction => {
           if (transaction.status === 'Completed') {
-            const amount = parseFloat(transaction.amount);
-            const tt = transaction.transactionType || transaction.type;
-            if (tt === 'credit' || tt === 'initial_balance') {
+            const amount = parseFloat(transaction.amount || 0);
+            const tt = (transaction.transactionType || transaction.type || '').toLowerCase();
+            if (tt === 'credit' || tt === 'initial_balance' || tt === 'remittance_approval') {
               walletBalance += amount;
-              allCollectionWallet += amount;
-            } else if (tt === 'debit') {
+            } else if (tt === 'debit' || tt === 'charge_deduction' || tt === 'loan_disbursement') {
               walletBalance -= amount;
-              allCollectionWallet -= amount;
             }
           }
         });
     }
+
+    // Cumulative Collection Wallets - sum of all customer wallet balances
+    const allCollectionWallet = await CustomerWallet.sum('balance', { 
+        where: { merchantId } 
+    }) || 0;
 
     res.json({
       success: true,
@@ -171,7 +179,7 @@ const getDashboardStats = async (req, res) => {
 // Get transaction statistics for charts
 const getTransactionStats = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { duration = 'Last 12 months' } = req.query;
 
     // Calculate date range based on duration
@@ -259,7 +267,7 @@ const getTransactionStats = async (req, res) => {
 // Get agent vs customer statistics
 const getAgentCustomerStats = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const [totalAgents, totalCustomers] = await Promise.all([
       Agent.count({ where: { merchantId } }),
@@ -347,18 +355,8 @@ const getAgentSummary = async (req, res) => {
       Repayment.sum('amount', { where: { merchantId, status: 'Completed', date: { [Op.gte]: startOfMonth } } }),
       Merchant.findByPk(merchantId),
       Customer.count({ where: { merchantId } }),
-      // Accumulated balance from customer wallets if available; fallback to 0
-      // Using WalletTransaction as proxy: sum of credits - debits
-      (async () => {
-        const txs = await WalletTransaction.findAll({ where: { merchantId, status: 'Completed' }, attributes: ['type','transactionType','amount'] });
-        let net = 0;
-        for (const t of txs) {
-          const amount = parseFloat(t.amount);
-          const tt = t.transactionType || t.type;
-          if (tt === 'credit') net += amount; else if (tt === 'debit') net -= amount; else if (tt === 'initial_balance') net += amount;
-        }
-        return net;
-      })()
+      // Accumulated balance from customer wallets
+      CustomerWallet.sum('balance', { where: { merchantId } })
     ]);
 
     // Currency symbol mapping

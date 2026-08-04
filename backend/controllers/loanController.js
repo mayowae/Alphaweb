@@ -1,5 +1,6 @@
 const { Loan, Customer, Agent, Staff } = require('../models');
 const { Op } = require('sequelize');
+const { postJournalForTransaction } = require('../utils/transactionMapping');
 
 /**
  * @swagger
@@ -387,7 +388,7 @@ const createLoan = async (req, res) => {
       notes,
       dueDate
     } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Handle uploaded file
     let formUrl = null;
@@ -469,6 +470,18 @@ const createLoan = async (req, res) => {
       // formUrl not stored as a separate column; embedded in notes JSON
     });
 
+    // Book double-entry journal: Loan Disbursement — Dr Customer Loans / Cr Customer Wallet Deposits
+    try {
+      await postJournalForTransaction(
+        'LOAN_DISBURSEMENT',
+        parseFloat(loanAmount),
+        merchantId,
+        `Loan #${loan.id} to ${customerName}`
+      );
+    } catch (deErr) {
+      console.warn('⚠️ Double-entry booking skipped for loan disbursement:', deErr.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Loan created successfully',
@@ -497,11 +510,16 @@ const getLoans = async (req, res) => {
       toDate, 
       page = 1, 
       limit = 10,
-      agentId 
+      agentId,
+      customerId
     } = req.query;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const whereClause = { merchantId };
+
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
 
     // Status filter
     if (status && status !== 'All') {
@@ -544,14 +562,59 @@ const getLoans = async (req, res) => {
 
     const totalPages = Math.ceil(count / limit);
 
-    const serialized = loans.map(l => {
+    const isValidPackageName = (name, custName) => {
+      if (!name || typeof name !== 'string') return false;
+      const cleanPkg = name.trim().toLowerCase();
+      const cleanCust = String(custName || '').trim().toLowerCase();
+      return Boolean(cleanPkg && (!cleanCust || cleanPkg !== cleanCust));
+    };
+
+    const serialized = await Promise.all(loans.map(async l => {
       const json = l.toJSON();
       let parsedFormUrl = null;
       if (typeof json.notes === 'string' && json.notes.startsWith('{')) {
         try { parsedFormUrl = JSON.parse(json.notes).formUrl || null; } catch {}
       }
-      return { ...json, formUrl: parsedFormUrl };
-    });
+      
+      let packageName = isValidPackageName(json.packageName, json.customerName) ? json.packageName : null;
+      
+      if (!packageName) {
+        try {
+          const { LoanApplication } = require('../models');
+          const appWhere = { merchantId };
+          if (json.accountNumber) appWhere.accountNumber = json.accountNumber;
+          else if (json.customerId) appWhere.customerId = json.customerId;
+          const app = await LoanApplication.findOne({
+            where: appWhere,
+            order: [['dateApplied', 'DESC']],
+            attributes: ['packageName']
+          });
+          if (app && isValidPackageName(app.packageName, json.customerName)) {
+            packageName = app.packageName;
+          }
+        } catch (_) {}
+      }
+
+      if (!packageName && json.loanAmount) {
+        try {
+          const { Package } = require('../models');
+          const matchedPkg = await Package.findOne({
+            where: {
+              merchantId,
+              [Op.or]: [
+                { loanAmount: json.loanAmount },
+                { amount: json.loanAmount }
+              ]
+            }
+          });
+          if (matchedPkg && isValidPackageName(matchedPkg.name, json.customerName)) {
+            packageName = matchedPkg.name;
+          }
+        } catch (_) {}
+      }
+
+      return { ...json, packageName: packageName || null, formUrl: parsedFormUrl };
+    }));
 
     res.json({
       success: true,
@@ -577,13 +640,13 @@ const getLoans = async (req, res) => {
 const getLoanById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const loan = await Loan.findOne({
       where: { id, merchantId },
       include: [
-        { model: Customer, as: 'customer', attributes: ['id', 'fullName', 'phoneNumber', 'email'] },
-        { model: Agent, as: 'agent', attributes: ['id', 'fullName', 'phoneNumber'] }
+        { model: Customer, as: 'customer', attributes: ['id', 'fullName', 'phoneNumber'] },
+        { model: Agent, as: 'agent', attributes: ['id', 'fullName'] }
       ]
     });
 
@@ -595,10 +658,110 @@ const getLoanById = async (req, res) => {
     }
 
     const json = loan.toJSON();
-    const outstanding = parseFloat(json.totalAmount) - parseFloat(json.amountPaid || 0);
+    const loanAmount = parseFloat(json.loanAmount || 0);
+    const amountPaid = parseFloat(json.amountPaid || 0);
+    const storedTotal = parseFloat(json.totalAmount || 0);
+
+    let interest = 0;
+    if (storedTotal > loanAmount) {
+      interest = storedTotal - loanAmount;
+    } else if (parseFloat(json.interestRate || 0) > 0) {
+      const rate = parseFloat(json.interestRate);
+      const durationInMonths = parseInt(json.duration || 30) / 30;
+      interest = loanAmount * (rate / 100) * durationInMonths;
+    }
+
+    const isValidPackageName = (name, custName) => {
+      if (!name || typeof name !== 'string') return false;
+      const cleanPkg = name.trim().toLowerCase();
+      const cleanCust = String(custName || '').trim().toLowerCase();
+      return Boolean(cleanPkg && (!cleanCust || cleanPkg !== cleanCust));
+    };
+
+    // If packageName is not on the loan itself or is equal to customer name, look it up
+    let packageName = isValidPackageName(json.packageName, json.customerName) ? json.packageName : null;
+
+    if (!packageName) {
+      try {
+        const { LoanApplication } = require('../models');
+        const appWhere = { merchantId };
+        if (json.accountNumber) appWhere.accountNumber = json.accountNumber;
+        else if (json.customerId) appWhere.customerId = json.customerId;
+        const app = await LoanApplication.findOne({
+          where: appWhere,
+          order: [['dateApplied', 'DESC']],
+          attributes: ['packageName']
+        });
+        if (app && isValidPackageName(app.packageName, json.customerName)) {
+          packageName = app.packageName;
+        }
+      } catch (_) {}
+    }
+
+    if (!packageName) {
+      try {
+        const { Repayment } = require('../models');
+        const rep = await Repayment.findOne({
+          where: { loanId: json.id },
+          order: [['createdAt', 'DESC']],
+          attributes: ['package']
+        });
+        if (rep && isValidPackageName(rep.package, json.customerName)) {
+          packageName = rep.package;
+        }
+      } catch (_) {}
+    }
+
+    if (!packageName) {
+      try {
+        const { Package, Customer } = require('../models');
+        if (json.customerId) {
+          const cust = await Customer.findByPk(json.customerId, { include: [{ model: Package, as: 'Package' }] });
+          if (cust && cust.Package && isValidPackageName(cust.Package.name, json.customerName)) {
+            packageName = cust.Package.name;
+          }
+        }
+        if (!packageName && json.loanAmount) {
+          const matchedPkg = await Package.findOne({
+            where: {
+              merchantId,
+              [Op.or]: [
+                { loanAmount: json.loanAmount },
+                { amount: json.loanAmount }
+              ]
+            }
+          });
+          if (matchedPkg && isValidPackageName(matchedPkg.name, json.customerName)) {
+            packageName = matchedPkg.name;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: If interest was 0, check package for interestAmount or interestRate
+    if (interest === 0 && packageName) {
+      try {
+        const { Package } = require('../models');
+        const pkg = await Package.findOne({ where: { merchantId, name: packageName } });
+        if (pkg) {
+          if (pkg.interestAmount && parseFloat(pkg.interestAmount) > 0) {
+            interest = parseFloat(pkg.interestAmount);
+          } else if (pkg.interestRate && parseFloat(pkg.interestRate) > 0) {
+            const rate = parseFloat(pkg.interestRate);
+            const durationInMonths = parseInt(pkg.duration || json.duration || 30) / 30;
+            interest = loanAmount * (rate / 100) * durationInMonths;
+          }
+        }
+      } catch (_) {}
+    }
+
+    const totalExpected = loanAmount + interest;
+    const outstanding = Math.max(0, totalExpected - amountPaid);
+
+
     res.json({
       success: true,
-      data: { ...json, outstandingAmount: outstanding }
+      data: { ...json, outstandingAmount: outstanding, packageName: packageName || null }
     });
   } catch (error) {
     console.error('Error fetching loan:', error);
@@ -615,7 +778,7 @@ const updateLoanStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const loan = await Loan.findOne({
       where: { id, merchantId }
@@ -670,7 +833,7 @@ const updateLoanStatus = async (req, res) => {
 const deleteLoan = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const loan = await Loan.findOne({
       where: { id, merchantId }
@@ -681,6 +844,19 @@ const deleteLoan = async (req, res) => {
         success: false,
         message: 'Loan not found'
       });
+    }
+
+    // Book double-entry reversal for loan deletion
+    try {
+      const { postReversalForTransaction } = require('../utils/transactionMapping');
+      await postReversalForTransaction(
+        'LOAN_DISBURSEMENT',
+        loan.loanAmount,
+        merchantId,
+        `Original Loan ID: ${loan.id}, Customer: ${loan.customerName || 'N/A'}`
+      );
+    } catch (err) {
+      console.warn(`⚠️ Reversal failed during loan delete: ${err.message}`);
     }
 
     await loan.destroy();
@@ -702,7 +878,7 @@ const deleteLoan = async (req, res) => {
 // Get loan statistics
 const getLoanStats = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const totalLoans = await Loan.count({ where: { merchantId } });
     const activeLoans = await Loan.count({ where: { merchantId, status: 'Active' } });

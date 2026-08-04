@@ -193,8 +193,8 @@ const listBranches = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const { Agent } = require('../models');
         const agentOwner = await Agent.findByPk(req.user.id);
@@ -259,23 +259,7 @@ const getBranchById = async (req, res) => {
 
 // Delete branch
 const deleteBranch = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const branch = await Branch.findByPk(id);
-    if (!branch) {
-      return res.status(404).json({ message: 'Branch not found' });
-    }
-
-    await branch.destroy();
-
-    res.json({
-      message: 'Branch deleted successfully',
-    });
-  } catch (error) {
-    console.error('Delete branch error:', error);
-    res.status(500).json({ message: 'Failed to delete branch', error: error.message });
-  }
+  return res.status(400).json({ message: 'Deleting branches is disabled to avoid orphaned records.' });
 };
 
 module.exports = {

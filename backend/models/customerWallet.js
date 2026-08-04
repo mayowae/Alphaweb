@@ -41,7 +41,25 @@ module.exports = (sequelize) => {
     balance: {
       type: DataTypes.DECIMAL(15, 2),
       defaultValue: 0.00,
-      comment: 'Current wallet balance'
+      comment: 'Live wallet balance (payment platform only)'
+    },
+    collectionBalance: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0.00,
+      field: 'collection_balance',
+      comment: 'Collection wallet balance'
+    },
+    loanBalance: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0.00,
+      field: 'loan_balance',
+      comment: 'Outstanding loan balance'
+    },
+    investmentBalance: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0.00,
+      field: 'investment_balance',
+      comment: 'Total investment deposits'
     },
     status: {
       type: DataTypes.ENUM('Active', 'Suspended', 'Closed'),

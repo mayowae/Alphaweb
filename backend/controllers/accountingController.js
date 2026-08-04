@@ -1,5 +1,6 @@
-const { Account, JournalEntry, JournalLine, FiscalPeriod, Merchant, sequelize } = require('../models');
+const { Account, JournalEntry, JournalLine, FiscalPeriod, Merchant, Activity, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { TRANSACTION_MAPPING } = require('../utils/transactionMapping');
 
 // ==================== ACCOUNT (COA) OPERATIONS ====================
 
@@ -7,7 +8,7 @@ const { Op } = require('sequelize');
 const createAccount = async (req, res) => {
   try {
     const { code, name, type, category, balance, currency, description } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Check if account code already exists for this merchant
     const existingAccount = await Account.findOne({
@@ -42,7 +43,7 @@ const createAccount = async (req, res) => {
 // Get all accounts
 const getAccounts = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { type, category, isActive } = req.query;
 
     const where = { merchantId };
@@ -66,7 +67,7 @@ const getAccounts = async (req, res) => {
 const getAccountById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const account = await Account.findOne({
       where: { id, merchantId }
@@ -87,7 +88,7 @@ const getAccountById = async (req, res) => {
 const updateAccount = async (req, res) => {
   try {
     const { id, code, name, type, category, balance, currency, description, isActive } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const account = await Account.findOne({
       where: { id, merchantId }
@@ -133,7 +134,7 @@ const updateAccount = async (req, res) => {
 const deleteAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const account = await Account.findOne({
       where: { id, merchantId }
@@ -178,7 +179,7 @@ const createJournalEntry = async (req, res) => {
   
   try {
     const { date, description, lines, attachments } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Validate lines
     if (!lines || lines.length === 0) {
@@ -257,7 +258,7 @@ const createJournalEntry = async (req, res) => {
 // Get all journal entries
 const getJournalEntries = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { status, dateFrom, dateTo } = req.query;
 
     const where = { merchantId };
@@ -289,7 +290,7 @@ const getJournalEntries = async (req, res) => {
 const getJournalEntryById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const journalEntry = await JournalEntry.findOne({
       where: { id, merchantId },
@@ -317,7 +318,7 @@ const postJournalEntry = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const journalEntry = await JournalEntry.findOne({
       where: { id, merchantId },
@@ -335,12 +336,20 @@ const postJournalEntry = async (req, res) => {
     }
 
     // Update account balances
+    let hasCapitalDebit = false;
+    let capitalDebitDetails = [];
     for (const line of journalEntry.lines) {
       const account = await Account.findByPk(line.accountId);
       if (account) {
         const debit = parseFloat(line.debit || 0);
         const credit = parseFloat(line.credit || 0);
         
+        // Audit check: Debit to Equity/Capital account
+        if (account.type === 'Equity' && debit > 0) {
+          hasCapitalDebit = true;
+          capitalDebitDetails.push(`${account.name} (Code: ${account.code}) debited for ₦${debit.toLocaleString()}`);
+        }
+
         // Update balance based on account type
         let balanceChange = 0;
         if (['Asset', 'Expense'].includes(account.type)) {
@@ -353,6 +362,16 @@ const postJournalEntry = async (req, res) => {
           balance: parseFloat(account.balance) + balanceChange
         }, { transaction });
       }
+    }
+
+    // If a Capital/Equity debit occurred, write to Activity log for audit trail to expose fraud
+    if (hasCapitalDebit) {
+      await Activity.create({
+        merchantId,
+        person: 'merchant',
+        action: 'CAPITAL_DEBIT_AUDIT',
+        details: `AUDIT ALERT: Manual journal entry ${journalEntry.reference} posted with debit to Equity/Capital account: ${capitalDebitDetails.join(', ')}. Description: ${journalEntry.description || 'N/A'}`
+      }, { transaction });
     }
 
     // Update journal entry status
@@ -377,7 +396,7 @@ const reverseJournalEntry = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const originalEntry = await JournalEntry.findOne({
       where: { id, merchantId },
@@ -410,6 +429,8 @@ const reverseJournalEntry = async (req, res) => {
     }, { transaction });
 
     // Create reversing lines (swap debit and credit)
+    let hasCapitalDebit = false;
+    let capitalDebitDetails = [];
     for (const line of originalEntry.lines) {
       await JournalLine.create({
         journalEntryId: reversingEntry.id,
@@ -425,6 +446,12 @@ const reverseJournalEntry = async (req, res) => {
         const debit = parseFloat(line.credit || 0);
         const credit = parseFloat(line.debit || 0);
         
+        // Audit check: Debit to Equity/Capital account in the reversal
+        if (account.type === 'Equity' && debit > 0) {
+          hasCapitalDebit = true;
+          capitalDebitDetails.push(`${account.name} (Code: ${account.code}) debited for ₦${debit.toLocaleString()}`);
+        }
+
         let balanceChange = 0;
         if (['Asset', 'Expense'].includes(account.type)) {
           balanceChange = debit - credit;
@@ -436,6 +463,16 @@ const reverseJournalEntry = async (req, res) => {
           balance: parseFloat(account.balance) + balanceChange
         }, { transaction });
       }
+    }
+
+    // If a Capital/Equity debit occurred, write to Activity log for audit trail to expose fraud
+    if (hasCapitalDebit) {
+      await Activity.create({
+        merchantId,
+        person: 'merchant',
+        action: 'CAPITAL_DEBIT_AUDIT_REVERSAL',
+        details: `AUDIT ALERT: Reversal journal entry ${reversingEntry.reference} posted with debit to Equity/Capital account: ${capitalDebitDetails.join(', ')}. Original JE Ref: ${originalEntry.reference}`
+      }, { transaction });
     }
 
     // Mark original entry as reversed
@@ -461,7 +498,7 @@ const reverseJournalEntry = async (req, res) => {
 const deleteJournalEntry = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const journalEntry = await JournalEntry.findOne({
       where: { id, merchantId }
@@ -493,7 +530,7 @@ const deleteJournalEntry = async (req, res) => {
 // Get general ledger
 const getGeneralLedger = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { accountId, dateFrom, dateTo } = req.query;
 
     if (!accountId) {
@@ -578,7 +615,7 @@ const getGeneralLedger = async (req, res) => {
 const createFiscalPeriod = async (req, res) => {
   try {
     const { name, startDate, endDate } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const fiscalPeriod = await FiscalPeriod.create({
       name,
@@ -601,7 +638,7 @@ const createFiscalPeriod = async (req, res) => {
 // Get fiscal periods
 const getFiscalPeriods = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const fiscalPeriods = await FiscalPeriod.findAll({
       where: { merchantId },
@@ -620,7 +657,7 @@ const updateFiscalPeriod = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, startDate, endDate, status } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const fiscalPeriod = await FiscalPeriod.findOne({
       where: { id, merchantId }
@@ -652,7 +689,7 @@ const updateFiscalPeriod = async (req, res) => {
 // Get trial balance
 const getTrialBalance = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { asOfDate } = req.query;
 
     const accounts = await Account.findAll({
@@ -709,7 +746,7 @@ const getTrialBalance = async (req, res) => {
 // Get balance sheet
 const getBalanceSheet = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { asOfDate } = req.query;
 
     const accounts = await Account.findAll({
@@ -773,7 +810,7 @@ const getBalanceSheet = async (req, res) => {
 // Get income statement (P&L)
 const getIncomeStatement = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { dateFrom, dateTo } = req.query;
 
     const accounts = await Account.findAll({
@@ -824,6 +861,16 @@ const getIncomeStatement = async (req, res) => {
   }
 };
 
+// Get Transaction Mappings
+const getTransactionMappings = async (req, res) => {
+  try {
+    res.json({ transactionMappings: TRANSACTION_MAPPING });
+  } catch (error) {
+    console.error('Get transaction mappings error:', error);
+    res.status(500).json({ message: 'Failed to fetch transaction mappings', error: error.message });
+  }
+};
+
 module.exports = {
   // Account operations
   createAccount,
@@ -851,5 +898,8 @@ module.exports = {
   // Reports
   getTrialBalance,
   getBalanceSheet,
-  getIncomeStatement
+  getIncomeStatement,
+
+  // Transaction Mappings
+  getTransactionMappings
 };

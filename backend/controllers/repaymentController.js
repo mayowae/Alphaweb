@@ -361,7 +361,7 @@ const createRepayment = async (req, res) => {
       notes 
     } = req.body;
     // Resolve merchantId based on auth context (merchant vs collaborator)
-    let merchantId = req.user.id;
+    let merchantId = req.user.merchantId || req.user.id;
     if (req.user && req.user.type === 'collaborator') {
       if (req.user.merchantId) {
         merchantId = req.user.merchantId;
@@ -465,6 +465,42 @@ const createRepayment = async (req, res) => {
       status: newRemainingAmount <= 0 ? 'Completed' : 'Active'
     });
 
+    // Book double-entry transaction using transaction mapping
+    try {
+      const { postJournalForTransaction } = require('../utils/transactionMapping');
+      const principalAmount = parseFloat(loan.loanAmount || 0);
+      const totalAmt = parseFloat(loan.totalAmount || 0);
+      const repAmount = parseFloat(amount || 0);
+      let principalPaid = repAmount;
+      let interestPaid = 0;
+
+      if (totalAmt > 0 && principalAmount > 0 && totalAmt > principalAmount) {
+        const principalRatio = principalAmount / totalAmt;
+        principalPaid = parseFloat((repAmount * principalRatio).toFixed(2));
+        interestPaid = parseFloat((repAmount - principalPaid).toFixed(2));
+      }
+
+      if (principalPaid > 0) {
+        await postJournalForTransaction(
+          'LOAN_REPAYMENT_PRINCIPAL',
+          principalPaid,
+          merchantId,
+          `Repayment #${repayment.id} (Principal) for Loan #${loan.id} - Customer: ${customerName}`
+        );
+      }
+      if (interestPaid > 0) {
+        await postJournalForTransaction(
+          'LOAN_INTEREST_REPAYMENT',
+          interestPaid,
+          merchantId,
+          `Repayment #${repayment.id} (Interest) for Loan #${loan.id} - Customer: ${customerName}`
+        );
+      }
+    } catch (deErr) {
+      console.warn('⚠️ Double-entry booking skipped for loan repayment:', deErr.message);
+    }
+
+
     res.status(201).json({
       success: true,
       message: 'Repayment created successfully',
@@ -490,11 +526,17 @@ const getRepayments = async (req, res) => {
       toDate, 
       page = 1, 
       limit = 10,
-      agentId 
+      agentId,
+      customerId
     } = req.query;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const whereClause = { merchantId };
+
+    // Customer filter
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
 
     // Status filter
     if (status && status !== 'All') {
@@ -522,6 +564,7 @@ const getRepayments = async (req, res) => {
         { agentName: { [Op.iLike]: `%${search}%` } }
       ];
     }
+
 
     const offset = (page - 1) * limit;
     
@@ -570,7 +613,7 @@ const getRepayments = async (req, res) => {
 const getRepaymentById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const repayment = await Repayment.findOne({
       where: { id, merchantId },
@@ -607,7 +650,7 @@ const updateRepaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const repayment = await Repayment.findOne({
       where: { id, merchantId }
@@ -644,7 +687,7 @@ const updateRepaymentStatus = async (req, res) => {
 const deleteRepayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const repayment = await Repayment.findOne({
       where: { id, merchantId }
@@ -668,6 +711,41 @@ const deleteRepayment = async (req, res) => {
         remainingAmount: newRemainingAmount,
         status: newRemainingAmount > 0 ? 'Active' : 'Completed'
       });
+
+      // Book double-entry reversal for repayment deletion
+      try {
+        const { postReversalForTransaction } = require('../utils/transactionMapping');
+        const principalAmount = parseFloat(loan.loanAmount || 0);
+        const totalAmt = parseFloat(loan.totalAmount || 0);
+        const repAmount = parseFloat(repayment.amount || 0);
+        let principalPaid = repAmount;
+        let interestPaid = 0;
+
+        if (totalAmt > 0 && principalAmount > 0 && totalAmt > principalAmount) {
+          const principalRatio = principalAmount / totalAmt;
+          principalPaid = parseFloat((repAmount * principalRatio).toFixed(2));
+          interestPaid = parseFloat((repAmount - principalPaid).toFixed(2));
+        }
+
+        if (principalPaid > 0) {
+          await postReversalForTransaction(
+            'LOAN_REPAYMENT_PRINCIPAL',
+            principalPaid,
+            merchantId,
+            `Original Repayment ID: ${repayment.id}, Loan ID: ${loan.id}, Customer: ${repayment.customerName || 'N/A'}`
+          );
+        }
+        if (interestPaid > 0) {
+          await postReversalForTransaction(
+            'LOAN_INTEREST_REPAYMENT',
+            interestPaid,
+            merchantId,
+            `Original Repayment ID: ${repayment.id}, Loan ID: ${loan.id}, Customer: ${repayment.customerName || 'N/A'}`
+          );
+        }
+      } catch (err) {
+        console.warn(`⚠️ Reversal failed during repayment delete: ${err.message}`);
+      }
     }
 
     await repayment.destroy();
@@ -689,7 +767,7 @@ const deleteRepayment = async (req, res) => {
 // Get repayment statistics
 const getRepaymentStats = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const totalRepayments = await Repayment.count({ where: { merchantId } });
     const completedRepayments = await Repayment.count({ where: { merchantId, status: 'Completed' } });

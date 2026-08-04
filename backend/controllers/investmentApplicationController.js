@@ -445,8 +445,8 @@ const createInvestmentApplication = async (req, res) => {
     // Resolve merchantId from authenticated context
     let merchantId = req.body.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -541,8 +541,8 @@ const getInvestmentApplications = async (req, res) => {
     // Always scope to authenticated merchant
     // Resolve merchantId for both merchants and agents
     let merchantId;
-    if (req.user?.type === 'merchant') {
-      merchantId = req.user.id;
+    if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+      merchantId = req.user.merchantId || req.user.id;
     } else if (req.user?.type === 'agent') {
       const agentOwner = await Agent.findByPk(req.user.id);
       merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -556,11 +556,17 @@ const getInvestmentApplications = async (req, res) => {
       fromDate, 
       toDate, 
       page = 1, 
-      limit = 10 
+      limit = 10,
+      customerId
     } = req.query;
 
     const whereClause = { merchantId };
     
+    // Add customer filter
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
+
     // Add status filter
     if (status && status !== 'all') {
       whereClause.status = status;
@@ -585,6 +591,7 @@ const getInvestmentApplications = async (req, res) => {
         { agentName: { [Op.iLike]: `%${search}%` } }
       ];
     }
+
 
     const offset = (page - 1) * limit;
     
@@ -647,8 +654,8 @@ const getInvestmentApplicationById = async (req, res) => {
     const { id } = req.params;
     // Resolve merchantId for both merchants and agents
     let merchantId;
-    if (req.user?.type === 'merchant') {
-      merchantId = req.user.id;
+    if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+      merchantId = req.user.merchantId || req.user.id;
     } else if (req.user?.type === 'agent') {
       const agentOwner = await Agent.findByPk(req.user.id);
       merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -712,8 +719,8 @@ const updateApplicationStatus = async (req, res) => {
     const { status, notes, rejectionReason } = req.body;
     // Resolve merchantId for both merchants and agents
     let merchantId;
-    if (req.user?.type === 'merchant') {
-      merchantId = req.user.id;
+    if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+      merchantId = req.user.merchantId || req.user.id;
     } else if (req.user?.type === 'agent') {
       const agentOwner = await Agent.findByPk(req.user.id);
       merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -790,8 +797,8 @@ const deleteInvestmentApplication = async (req, res) => {
     const { id } = req.params;
     // Resolve merchantId for both merchants and agents
     let merchantId;
-    if (req.user?.type === 'merchant') {
-      merchantId = req.user.id;
+    if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+      merchantId = req.user.merchantId || req.user.id;
     } else if (req.user?.type === 'agent') {
       const agentOwner = await Agent.findByPk(req.user.id);
       merchantId = agentOwner ? agentOwner.merchantId : undefined;

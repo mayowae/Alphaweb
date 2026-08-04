@@ -1,0 +1,103 @@
+=== Checking Webuzo FTP accounts in its database ===
+/var/webuzo/db/emails.db
+/var/webuzo/db/backups.db
+/var/webuzo/db/daily_process_log.db
+/var/webuzo/db/tasks.db
+/var/webuzo/db/ips.db
+/var/webuzo/db/redirects.db
+/var/webuzo/db/notices.db
+/var/webuzo/db/perl_modules.db
+/var/webuzo/db/bruteforce_logs.db
+/var/webuzo/db/users.db
+/var/webuzo/db/pgsql.db
+/var/webuzo/db/email_queue.db
+/var/webuzo/db/mysql.db
+/var/webuzo/db/webdisk.db
+/var/webuzo/db/eximstats.db
+/var/webuzo/db/dns_zones.db
+/var/webuzo/db/servers.db
+/var/webuzo/db/task_procs.db
+/var/webuzo/db/domains.db
+/var/webuzo/db/git.db
+/var/webuzo/db/tmp/emails-1771527431.4412.db
+/var/webuzo/db/tmp/emails-1771959385.7839.db
+/var/webuzo/db/tmp/emails-1772823386.9539.db
+/var/webuzo/db/tmp/emails-1771872984.4383.db
+/var/webuzo/db/tmp/emails-1772391517.6373.db
+/var/webuzo/db/tmp/emails-1770837209.7297.db
+/var/webuzo/db/tmp/emails-1771440987.8225.db
+/var/webuzo/db/tmp/emails-1773168999.6033.db
+/var/webuzo/db/tmp/emails-1771354634.3184.db
+/var/webuzo/db/tmp/emails-1770836338.9054.db
+/var/webuzo/db/tmp/emails-1771095386.1127.db
+/var/webuzo/db/tmp/emails-1771613901.3753.db
+/var/webuzo/db/tmp/emails-1772218586.1636.db
+/var/webuzo/db/tmp/emails-1772909788.1188.db
+/var/webuzo/db/tmp/emails-1771700252.1873.db
+/var/webuzo/db/tmp/emails-1772736985.5166.db
+/var/webuzo/db/tmp/emails-1772564194.616.db
+/var/webuzo/db/tmp/emails-1770837547.7168.db
+/var/webuzo/db/tmp/emails-1772477787.4857.db
+/var/webuzo/db/tmp/emails-1772132227.982.db
+/var/webuzo/db/tmp/emails-1771786587.0756.db
+/var/webuzo/db/tmp/emails-1772304991.2954.db
+/var/webuzo/db/tmp/emails-1772996187.3903.db
+/var/webuzo/db/tmp/emails-1773082586.4021.db
+/var/webuzo/db/tmp/emails-1772650677.1783.db
+/var/webuzo/db/tmp/emails-1771008988.847.db
+/var/webuzo/db/tmp/emails-1770922586.0254.db
+/var/webuzo/db/tmp/emails-1771268200.4018.db
+/var/webuzo/db/tmp/emails-1771181786.9703.db
+/var/webuzo/db/tmp/emails-1772045790.2874.db
+/var/webuzo/db/login_logs.db
+/var/webuzo/db/eapps.db
+/var/webuzo/db/roundcube.db
+/var/webuzo/db/mail_activity.db
+/var/webuzo/db/cluster_dns_zones.db
+/var/webuzo/users/mayowae/visitors.db
+/var/webuzo/users/mayowae/bandwidth.db
+
+total 608
+-rw-r--r-- 1 root   root   501086 Mar 10 18:56 apps.ser
+-rw-r--r-- 1 root   root      326 Mar 10 18:56 apps_categories.ser
+drwxr-xr-x 3 root   root     4096 Oct  6  2025 bin
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 cli.php
+drwxr-xr-x 3 root   webuzo   4096 Oct  1  2025 conf
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 cron.php
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 cron2.php
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 cronh.php
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 cronm.php
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 crons.php
+-rw-r--r-- 1 root   root    12351 Feb  3 02:20 globals.php
+drwxr-xr-x 6 root   root     4096 Oct  1  2025 includes
+drwxr-xr-x 3 root   root     4096 Oct  1  2025 languages
+drwxr-xr-x 6 root   root     4096 Oct  1  2025 lib
+-rw-r--r-- 1 webuzo root     1068 Mar 10 18:56 license.php
+drwxr-xr-x 2 root   root     4096 Oct  6  2025 plugins
+-rw-r--r-- 1 root   root       39 Oct  6  2025 prepapps
+-rw-r--r-- 1 root   root        4 Feb  3 02:20 rev
+drwxr-xr-x 3 root   root     4096 Oct  1  2025 sdk
+-rw-r--r-- 1 root   root     1564 Feb  3 02:20 service_check.php
+drwxr-xr-x 4 root   root     4096 Oct  1  2025 test
+drwxrwx--- 2 root   webuzo   4096 Mar 11 07:20 tmp
+-rw-rw---- 1 webuzo root     7779 Mar 11 07:01 universal.copy.php
+-rw-rw---- 1 webuzo root     7779 Mar 11 07:01 universal.php
+drwxr-xr-x 4 root   root     4096 Oct  1  2025 web
+-rw-r--r-- 1 root   root        0 Mar 11 14:04 webuzo-manually-stopped
+
+
+=== Checking for password files in webuzo ===
+/var/webuzo/pureftpd.passwd:alphawebftp:$2a$10$nH90zBOTZLZPKvX3pRTwiujXjNfeBjIBSNk.1QZEvznG0XFsCkFdG:1003:1004::/home/mayowae/./::::::::::::
+
+
+
+=== Checking for pure-ftpd pdb file ===
+ls: cannot access '/etc/pure-ftpd/pureftpd.pdb': No such file or directory
+
+
+=== Checking for any .ftp_password or similar files ===
+/home/mayowae/.ftpquota
+
+
+=== Webuzo User Config ===
+

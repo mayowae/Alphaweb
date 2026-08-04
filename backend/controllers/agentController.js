@@ -309,8 +309,8 @@ const listAgents = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;

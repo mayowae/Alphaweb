@@ -44,6 +44,19 @@ const handleTransactPayWebhook = async (req, res) => {
                         date: new Date(),
                         paymentMethod: data.payment_method || 'Bank Transfer'
                     });
+
+                    // Book double-entry for webhook wallet deposit
+                    try {
+                        const { postJournalForTransaction } = require('../utils/transactionMapping');
+                        await postJournalForTransaction(
+                            'WALLET_DEPOSIT',
+                            amount,
+                            merchant.id,
+                            `Webhook Deposit ref ${reference}`
+                        );
+                    } catch (deErr) {
+                        console.warn('⚠️ Double-entry skipped for webhook deposit:', deErr.message);
+                    }
                     console.log(`Webhook: Created transaction record for merchant ${merchant.id}`);
                 }
                 return res.status(200).json({ status: 'success', message: 'Merchant payment processed' });

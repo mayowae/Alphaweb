@@ -1,0 +1,39 @@
+=== Listing /var/webuzo/users/mayowae/ ===
+total 8540
+drwxrwx--- 5 webuzo webuzo    4096 Mar 11 07:20 .
+drwxrwx--- 3 webuzo webuzo    4096 Feb 19 19:41 ..
+-rwxrwx--- 1 webuzo webuzo  662528 Mar 11 07:15 bandwidth.db
+-rwxrwx--- 1 webuzo webuzo       0 Feb 19 19:41 bandwidth.db.ctime
+drwxrwx--- 2 webuzo webuzo    4096 Feb 28 15:22 dns_records
+-rwxrwx--- 1 webuzo webuzo    3382 Mar 11 07:01 email_stats
+-rwxrwx--- 1 webuzo webuzo    8606 Mar  8 18:08 emails
+-rwxrwx--- 1 webuzo webuzo     233 Feb 19 19:41 ftp
+-rwxrwx--- 1 webuzo webuzo      64 Mar 10 18:56 ftp_quota_cache
+-rwxrwx--- 1 webuzo webuzo    2026 Mar  9 07:09 info
+-rwxrwx--- 1 webuzo webuzo    2679 Mar 11 07:20 logs
+-rwxrwx--- 1 webuzo webuzo     753 Mar  1 21:23 mysql
+-rwxrwx--- 1 webuzo webuzo     154 Mar  5 12:05 rc_2fa
+drwxrwx--- 2 webuzo webuzo    4096 Mar  8 16:00 ssl
+-rwxrwx--- 1 webuzo webuzo     333 Mar 11 07:01 stats.json
+drwxrwx--- 2 webuzo webuzo    4096 Mar  8 16:00 tmp
+-rwxrwx--- 1 webuzo webuzo     463 Mar  4 10:23 user_preference.json
+-rwxrwx--- 1 webuzo webuzo 7997440 Mar 11 07:15 visitors.db
+-rwxrwx--- 1 webuzo webuzo       0 Feb 19 19:45 visitors.db.ctime
+-rwxrwx--- 1 webuzo webuzo     184 Feb 19 19:41 webdisk.json
+
+
+=== Reading files in /var/webuzo/users/mayowae/ ===
+--- ftp.conf ---
+
+--- user.conf ---
+
+--- domains ---
+
+
+=== Searching for alphawebftp password in all of /var/webuzo ===
+
+
+=== Checking for any other potential FTP users ===
+mayowae	/home/mayowae/./	
+alphawebftp	/home/mayowae/./	
+

@@ -137,7 +137,7 @@ const { Remittance, Customer, Agent, CustomerWallet, WalletTransaction, Activity
 
 const createRemittance = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { collectionId, customerId, amount, notes } = req.body;
     const customer = await Customer.findOne({ where: { id: customerId, merchantId } });
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
@@ -154,6 +154,19 @@ const createRemittance = async (req, res) => {
       status: 'Pending',
       notes: notes || null
     });
+
+    try {
+      const { postJournalForTransaction } = require('../utils/transactionMapping');
+      await postJournalForTransaction(
+        'REMITTANCE_SENT',
+        parseFloat(amount),
+        merchantId,
+        `Remittance #${remittance.id} created for customer ${customer.fullName}`
+      );
+    } catch (deErr) {
+      console.warn('⚠️ Double-entry skipped for remittance creation:', deErr.message);
+    }
+
     res.status(201).json({ success: true, message: 'Remittance created', remittance });
   } catch (error) {
     console.error('createRemittance error:', error);
@@ -163,7 +176,7 @@ const createRemittance = async (req, res) => {
 
 const listRemittances = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const remittances = await Remittance.findAll({
       where: { merchantId },
       include: [
@@ -181,7 +194,7 @@ const listRemittances = async (req, res) => {
 
 const getRemittanceById = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { id } = req.params;
     const remittance = await Remittance.findOne({
       where: { id, merchantId },
@@ -200,7 +213,7 @@ const getRemittanceById = async (req, res) => {
 
 const updateRemittance = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { id, amount, notes } = req.body;
     const remittance = await Remittance.findOne({ where: { id, merchantId } });
     if (!remittance) return res.status(404).json({ success: false, message: 'Remittance not found' });
@@ -223,8 +236,8 @@ const approveRemittance = async (req, res) => {
     // Resolve merchantId for both merchants, staff (collaborators), and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const { Agent } = require('../models');
         const agentOwner = await Agent.findByPk(req.user.id);
@@ -296,17 +309,31 @@ const approveRemittance = async (req, res) => {
         customerId,
         merchantId,
         accountNumber: customerAccountNumber || `CW${Date.now()}`,
-        balance: newBalance,
+        collectionBalance: newBalance,
         status: 'Active',
         activationDate: new Date()
       }, { transaction });
     } else {
-      oldBalance = parseFloat(wallet.balance) || 0;
+      oldBalance = parseFloat(wallet.collectionBalance) || 0;
       newBalance = oldBalance + parseFloat(remittance.amount);
       await wallet.update({
-        balance: newBalance,
+        collectionBalance: newBalance,
         lastTransactionDate: new Date()
       }, { transaction });
+    }
+
+    // Step 4.5: Book double-entry transaction (inside the same DB transaction for atomicity)
+    try {
+      const { postJournalForTransaction } = require('../utils/transactionMapping');
+      await postJournalForTransaction(
+        'REMITTANCE_RECEIVED',
+        parseFloat(remittance.amount),
+        merchantId,
+        `Remittance #${remittance.id} Approved - Customer: ${remittanceWithCustomer.customer?.fullName || 'N/A'}`,
+        transaction
+      );
+    } catch (deErr) {
+      console.warn('⚠️ Double-entry skipped for remittance approval:', deErr.message);
     }
 
     // Step 5: Record wallet ledger entry
@@ -374,8 +401,8 @@ const deleteRemittance = async (req, res) => {
     // Resolve merchantId for both merchants, staff (collaborators), and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const { Agent } = require('../models');
         const agentOwner = await Agent.findByPk(req.user.id);
@@ -418,6 +445,32 @@ const deleteRemittance = async (req, res) => {
       action: 'DELETE_REMITTANCE',
       details: `Permanently deleted remittance #${remittance.id} (Amount: ${remittance.amount}) and its associated collection records.`
     }, { transaction });
+
+    // Book double-entry reversals for remittance deletion
+    try {
+      const { postReversalForTransaction } = require('../utils/transactionMapping');
+      // Always reverse REMITTANCE_SENT
+      await postReversalForTransaction(
+        'REMITTANCE_SENT',
+        parseFloat(remittance.amount),
+        merchantId,
+        `Original Remittance ID: ${remittance.id}, Customer: ${remittance.customerName || 'N/A'}`,
+        transaction
+      );
+      
+      // If approved, also reverse REMITTANCE_RECEIVED
+      if (remittance.status === 'Approved') {
+        await postReversalForTransaction(
+          'REMITTANCE_RECEIVED',
+          parseFloat(remittance.amount),
+          merchantId,
+          `Original Remittance ID: ${remittance.id}, Customer: ${remittance.customerName || 'N/A'}`,
+          transaction
+        );
+      }
+    } catch (err) {
+      console.warn(`⚠️ Reversal failed during remittance delete: ${err.message}`);
+    }
 
     await remittance.destroy({ transaction });
     await transaction.commit();

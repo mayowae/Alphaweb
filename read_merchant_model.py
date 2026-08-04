@@ -3,19 +3,13 @@ import paramiko
 hostname = '159.198.36.24'
 port = 22
 username = 'root'
-password = 'Xr2J2Wx9Unk0l7rI1C'
+password = '96eUC4aTbMu1o3yAP2'
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname, port=port, username=username, password=password, timeout=30)
+client.connect(hostname, port, username, password)
 
-def run(cmd):
-    stdin, stdout, stderr = client.exec_command(cmd)
-    return stdout.read().decode('utf-8', errors='replace'), stderr.read().decode('utf-8', errors='replace')
-
-# Read the full merchant model on the server
-print("=== Full Merchant Model on Server ===")
-out, err = run("cat /home/mayowae/public_html/alphaweb/backend/models/merchant.js")
-print(out)
+stdin, stdout, stderr = client.exec_command('cat /home/mayowae/public_html/alphaweb/backend/models/merchant.js')
+print(stdout.read().decode('utf-8'))
 
 client.close()

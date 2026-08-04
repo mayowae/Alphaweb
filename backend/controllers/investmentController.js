@@ -183,7 +183,7 @@ const { Op } = require('sequelize');
 const createInvestment = async (req, res) => {
   try {
     const { customerName, amount, plan, duration } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Find customer by name
     const customer = await Customer.findOne({
@@ -229,7 +229,7 @@ const createInvestment = async (req, res) => {
 // Get all investments for a merchant
 const getInvestments = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const investments = await Investment.findAll({
       where: { merchantId },
@@ -261,7 +261,7 @@ const getInvestments = async (req, res) => {
 const getInvestmentById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const investment = await Investment.findOne({
       where: { 
@@ -302,7 +302,7 @@ const getInvestmentById = async (req, res) => {
 const updateInvestment = async (req, res) => {
   try {
     const { id, customerName, amount, plan, duration, status } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const investment = await Investment.findOne({
       where: { 
@@ -345,7 +345,7 @@ const updateInvestment = async (req, res) => {
 const deleteInvestment = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const investment = await Investment.findOne({
       where: { 

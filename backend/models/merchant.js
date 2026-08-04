@@ -67,6 +67,38 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    wallet_balance: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0,
+    },
+    wallet_status: {
+      type: DataTypes.STRING,
+      defaultValue: 'Active',
+    },
+    subscription_status: {
+      type: DataTypes.STRING,
+      defaultValue: 'Active',
+    },
+    plan_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    total_debt: {
+      type: DataTypes.DECIMAL(15, 2),
+      defaultValue: 0,
+    },
+    sms_balance: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    trial_end_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    next_billing_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
@@ -78,6 +110,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'merchants',
     timestamps: true,
+    underscored: false,
   });
 
   Merchant.associate = (models) => {

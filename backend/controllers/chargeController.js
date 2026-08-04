@@ -1,5 +1,6 @@
 const db = require('../models');
-const { Charge, ChargeAssignment, Customer, Merchant } = db;
+const { Charge, ChargeAssignment, Customer, Merchant, CustomerWallet, WalletTransaction } = db;
+const { Op } = require('sequelize');
 
 /**
  * @swagger
@@ -341,7 +342,7 @@ const { Charge, ChargeAssignment, Customer, Merchant } = db;
 exports.createCharge = async (req, res) => {
   try {
     const { chargeName, type, amount } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Validate required fields
     if (!chargeName || !type || !amount) {
@@ -405,7 +406,7 @@ exports.createCharge = async (req, res) => {
 // Get all charges for a merchant
 exports.getCharges = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const charges = await Charge.findAll({
       where: {
@@ -449,107 +450,166 @@ exports.getCharges = async (req, res) => {
   }
 };
 
-// Assign charge to customer
+// Assign charge to customer(s) — deducts immediately from collectionBalance (allows negative)
 exports.assignCharge = async (req, res) => {
+  const transaction = await db.sequelize.transaction();
   try {
     const { chargeName, amount, dueDate, customer } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
-    // Validate required fields
     if (!chargeName || !amount || !dueDate || !customer) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields are required'
-      });
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
-    // Find the charge by name
     const charge = await Charge.findOne({
-      where: {
-        chargeName,
-        merchantId,
-        isActive: true
-      }
+      where: { chargeName, merchantId, isActive: true },
+      transaction
     });
-
     if (!charge) {
-      return res.status(404).json({
-        success: false,
-        message: 'Charge not found'
-      });
+      await transaction.rollback();
+      return res.status(404).json({ success: false, message: 'Charge not found' });
     }
 
-    // Find the customer by name
-    const customerRecord = await Customer.findOne({
-      where: {
-        fullName: customer,
-        merchantId
-      }
-    });
-
-    if (!customerRecord) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-
-    // Normalize assignment amount
     const normalizedAssignmentAmount = typeof amount === 'string'
       ? parseFloat(amount.replace(/[^\d.-]/g, ''))
       : Number(amount);
     if (Number.isNaN(normalizedAssignmentAmount)) {
+      await transaction.rollback();
       return res.status(400).json({ success: false, message: 'Invalid amount' });
     }
 
-    // Create charge assignment
-    const assignment = await ChargeAssignment.create({
-      chargeId: charge.id,
-      customerId: customerRecord.id,
-      amount: normalizedAssignmentAmount,
-      dueDate: new Date(dueDate),
-      merchantId,
-      status: 'Pending'
-    });
+    // Determine target customer(s)
+    let targetCustomers = [];
+    if (typeof customer === 'string' && (customer.toLowerCase() === 'all' || customer === 'ALL_CUSTOMERS' || customer === 'All Customers')) {
+      targetCustomers = await Customer.findAll({
+        where: { merchantId },
+        transaction
+      });
+      if (targetCustomers.length === 0) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, message: 'No customers found for this merchant' });
+      }
+    } else {
+      const customerIdNum = Number(customer);
+      const customerRecord = await Customer.findOne({
+        where: {
+          merchantId,
+          [Op.or]: [
+            { fullName: customer },
+            ...(Number.isFinite(customerIdNum) ? [{ id: customerIdNum }] : [])
+          ]
+        },
+        transaction
+      });
+
+      if (!customerRecord) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, message: 'Customer not found' });
+      }
+      targetCustomers = [customerRecord];
+    }
+
+    const createdAssignments = [];
+    for (const cust of targetCustomers) {
+      // Deduct immediately from customer wallet — allow balance to go negative
+      const wallet = await CustomerWallet.findOne({
+        where: { customerId: cust.id, merchantId },
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+
+      const oldBalance = wallet ? parseFloat(wallet.collectionBalance || 0) : 0;
+      const newBalance = oldBalance - normalizedAssignmentAmount;
+
+      if (wallet) {
+        await wallet.update({ collectionBalance: newBalance }, { transaction });
+      } else {
+        // Create wallet with negative balance if it doesn't exist
+        await CustomerWallet.create({
+          customerId: cust.id,
+          merchantId,
+          collectionBalance: newBalance
+        }, { transaction });
+      }
+
+      // Create the assignment with status 'Paid' (deducted immediately)
+      const assignment = await ChargeAssignment.create({
+        chargeId: charge.id,
+        customerId: cust.id,
+        amount: normalizedAssignmentAmount,
+        dueDate: new Date(dueDate),
+        merchantId,
+        status: 'Paid',
+        datePaid: new Date()
+      }, { transaction });
+
+      // Record wallet transaction
+      await WalletTransaction.create({
+        transactionType: 'charge_deduction',
+        merchantId,
+        type: 'debit',
+        amount: normalizedAssignmentAmount,
+        description: `Charge Applied: ${charge.chargeName}`,
+        status: 'Completed',
+        balanceBefore: oldBalance,
+        balanceAfter: newBalance,
+        category: 'charge',
+        relatedId: assignment.id,
+        relatedType: 'ChargeAssignment'
+      }, { transaction });
+
+      createdAssignments.push(assignment);
+    }
+
+    await transaction.commit();
+
+    const firstAssignment = createdAssignments[0];
+    const isBulk = targetCustomers.length > 1;
 
     res.status(201).json({
       success: true,
-      message: 'Charge assigned successfully',
+      message: isBulk
+        ? `Charge assigned and deducted for all ${targetCustomers.length} customers successfully`
+        : 'Charge assigned and deducted successfully',
       assignment: {
-        id: assignment.id,
+        id: firstAssignment.id,
         chargeName: charge.chargeName,
-        customerName: customer,
-        amount: `N${Number(assignment.amount || 0).toLocaleString()}`,
-        dueDate: (assignment.dueDate ? assignment.dueDate : new Date()).toLocaleDateString('en-GB', {
+        customerName: isBulk ? `All (${targetCustomers.length} customers)` : targetCustomers[0].fullName,
+        amount: `N${Number(normalizedAssignmentAmount || 0).toLocaleString()}`,
+        dueDate: (firstAssignment.dueDate ? firstAssignment.dueDate : new Date()).toLocaleDateString('en-GB', {
           day: '2-digit',
           month: 'short',
           year: 'numeric'
         }),
-        dateApplied: (assignment.dateApplied ? assignment.dateApplied : new Date()).toLocaleDateString('en-GB', {
+        dateApplied: new Date().toLocaleDateString('en-GB', {
           day: '2-digit',
           month: 'short',
           year: 'numeric'
         }),
-        status: assignment.status
+        status: 'Paid'
       }
     });
   } catch (error) {
-    console.error('Assign charge error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
+    await transaction.rollback();
+    console.error('Error assigning charge:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign charge', error: error.message });
   }
 };
 
 // Get charge history (assignments)
 exports.getChargeHistory = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
+    const { customerId } = req.query;
+
+    const whereClause = { merchantId };
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
 
     const assignments = await ChargeAssignment.findAll({
-      where: { merchantId },
+      where: whereClause,
       include: [
         {
           model: Charge,
@@ -570,7 +630,7 @@ exports.getChargeHistory = async (req, res) => {
       customerName: assignment.Customer?.fullName || 'N/A',
       accountNumber: assignment.Customer?.accountNumber || 'N/A',
       chargeName: assignment.Charge?.chargeName || '—',
-      amount: `N${Number(assignment.amount || 0).toLocaleString()}`,
+      amount: Number(assignment.amount || 0),
       dueDate: (assignment.dueDate ? assignment.dueDate : new Date()).toLocaleDateString('en-GB', {
         day: '2-digit',
         month: 'short',
@@ -581,6 +641,7 @@ exports.getChargeHistory = async (req, res) => {
         month: 'short',
         year: 'numeric'
       }),
+      createdAt: assignment.createdAt,
       status: assignment.status
     }));
 
@@ -602,7 +663,7 @@ exports.getChargeHistory = async (req, res) => {
 exports.updateCharge = async (req, res) => {
   try {
     const { id, chargeName, type, amount } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const charge = await Charge.findOne({
       where: {
@@ -660,7 +721,7 @@ exports.updateCharge = async (req, res) => {
 exports.deleteCharge = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const charge = await Charge.findOne({
       where: {
@@ -693,43 +754,30 @@ exports.deleteCharge = async (req, res) => {
   }
 };
 
-// Update charge assignment status (mark as paid)
+// Update charge assignment status
+// Note: deduction is now done at assignment time in assignCharge.
+// This endpoint only updates the status label (no further wallet deduction).
 exports.updateChargeAssignmentStatus = async (req, res) => {
   try {
     const { id, status } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const assignment = await ChargeAssignment.findOne({
-      where: {
-        id,
-        merchantId
-      }
+      where: { id, merchantId }
     });
 
     if (!assignment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Charge assignment not found'
-      });
+      return res.status(404).json({ success: false, message: 'Charge assignment not found' });
     }
 
-    const updateData = { status };
-    if (status === 'Paid') {
-      updateData.datePaid = new Date();
-    }
-
-    await assignment.update(updateData);
+    await assignment.update({ status });
 
     res.json({
       success: true,
-      message: 'Charge assignment status updated successfully'
+      message: `Charge assignment status updated to ${status} successfully`
     });
   } catch (error) {
     console.error('Update charge assignment status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 };

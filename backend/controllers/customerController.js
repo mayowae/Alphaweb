@@ -416,8 +416,8 @@ const listCustomers = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -427,8 +427,10 @@ const listCustomers = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorized: merchant not identified' });
     }
 
+    const agentFilter = req.query.agentId ? { agentId: parseInt(req.query.agentId) } : {};
+
     const customers = await Customer.findAll({
-      where: { merchantId },
+      where: { merchantId, ...agentFilter },
       attributes: ['id', 'fullName', 'phoneNumber', 'email', 'alias', 'address', 'accountNumber', 'createdAt', 'agentId', 'branchId', 'packageId'],
       include: [
         {
@@ -444,7 +446,7 @@ const listCustomers = async (req, res) => {
         {
           model: Package,
           as: 'Package',
-          attributes: ['id', 'name'],
+          attributes: ['id', 'name', 'amount'],
         },
         {
           model: Merchant,
@@ -471,6 +473,7 @@ const listCustomers = async (req, res) => {
         agentName: c.Agent?.fullName,
         branchName: c.Branch?.name,
         packageName: c.Package?.name || (c.Collections?.[0]?.packageName) || '—',
+        packageAmount: c.Package?.amount ? parseFloat(c.Package.amount) : null,
         dateCreated: c.createdAt,
         status: 'Active',
       })),
@@ -524,14 +527,19 @@ const getCustomerById = async (req, res) => {
 const updateCustomer = async (req, res) => {
   try {
     const { id, fullName, phoneNumber, email, agentId, branchId, packageId, accountNumber, alias, address } = req.body;
+    const targetId = id || req.params.id;
 
-    const customer = await Customer.findByPk(id);
+    if (!targetId) {
+      return res.status(400).json({ message: 'Customer ID is required' });
+    }
+
+    const customer = await Customer.findByPk(targetId);
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
     // Check if email is being changed and if it's already taken
-    if (email !== customer.email) {
+    if (email && email !== customer.email) {
       const existingCustomer = await Customer.findOne({ where: { email } });
       if (existingCustomer) {
         return res.status(400).json({ message: 'Email already taken' });
@@ -554,18 +562,22 @@ const updateCustomer = async (req, res) => {
       }
     }
 
-    // Update customer
-    await customer.update({
-      fullName,
-      phoneNumber,
-      email,
-      alias,
-      address,
-      agentId,
-      branchId,
-      packageId,
-      accountNumber,
-    });
+    // Build update object with only defined fields
+    const updatePayload = {};
+    if (fullName !== undefined) {
+      updatePayload.fullName = fullName;
+      updatePayload.name = fullName;
+    }
+    if (phoneNumber !== undefined) updatePayload.phoneNumber = phoneNumber;
+    if (email !== undefined && email !== '') updatePayload.email = email;
+    if (alias !== undefined) updatePayload.alias = alias;
+    if (address !== undefined) updatePayload.address = address;
+    if (agentId !== undefined && agentId !== null && agentId !== '') updatePayload.agentId = parseInt(agentId);
+    if (branchId !== undefined && branchId !== null && branchId !== '') updatePayload.branchId = parseInt(branchId);
+    if (packageId !== undefined && packageId !== null && packageId !== '') updatePayload.packageId = parseInt(packageId);
+    if (accountNumber !== undefined) updatePayload.accountNumber = accountNumber;
+
+    await customer.update(updatePayload);
 
     res.json({
       message: 'Customer updated successfully',

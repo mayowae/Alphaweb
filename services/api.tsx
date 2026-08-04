@@ -2,31 +2,42 @@
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 function getAuthHeaders(): Record<string, string> {
-  const user = typeof window !== 'undefined' ? window.localStorage.getItem('user') : null;
-  
-  if (user) {
-    try {
-      const parsedUser = JSON.parse(user);
-      const token = parsedUser.token;
-      if (token) {
-        return {
-          Authorization: `Bearer ${token}`,
-        };
+  if (typeof window !== 'undefined') {
+    const collaboratorToken = window.localStorage.getItem('collaboratorToken');
+    const merchantToken = window.localStorage.getItem('merchantToken');
+    const accessToken = window.localStorage.getItem('accessToken');
+    let token = collaboratorToken || merchantToken || accessToken;
+
+    if (!token) {
+      const user = window.localStorage.getItem('user');
+      if (user) {
+        try {
+          const parsedUser = JSON.parse(user);
+          token = parsedUser.token;
+        } catch {}
       }
-    } catch (error) {
-      console.error('Error parsing user from localStorage:', error);
+    }
+
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
     }
   }
   return {};
 }
 
+function redirectToLogin() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('merchantToken');
+    localStorage.removeItem('accessToken');
+    window.location.href = '/login';
+  }
+}
+
 async function handleResponse(response: Response, defaultErrorMessage: string = 'Request failed') {
-  if (response.status === 401) {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user');
-      // Use router if possible, but window.location is safer for non-component file
-      window.location.href = '/login';
-    }
+  if (response.status === 401 || response.status === 403) {
+    redirectToLogin();
     throw new Error('Session expired. Please login again.');
   }
   
@@ -50,6 +61,7 @@ export async function registerUser(userData: any) {
       email: userData.email,
       currency: userData.currency,
       password: userData.password,
+      planId: userData.planId,
     }),
   });
 
@@ -469,8 +481,12 @@ export async function addCustomer(customerData: { fullName: string; phoneNumber:
   }
   return data;
 }
-export async function fetchCustomers() {
-  const response = await fetch(BASE_URL + '/customers', {
+export async function fetchCustomers(params?: { agentId?: string; search?: string; }) {
+  const queryParams = new URLSearchParams();
+  if (params?.agentId) queryParams.append('agentId', params.agentId);
+  if (params?.search) queryParams.append('search', params.search);
+  const qs = queryParams.toString();
+  const response = await fetch(BASE_URL + '/customers' + (qs ? '?' + qs : ''), {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -483,6 +499,40 @@ export async function fetchCustomerById(customerId: string | number) {
     headers: getAuthHeaders(),
   });
   return handleResponse(response, 'Failed to fetch customer by ID');
+}
+
+export async function updateCustomer(id: number, customerData: { 
+  fullName?: string; 
+  phoneNumber?: string; 
+  email?: string; 
+  address?: string; 
+  packageId?: string;
+  agentId?: string;
+  branchId?: string;
+}) {
+  const formData = new FormData();
+  formData.append('id', String(id));
+  if (customerData.fullName) {
+    formData.append('name', customerData.fullName);
+    formData.append('fullName', customerData.fullName);
+  }
+  if (customerData.phoneNumber) formData.append('phoneNumber', customerData.phoneNumber);
+  if (customerData.email) formData.append('email', customerData.email);
+  if (customerData.address) formData.append('address', customerData.address);
+  if (customerData.packageId) formData.append('packageId', customerData.packageId);
+  if (customerData.agentId) formData.append('agentId', customerData.agentId);
+  if (customerData.branchId) formData.append('branchId', customerData.branchId);
+
+  const response = await fetch(BASE_URL + `/customers`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: formData,
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to update customer');
+  }
+  return data;
 }
 // Role APIs
 export async function createRole(roleData: { roleName: string; cantView: number; canViewOnly: number; canEdit: number; permissions: Record<string, string>; }) {
@@ -590,7 +640,7 @@ export async function listStaff() {
   return data;
 }
 
-export async function updateStaff(staffData: { id: number; branch: string; fullName: string; email: string; phoneNumber: string; role: string; status: string; }) {
+export async function updateStaff(staffData: { id: number; branch: string; fullName: string; email: string; phoneNumber: string; role: string; status: string; password?: string; }) {
   const formData = new FormData();
   formData.append('id', String(staffData.id));
   formData.append('branch', staffData.branch);
@@ -599,6 +649,9 @@ export async function updateStaff(staffData: { id: number; branch: string; fullN
   formData.append('phoneNumber', staffData.phoneNumber);
   formData.append('role', staffData.role);
   formData.append('status', staffData.status);
+  if (staffData.password && staffData.password.trim()) {
+    formData.append('password', staffData.password.trim());
+  }
   const response = await fetch(BASE_URL + '/staff', {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -667,15 +720,13 @@ export async function getUserStats() {
 
 // Charges APIs
 export async function createCharge(chargeData: { chargeName: string; type: string; amount: string; }) {
-  const formData = new FormData();
-  formData.append('chargeName', chargeData.chargeName);
-  formData.append('type', chargeData.type);
-  formData.append('amount', chargeData.amount);
-  
   const response = await fetch(BASE_URL + '/charges', {
     method: 'POST',
-    headers: getAuthHeaders(),
-    body: formData,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(chargeData),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -685,20 +736,33 @@ export async function createCharge(chargeData: { chargeName: string; type: strin
 }
 
 export async function assignCharge(assignData: { chargeName: string; amount: string; dueDate: string; customer: string; }) {
-  const formData = new FormData();
-  formData.append('chargeName', assignData.chargeName);
-  formData.append('amount', assignData.amount);
-  formData.append('dueDate', assignData.dueDate);
-  formData.append('customer', assignData.customer);
-  
   const response = await fetch(BASE_URL + '/charges/assign', {
     method: 'POST',
-    headers: getAuthHeaders(),
-    body: formData,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(assignData),
   });
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || 'Failed to assign charge');
+  }
+  return data;
+}
+
+export async function updateChargeAssignmentStatus(id: number, status: string) {
+  const response = await fetch(BASE_URL + '/charges/assignments/status', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ id, status }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to update charge status');
   }
   return data;
 }
@@ -715,8 +779,11 @@ export async function fetchCharges() {
   return data;
 }
 
-export async function fetchChargeHistory() {
-  const response = await fetch(BASE_URL + '/charges/history', {
+export async function fetchChargeHistory(params?: { customerId?: string | number; }) {
+  const queryParams = new URLSearchParams();
+  if (params?.customerId) queryParams.append('customerId', String(params.customerId));
+  const qs = queryParams.toString();
+  const response = await fetch(BASE_URL + '/charges/history' + (qs ? '?' + qs : ''), {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -830,19 +897,19 @@ export async function createPackage(packageData: {
   if (packageData.description) {
     formData.append('description', packageData.description);
   }
-  if (packageData.interestRate) {
+  if (packageData.interestRate !== undefined && packageData.interestRate !== null) {
     formData.append('interestRate', String(packageData.interestRate));
   }
-  if (packageData.extraCharges) {
+  if (packageData.extraCharges !== undefined && packageData.extraCharges !== null) {
     formData.append('extraCharges', String(packageData.extraCharges));
   }
-  if (packageData.defaultPenalty) {
+  if (packageData.defaultPenalty !== undefined && packageData.defaultPenalty !== null) {
     formData.append('defaultPenalty', String(packageData.defaultPenalty));
   }
-  if (packageData.defaultDays) {
+  if (packageData.defaultDays !== undefined && packageData.defaultDays !== null) {
     formData.append('defaultDays', String(packageData.defaultDays));
   }
-  if (packageData.defaultPercentageRate !== undefined) {
+  if (packageData.defaultPercentageRate !== undefined && packageData.defaultPercentageRate !== null) {
     formData.append('defaultPercentageRate', String(packageData.defaultPercentageRate));
   }
   // Loan-specific fields
@@ -953,25 +1020,25 @@ export async function updatePackage(packageData: {
     formData.append('defaultPercentageRate', String(packageData.defaultPercentageRate));
   }
   // Loan-specific fields
-  if (packageData.loanAmount) {
+  if (packageData.loanAmount !== undefined && packageData.loanAmount !== null) {
     formData.append('loanAmount', String(packageData.loanAmount));
   }
-  if (packageData.loanInterestRate) {
+  if (packageData.loanInterestRate !== undefined && packageData.loanInterestRate !== null) {
     formData.append('loanInterestRate', String(packageData.loanInterestRate));
   }
-  if (packageData.interestAmount) {
+  if (packageData.interestAmount !== undefined && packageData.interestAmount !== null) {
     formData.append('interestAmount', String(packageData.interestAmount));
   }
-  if (packageData.loanPeriod) {
+  if (packageData.loanPeriod !== undefined && packageData.loanPeriod !== null) {
     formData.append('loanPeriod', String(packageData.loanPeriod));
   }
-  if (packageData.defaultAmount) {
+  if (packageData.defaultAmount !== undefined && packageData.defaultAmount !== null) {
     formData.append('defaultAmount', String(packageData.defaultAmount));
   }
-  if (packageData.gracePeriod) {
+  if (packageData.gracePeriod !== undefined && packageData.gracePeriod !== null) {
     formData.append('gracePeriod', String(packageData.gracePeriod));
   }
-  if (packageData.loanCharges) {
+  if (packageData.loanCharges !== undefined && packageData.loanCharges !== null) {
     formData.append('loanCharges', String(packageData.loanCharges));
   }
   if (packageData.packageCategory) {
@@ -1025,19 +1092,24 @@ export async function fetchLoanPackages(params?: {
 }
 
 // Collection APIs
-export async function createCollection(collectionData: { 
-  customerName: string; 
-  amount: number; 
-  dueDate: string; 
+export async function createCollection(collectionData: {
+  customerName: string;
+  amount: number;
+  dueDate: string;
   type: string;
   packageName?: string;
   packageAmount?: number;
   cycle?: number;
   cycleCounter?: number;
   isFirstCollection?: boolean;
+  customerId?: number | string;
+  postToCollection?: boolean;
 }) {
   const formData = new FormData();
   formData.append('customerName', collectionData.customerName);
+  if (collectionData.customerId) {
+    formData.append('customerId', String(collectionData.customerId));
+  }
   formData.append('amount', String(collectionData.amount));
   formData.append('dueDate', collectionData.dueDate);
   formData.append('type', collectionData.type);
@@ -1057,6 +1129,9 @@ export async function createCollection(collectionData: {
   if (collectionData.isFirstCollection !== undefined) {
     formData.append('isFirstCollection', String(collectionData.isFirstCollection));
   }
+  if (collectionData.postToCollection !== undefined) {
+    formData.append('postToCollection', String(collectionData.postToCollection));
+  }
   
   const response = await fetch(BASE_URL + '/collections', {
     method: 'POST',
@@ -1070,8 +1145,13 @@ export async function createCollection(collectionData: {
   return data;
 }
 
-export async function fetchCollections() {
-  const response = await fetch(BASE_URL + '/collections', {
+export async function fetchCollections(params?: { customerId?: string | number; search?: string; agentId?: string | number; }) {
+  const queryParams = new URLSearchParams();
+  if (params?.customerId) queryParams.append('customerId', String(params.customerId));
+  if (params?.search) queryParams.append('search', params.search);
+  if (params?.agentId) queryParams.append('agentId', String(params.agentId));
+  
+  const response = await fetch(BASE_URL + '/collections?' + queryParams.toString(), {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -1292,7 +1372,8 @@ export async function fetchInvestmentApplications(params?: {
   fromDate?: string; 
   toDate?: string; 
   page?: number; 
-  limit?: number; 
+  limit?: number;
+  customerId?: string;
 }) {
   const queryParams = new URLSearchParams();
   if (params?.status) queryParams.append('status', params.status);
@@ -1301,6 +1382,7 @@ export async function fetchInvestmentApplications(params?: {
   if (params?.toDate) queryParams.append('toDate', params.toDate);
   if (params?.page) queryParams.append('page', String(params.page));
   if (params?.limit) queryParams.append('limit', String(params.limit));
+  if (params?.customerId) queryParams.append('customerId', params.customerId);
   
   const response = await fetch(BASE_URL + '/investment-applications?' + queryParams.toString(), {
     method: 'GET',
@@ -1418,7 +1500,8 @@ export async function fetchLoanApplications(params?: {
   fromDate?: string; 
   toDate?: string; 
   page?: number; 
-  limit?: number; 
+  limit?: number;
+  customerId?: string;
 }) {
   const queryParams = new URLSearchParams();
   if (params?.status) queryParams.append('status', params.status);
@@ -1427,6 +1510,7 @@ export async function fetchLoanApplications(params?: {
   if (params?.toDate) queryParams.append('toDate', params.toDate);
   if (params?.page) queryParams.append('page', String(params.page));
   if (params?.limit) queryParams.append('limit', String(params.limit));
+  if (params?.customerId) queryParams.append('customerId', params.customerId);
   
   const response = await fetch(BASE_URL + '/loan-applications?' + queryParams.toString(), {
     method: 'GET',
@@ -1515,6 +1599,7 @@ export async function createLoan(loanData: {
 export async function fetchLoans(params: {
   status?: string;
   search?: string;
+  customerId?: string;
   fromDate?: string;
   toDate?: string;
   page?: number;
@@ -1630,6 +1715,7 @@ export async function fetchRepayments(params: {
   page?: number;
   limit?: number;
   agentId?: string;
+  customerId?: string;
 }) {
   const queryParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -1744,6 +1830,7 @@ export async function fetchCustomerWallets(params: {
   search?: string;
   accountLevel?: string;
   status?: string;
+  customerId?: string | number;
 }) {
   const queryParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -1759,6 +1846,14 @@ export async function fetchCustomerWallets(params: {
     throw new Error(data.message || 'Failed to fetch customer wallets');
   }
   return data;
+}
+
+export async function fetchCustomerWalletTransactions(customerId: string | number) {
+  const response = await fetch(BASE_URL + `/customer-wallets/${customerId}/transactions`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response, 'Failed to fetch customer wallet transactions');
 }
 
 export async function fetchCustomerWalletById(id: number) {
@@ -1883,6 +1978,7 @@ export async function fetchInvestmentTransactions(params?: {
   agentId?: string;
   branch?: string;
   transactionType?: string;
+  customerId?: string;
 }) {
   try {
     const queryParams = new URLSearchParams();
@@ -1895,6 +1991,7 @@ export async function fetchInvestmentTransactions(params?: {
     if (params?.agentId) queryParams.append('agentId', params.agentId);
     if (params?.branch) queryParams.append('branch', params.branch);
     if (params?.transactionType) queryParams.append('transactionType', params.transactionType);
+    if (params?.customerId) queryParams.append('customerId', params.customerId);
     
     const url = BASE_URL + '/investment-transactions?' + queryParams.toString();
     
@@ -2259,4 +2356,17 @@ export async function fetchIncomeStatement(params?: { dateFrom?: string; dateTo?
   }
   return data;
 }
+
+export async function fetchTransactionMappings() {
+  const response = await fetch(BASE_URL + '/accounting/transaction-mappings', {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to fetch transaction mappings');
+  }
+  return data;
+}
+
 

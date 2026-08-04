@@ -1,0 +1,1596 @@
+=== COLLECTION CONTROLLER ===
+const { Collection, Customer, Agent, Package, Remittance } = require('../models');
+const { Op, Sequelize } = require('sequelize');
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Collections
+ *     description: Collections management
+ * /collections:
+ *   get:
+ *     summary: List collections
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collections list
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collections:
+ *                 - id: 101
+ *                   customerId: 12
+ *                   customerName: "John Doe"
+ *                   accountNumber: "ACC123456"
+ *                   amount: 5000.00
+ *                   amountCollected: 5000.00
+ *                   dueDate: "2025-01-31T00:00:00.000Z"
+ *                   collectedDate: "2025-01-31T10:30:00.000Z"
+ *                   type: "Daily"
+ *                   description: "Daily savings collection"
+ *                   collectionNotes: "Customer requested early collection"
+ *                   priority: "Medium"
+ *                   reminderSent: false
+ *                   reminderDate: "2025-01-30T09:00:00.000Z"
+ *                   packageId: 801
+ *                   packageName: "Premium Package"
+ *                   packageAmount: 50000.00
+ *                   cycle: 30
+ *                   cycleCounter: 5
+ *                   isFirstCollection: false
+ *                   status: "Pending"
+ *                   merchantId: 1
+ *                   agentId: 3
+ *                   dateCreated: "2025-01-01T10:00:00.000Z"
+ *   post:
+ *     summary: Create single collection
+ *     tags: [Single Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customerName, amount, dueDate, type]
+ *             properties:
+ *               customerName: { type: string }
+ *               amount: { type: number, format: float }
+ *               dueDate: { type: string, format: date }
+ *               type: { type: string }
+ *               description: { type: string }
+ *               packageName: { type: string }
+ *               packageAmount: { type: number, format: float }
+ *               cycle: { type: integer }
+ *               cycleCounter: { type: integer }
+ *               isFirstCollection: { type: boolean }
+ *     responses:
+ *       201:
+ *         description: Collection created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection created successfully"
+ *               collection:
+ *                 id: 102
+ *                 customerId: 12
+ *                 customerName: "John Doe"
+ *                 accountNumber: "ACC123456"
+ *                 amount: 5000.00
+ *                 amountCollected: 0.00
+ *                 dueDate: "2025-01-31T00:00:00.000Z"
+ *                 collectedDate: null
+ *                 type: "Daily"
+ *                 description: "Daily savings collection"
+ *                 collectionNotes: "Customer requested early collection"
+ *                 priority: "Medium"
+ *                 reminderSent: false
+ *                 reminderDate: "2025-01-30T09:00:00.000Z"
+ *                 packageId: 801
+ *                 packageName: "Premium Package"
+ *                 packageAmount: 50000.00
+ *                 cycle: 30
+ *                 cycleCounter: 5
+ *                 isFirstCollection: false
+ *                 status: "Pending"
+ *                 merchantId: 1
+ *                 agentId: 3
+ *                 dateCreated: "2025-01-01T10:00:00.000Z"
+ * /collections/bulk:
+ *   post:
+ *     summary: Create multiple collections in bulk
+ *     tags: [Bulk Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [collections]
+ *             properties:
+ *               collections:
+ *                 type: array
+ *                 description: List of collection payloads
+ *                 items:
+ *                   type: object
+ *                   required: [customerName, amount, dueDate, type]
+ *                   properties:
+ *                     customerName: { type: string }
+ *                     amount: { type: number, format: float }
+ *                     dueDate: { type: string, format: date }
+ *                     type: { type: string }
+ *                     description: { type: string }
+ *                     packageName: { type: string }
+ *                     packageAmount: { type: number, format: float }
+ *                     cycle: { type: integer }
+ *                     cycleCounter: { type: integer }
+ *                     isFirstCollection: { type: boolean }
+ *     responses:
+ *       201:
+ *         description: Bulk collections created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               results:
+ *                 - success: true
+ *                   id: 201
+ *                 - success: true
+ *                   id: 202
+ *       207:
+ *         description: Bulk processed with partial failures
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               results:
+ *                 - success: true
+ *                   id: 203
+ *                 - success: false
+ *                   error: "Customer not found"
+ *   put:
+ *     summary: Update collection
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: { type: integer }
+ *               customerName: { type: string }
+ *               amount: { type: number, format: float }
+ *               dueDate: { type: string, format: date }
+ *               type: { type: string }
+ *               status: { type: string }
+ *               description: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collection updated
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection updated successfully"
+ *               collection:
+ *                 id: 101
+ *                 status: "Collected"
+ * /collections/{id}:
+ *   get:
+ *     summary: Get collection by ID
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Collection retrieved
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collection:
+ *                 id: 101
+ *                 customerName: "John Doe"
+ *                 amount: 5000
+ *                 status: "Pending"
+ *       404:
+ *         description: Not found
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Collection not found"
+ *   delete:
+ *     summary: Delete collection
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Collection deleted
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection deleted successfully"
+ * /collections/{id}/collect:
+ *   put:
+ *     summary: Mark collection as collected
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amountCollected: { type: number, format: float }
+ *               collectionNotes: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collection marked as collected
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Collection marked as collected"
+ *               collection:
+ *                 id: 101
+ *                 status: "Collected"
+ * /collections/status/{status}:
+ *   get:
+ *     summary: Get collections by status
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: status
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Collections by status
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collections:
+ *                 - id: 101
+ *                   status: "Pending"
+ * /collections/overdue:
+ *   get:
+ *     summary: Get overdue collections
+ *     tags: [Collections]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Overdue collections
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               collections:
+ *                 - id: 99
+ *                   dueDate: "2024-12-15T00:00:00.000Z"
+ *                   status: "Pending"
+ */
+
+// Create a new collection
+const createCollection = async (req, res) => {
+  try {
+    const { 
+      customerName, 
+      amount, 
+      dueDate, 
+      type, 
+      description,
+      packageName,
+      packageAmount,
+      cycle,
+      cycleCounter,
+      isFirstCollection
+    } = req.body;
+    const merchantId = req.user.id;
+
+    // Find customer by name
+    const customer = await Customer.findOne({
+      where: {
+        fullName: customerName,
+        merchantId: merchantId
+      }
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+    
+    // Find package by name to get its ID
+    let packageId = null;
+    if (packageName) {
+      const pkg = await Package.findOne({ 
+        where: { 
+          name: packageName,
+          merchantId: merchantId,
+          status: { [Op.ne]: 'Deleted' }
+        } 
+      });
+      if (pkg) {
+        packageId = pkg.id;
+      }
+    }
+
+    const collection = await Collection.create({
+      customerId: customer.id,
+      customerName,
+      amount: parseFloat(amount),
+      dueDate: new Date(dueDate),
+      type,
+      description: description || '',
+      packageName: packageName || '',
+      packageId: packageId,
+      packageAmount: packageAmount ? parseFloat(packageAmount) : null,
+      cycle: cycle ? parseInt(cycle) : 31,
+      cycleCounter: cycleCounter ? parseInt(cycleCounter) : 1,
+      isFirstCollection: isFirstCollection === 'true' || isFirstCollection === true,
+      status: 'Pending',
+      merchantId,
+      dateCreated: new Date()
+    });
+
+    // Update customer's packgeId if not set
+    if (!customer.packageId && packageId) {
+        await customer.update({ packageId: packageId });
+    }
+
+    // Automatically place in a Remittance holding state per workflow rules
+    try {
+      await Remittance.create({
+        collectionId: collection.id,
+        customerId: customer.id,
+        customerName: customer.fullName,
+        accountNumber: customer.accountNumber || null,
+        amount: parseFloat(amount),
+        agentId: customer.agentId || null,
+        merchantId,
+        status: 'Pending',
+        notes: `Auto-created alongside Collection #${collection.id}`
+      });
+    } catch (remitError) {
+      console.error('Failed to auto-create holding Remittance:', remitError);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Collection created successfully',
+      collection
+    });
+  } catch (error) {
+    console.error('Error creating collection:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create collection',
+      error: error.message
+    });
+  }
+};
+
+// Get all collections for a merchant
+const getCollections = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+
+    const collections = await Collection.findAll({
+      where: { merchantId },
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'fullName', 'email', 'phoneNumber', 'accountNumber', 'agentId'],
+          include: [
+            {
+              model: Agent,
+              as: 'Agent',
+              attributes: ['id', 'fullName', 'branch']
+            }
+          ]
+        }
+      ],
+      // Ensure unique rows when using JOINs
+      distinct: true,
+      subQuery: false,
+      // Order by physical column to avoid createdAt mapping issues
+      order: [[Sequelize.col('date_created'), 'DESC']]
+    });
+
+    // Normalize response to include top-level accountNumber and packageName for frontend
+    const normalized = collections.map((c) => {
+      const json = c.toJSON();
+      json.accountNumber = json?.customer?.accountNumber || null;
+      json.packageName = json?.packageName || null;
+      return json;
+    });
+
+    res.json({
+      success: true,
+      collections: normalized
+    });
+  } catch (error) {
+    console.error('Error fetching collections:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch collections',
+      error: error.message
+    });
+  }
+};
+
+// Get collection by ID
+const getCollectionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const merchantId = req.user.id;
+
+    const collection = await Collection.findOne({
+      where: { 
+        id,
+        merchantId 
+      },
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'fullName', 'email', 'phoneNumber']
+        }
+      ]
+    });
+
+    if (!collection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collection not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      collection
+    });
+  } catch (error) {
+    console.error('Error fetching collection:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch collection',
+      error: error.message
+    });
+  }
+};
+
+// Update collection
+const updateCollection = async (req, res) => {
+  try {
+    const { id, customerName, amount, dueDate, type, status, description } = req.body;
+    const merchantId = req.user.id;
+
+    const collection = await Collection.findOne({
+      where: { 
+        id,
+        merchantId 
+      }
+    });
+
+    if (!collection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collection not found'
+      });
+    }
+
+    await collection.update({
+      customerName: customerName || collection.customerName,
+      amount: amount ? parseFloat(amount) : collection.amount,
+      dueDate: dueDate ? new Date(dueDate) : collection.dueDate,
+      type: type || collection.type,
+      status: status || collection.status,
+      description: description !== undefined ? description : collection.description,
+      collectedDate: status === 'Collected' ? new Date() : collection.collectedDate
+    });
+
+    // If marked as Collected, create a Remittance record
+    if (status === 'Collected') {
+      try {
+        // Check if remittance already exists for this collection to avoid duplicates
+        const existingRemittance = await Remittance.findOne({
+          where: { collectionId: collection.id }
+        });
+
+        if (!existingRemittance) {
+          // Fetch customer to get agent details for the remittance
+          const customer = await Customer.findByPk(collection.customerId);
+          
+          await Remittance.create({
+            collectionId: collection.id,
+            customerId: collection.customerId,
+            customerName: collection.customerName,
+            accountNumber: collection.accountNumber || (customer ? customer.accountNumber : null),
+            amount: collection.amount,
+            agentId: customer ? customer.agentId : null,
+            merchantId: merchantId,
+            status: 'Pending',
+            notes: `Auto-created from Collection #${collection.id}`
+          });
+          console.log(`Auto-created remittance for collection #${collection.id}`);
+        }
+      } catch (remitError) {
+        console.error('Failed to auto-create remittance:', remitError);
+        // We don't fail the whole request just because remittance creation failed, 
+        // but we log it for debugging.
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Collection updated successfully',
+      collection
+    });
+  } catch (error) {
+    console.error('Error updating collection:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update collection',
+      error: error.message
+    });
+  }
+};
+
+// Mark collection as collected
+const markAsCollected = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amountCollected, collectionNotes } = req.body;
+    const merchantId = req.user.id;
+
+    const collection = await Collection.findOne({
+      where: { 
+        id,
+        merchantId 
+      }
+    });
+
+    if (!collection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collection not found'
+      });
+    }
+
+    await collection.update({
+      status: 'Collected',
+      collectedDate: new Date(),
+      amountCollected: amountCollected ? parseFloat(amountCollected) : collection.amount,
+      collectionNotes: collectionNotes || ''
+    });
+
+    // Create a Remittance record
+    try {
+      const existingRemittance = await Remittance.findOne({
+        where: { collectionId: collection.id }
+      });
+
+      if (!existingRemittance) {
+        const customer = await Customer.findByPk(collection.customerId);
+        await Remittance.create({
+          collectionId: collection.id,
+          customerId: collection.customerId,
+          customerName: collection.customerName,
+          accountNumber: collection.accountNumber || (customer ? customer.accountNumber : null),
+          amount: parseFloat(amountCollected || collection.amount),
+          agentId: customer ? customer.agentId : null,
+          merchantId: merchantId,
+          status: 'Pending',
+          notes: collectionNotes || `Auto-created from Collection #${collection.id}`
+        });
+      }
+    } catch (remitError) {
+      console.error('Failed to auto-create remittance in markAsCollected:', remitError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Collection marked as collected',
+      collection
+    });
+  } catch (error) {
+    console.error('Error marking collection as collected:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark collection as collected',
+      error: error.message
+    });
+  }
+};
+
+// Delete collection (soft delete)
+const deleteCollection = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const merchantId = req.user.id;
+
+    const collection = await Collection.findOne({
+      where: { 
+        id,
+        merchantId 
+      }
+    });
+
+    if (!collection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Collection not found'
+      });
+    }
+
+    await collection.update({ status: 'Deleted' });
+
+    res.json({
+      success: true,
+      message: 'Collection deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting collection:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete collection',
+      error: error.message
+    });
+  }
+};
+
+// Create multiple collections in bulk
+const createCollectionsBulk = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+    const payload = req.body && Array.isArray(req.body.collections) ? req.body.collections : [];
+    if (!Array.isArray(payload) || payload.length === 0) {
+      return res.status(400).json({ success: false, message: 'collections array is required' });
+    }
+
+    const results = [];
+    for (const item of payload) {
+      try {
+        const { customerName, amount, dueDate, type, description, packageName, packageAmount, cycle, cycleCounter, isFirstCollection } = item || {};
+        if (!customerName || amount === undefined || !dueDate || !type) {
+          throw new Error('Missing required fields');
+        }
+
+        const customer = await Customer.findOne({ where: { fullName: customerName, merchantId } });
+        if (!customer) throw new Error('Customer not found');
+
+        // Find package by name to get its ID
+        let packageId = null;
+        if (packageName) {
+          const pkg = await Package.findOne({ 
+            where: { 
+              name: packageName,
+              merchantId: merchantId,
+              status: { [Op.ne]: 'Deleted' }
+            } 
+          });
+          if (pkg) {
+            packageId = pkg.id;
+          }
+        }
+
+        const created = await Collection.create({
+          customerId: customer.id,
+          customerName,
+          amount: parseFloat(amount),
+          dueDate: new Date(dueDate),
+          type,
+          description: description || '',
+          packageName: packageName || '',
+          packageId: packageId,
+          packageAmount: packageAmount ? parseFloat(packageAmount) : null,
+          cycle: cycle ? parseInt(cycle) : 31,
+          cycleCounter: cycleCounter ? parseInt(cycleCounter) : 1,
+          isFirstCollection: isFirstCollection === 'true' || isFirstCollection === true,
+          status: 'Pending',
+          merchantId,
+          dateCreated: new Date()
+        });
+
+        // Update customer's packgeId if not set
+        if (!customer.packageId && packageId) {
+            await customer.update({ packageId: packageId });
+        }
+
+        // Automatically place in a Remittance holding state per workflow rules
+        try {
+          await Remittance.create({
+            collectionId: created.id,
+            customerId: customer.id,
+            customerName: customer.fullName,
+            accountNumber: customer.accountNumber || null,
+            amount: parseFloat(amount),
+            agentId: customer.agentId || null,
+            merchantId,
+            status: 'Pending',
+            notes: `Auto-created alongside Bulk Collection #${created.id}`
+          });
+        } catch (remitError) {
+          console.error('Failed to auto-create holding Remittance (Bulk):', remitError);
+        }
+        results.push({ success: true, id: created.id });
+      } catch (err) {
+        results.push({ success: false, error: err.message || String(err) });
+      }
+    }
+
+    const hasFailures = results.some(r => !r.success);
+    return res.status(hasFailures ? 207 : 201).json({ success: !hasFailures, results });
+  } catch (error) {
+    console.error('Error creating bulk collections:', error);
+    res.status(500).json({ success: false, message: 'Failed to create bulk collections', error: error.message });
+  }
+};
+
+// Get collections by status
+const getCollectionsByStatus = async (req, res) => {
+  try {
+    const { status } = req.params;
+    const merchantId = req.user.id;
+
+    const collections = await Collection.findAll({
+      where: { 
+        merchantId,
+        status
+      },
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'fullName', 'email', 'phoneNumber']
+        }
+      ],
+      order: [['dueDate', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      collections
+    });
+  } catch (error) {
+    console.error('Error fetching collections by status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch collections by status',
+      error: error.message
+    });
+  }
+};
+
+// Get overdue collections
+const getOverdueCollections = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+    const today = new Date();
+
+    const collections = await Collection.findAll({
+      where: { 
+        merchantId,
+        status: 'Pending',
+        dueDate: {
+          [Op.lt]: today
+        }
+      },
+      include: [
+        {
+          model: Customer,
+          as: 'customer',
+          attributes: ['id', 'fullName', 'email', 'phoneNumber']
+        }
+      ],
+      order: [['dueDate', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      collections
+    });
+  } catch (error) {
+    console.error('Error fetching overdue collections:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch overdue collections',
+      error: error.message
+    });
+  }
+};
+
+module.exports = {
+  createCollection,
+  createCollectionsBulk,
+  // Note: bulk endpoint handled by createCollectionsBulk below
+  getCollections,
+  getCollectionById,
+  updateCollection,
+  markAsCollected,
+  deleteCollection,
+  getCollectionsByStatus,
+  getOverdueCollections
+};
+
+
+
+=== CHARGE CONTROLLER ===
+const db = require('../models');
+const { Charge, ChargeAssignment, Customer, Merchant } = db;
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Charges
+ *     description: Charge management
+ * /charges:
+ *   get:
+ *     summary: List charges
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Charges list retrieved successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               charges:
+ *                 - id: 1
+ *                   chargeName: "Processing Fee"
+ *                   type: "Service"
+ *                   amount: "N1,000"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   post:
+ *     summary: Create charge
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [chargeName, type, amount]
+ *             properties:
+ *               chargeName: 
+ *                 type: string
+ *                 description: Name of the charge
+ *                 example: "Processing Fee"
+ *               type: 
+ *                 type: string
+ *                 enum: [Loan, Penalty, Service]
+ *                 description: Type of charge
+ *                 example: "Service"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Charge amount
+ *                 example: 100.50
+ *     responses:
+ *       201:
+ *         description: Charge created successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge created successfully"
+ *               charge:
+ *                 id: 2
+ *                 chargeName: "Late Fee"
+ *                 type: "Penalty"
+ *                 amount: "N500"
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *   put:
+ *     summary: Update charge
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id]
+ *             properties:
+ *               id: 
+ *                 type: integer
+ *                 description: Charge ID
+ *                 example: 1
+ *               chargeName: 
+ *                 type: string
+ *                 description: Name of the charge
+ *                 example: "Updated Processing Fee"
+ *               type: 
+ *                 type: string
+ *                 enum: [Loan, Penalty, Service]
+ *                 description: Type of charge
+ *                 example: "Service"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Charge amount
+ *                 example: 150.75
+ *     responses:
+ *       200:
+ *         description: Charge updated successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge updated successfully"
+ *               charge:
+ *                 id: 1
+ *                 chargeName: "Processing Fee"
+ *                 type: "Service"
+ *                 amount: "N1,500"
+ *       404:
+ *         description: Charge not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/{id}:
+ *   delete:
+ *     summary: Delete charge
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: 
+ *           type: integer
+ *         description: Charge ID
+ *     responses:
+ *       200:
+ *         description: Charge deleted successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge deleted successfully"
+ *       404:
+ *         description: Charge not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/assign:
+ *   post:
+ *     summary: Assign charge to customer
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [chargeName, amount, dueDate, customer]
+ *             properties:
+ *               chargeName: 
+ *                 type: string
+ *                 description: Name of the charge
+ *                 example: "Processing Fee"
+ *               amount: 
+ *                 type: number
+ *                 format: float
+ *                 description: Charge amount
+ *                 example: 100.50
+ *               dueDate: 
+ *                 type: string
+ *                 format: date
+ *                 description: Due date for the charge
+ *                 example: "2024-12-31"
+ *               customer: 
+ *                 type: string
+ *                 description: Customer name
+ *                 example: "John Doe"
+ *     responses:
+ *       201:
+ *         description: Charge assigned successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Charge assigned successfully"
+ *               assignment:
+ *                 id: 11
+ *                 chargeName: "Processing Fee"
+ *                 customer: "John Doe"
+ *                 amount: "N1,000"
+ *                 dueDate: "31 Dec 2025"
+ *       404:
+ *         description: Customer not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/history:
+ *   get:
+ *     summary: Get charge history
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Charge assignments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 assignments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       chargeName:
+ *                         type: string
+ *                         example: "Processing Fee"
+ *                       amount:
+ *                         type: number
+ *                         format: float
+ *                         example: 100.50
+ *                       dueDate:
+ *                         type: string
+ *                         format: date
+ *                         example: "2024-12-31"
+ *                       customer:
+ *                         type: string
+ *                         example: "John Doe"
+ *                       status:
+ *                         type: string
+ *                         example: "Pending"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ * /charges/assignments/status:
+ *   put:
+ *     summary: Update assignment status
+ *     tags: [Charges]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id, status]
+ *             properties:
+ *               id: 
+ *                 type: integer
+ *                 description: Assignment ID
+ *                 example: 1
+ *               status: 
+ *                 type: string
+ *                 enum: [Pending, Paid]
+ *                 description: New status
+ *                 example: "Paid"
+ *     responses:
+ *       200:
+ *         description: Assignment status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Assignment status updated successfully"
+ *                 assignment:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     status:
+ *                       type: string
+ *                       example: "Paid"
+ *       404:
+ *         description: Assignment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+// Create a new charge
+exports.createCharge = async (req, res) => {
+  try {
+    const { chargeName, type, amount } = req.body;
+    const merchantId = req.user.id;
+
+    // Validate required fields
+    if (!chargeName || !type || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Charge name, type, and amount are required'
+      });
+    }
+
+    // Validate type
+    const validTypes = ['Loan', 'Penalty', 'Service'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid charge type. Must be one of: Loan, Penalty, Service'
+      });
+    }
+
+    // Normalize amount (supports raw number or currency-formatted string)
+    const normalizedAmount = typeof amount === 'string'
+      ? parseFloat(amount.replace(/[^\d.-]/g, ''))
+      : Number(amount);
+    if (Number.isNaN(normalizedAmount)) {
+      return res.status(400).json({ success: false, message: 'Invalid amount' });
+    }
+
+    // Create the charge
+    const charge = await Charge.create({
+      chargeName,
+      type,
+      amount: normalizedAmount,
+      merchantId
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Charge created successfully',
+      charge: {
+        id: charge.id,
+        chargeName: charge.chargeName,
+        type: charge.type,
+        amount: `N${Number(charge.amount || 0).toLocaleString()}`,
+        activeCustomers: 0,
+        lastUpdated: (charge.updatedAt ? charge.updatedAt : new Date()).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      }
+    });
+  } catch (error) {
+    console.error('Create charge error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get all charges for a merchant
+exports.getCharges = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+
+    const charges = await Charge.findAll({
+      where: {
+        merchantId,
+        isActive: true
+      },
+      include: [
+        {
+          model: ChargeAssignment,
+          attributes: ['id'],
+          required: false
+        }
+      ],
+      order: [['updatedAt', 'DESC']]
+    });
+
+    const formattedCharges = charges.map(charge => ({
+      id: charge.id,
+      chargeName: charge.chargeName,
+      type: charge.type,
+      amount: `N${Number(charge.amount || 0).toLocaleString()}`,
+      activeCustomers: charge.ChargeAssignments ? charge.ChargeAssignments.length : 0,
+      lastUpdated: (charge.updatedAt ? charge.updatedAt : new Date()).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    }));
+
+    res.json({
+      success: true,
+      charges: formattedCharges
+    });
+  } catch (error) {
+    console.error('Get charges error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Assign charge to customer
+exports.assignCharge = async (req, res) => {
+  try {
+    const { chargeName, amount, dueDate, customer } = req.body;
+    const merchantId = req.user.id;
+
+    // Validate required fields
+    if (!chargeName || !amount || !dueDate || !customer) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      });
+    }
+
+    // Find the charge by name
+    const charge = await Charge.findOne({
+      where: {
+        chargeName,
+        merchantId,
+        isActive: true
+      }
+    });
+
+    if (!charge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Charge not found'
+      });
+    }
+
+    // Find the customer by name
+    const customerRecord = await Customer.findOne({
+      where: {
+        fullName: customer,
+        merchantId
+      }
+    });
+
+    if (!customerRecord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Normalize assignment amount
+    const normalizedAssignmentAmount = typeof amount === 'string'
+      ? parseFloat(amount.replace(/[^\d.-]/g, ''))
+      : Number(amount);
+    if (Number.isNaN(normalizedAssignmentAmount)) {
+      return res.status(400).json({ success: false, message: 'Invalid amount' });
+    }
+
+    // Create charge assignment
+    const assignment = await ChargeAssignment.create({
+      chargeId: charge.id,
+      customerId: customerRecord.id,
+      amount: normalizedAssignmentAmount,
+      dueDate: new Date(dueDate),
+      merchantId,
+      status: 'Pending'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Charge assigned successfully',
+      assignment: {
+        id: assignment.id,
+        chargeName: charge.chargeName,
+        customerName: customer,
+        amount: `N${Number(assignment.amount || 0).toLocaleString()}`,
+        dueDate: (assignment.dueDate ? assignment.dueDate : new Date()).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }),
+        dateApplied: (assignment.dateApplied ? assignment.dateApplied : new Date()).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }),
+        status: assignment.status
+      }
+    });
+  } catch (error) {
+    console.error('Assign charge error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get charge history (assignments)
+exports.getChargeHistory = async (req, res) => {
+  try {
+    const merchantId = req.user.id;
+
+    const assignments = await ChargeAssignment.findAll({
+      where: { merchantId },
+      include: [
+        {
+          model: Charge,
+          attributes: ['chargeName'],
+          required: false
+        },
+        {
+          model: Customer,
+          attributes: ['fullName', 'accountNumber'],
+          required: false
+        }
+      ],
+      order: [['dateApplied', 'DESC']]
+    });
+
+    const formattedHistory = assignments.map(assignment => ({
+      id: assignment.id,
+      customerName: assignment.Customer?.fullName || 'N/A',
+      accountNumber: assignment.Customer?.accountNumber || 'N/A',
+      chargeName: assignment.Charge?.chargeName || '—',
+      amount: `N${Number(assignment.amount || 0).toLocaleString()}`,
+      dueDate: (assignment.dueDate ? assignment.dueDate : new Date()).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }),
+      dateApplied: (assignment.dateApplied ? assignment.dateApplied : new Date()).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }),
+      status: assignment.status
+    }));
+
+    res.json({
+      success: true,
+      history: formattedHistory
+    });
+  } catch (error) {
+    console.error('Get charge history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update charge
+exports.updateCharge = async (req, res) => {
+  try {
+    const { id, chargeName, type, amount } = req.body;
+    const merchantId = req.user.id;
+
+    const charge = await Charge.findOne({
+      where: {
+        id,
+        merchantId
+      }
+    });
+
+    if (!charge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Charge not found'
+      });
+    }
+
+    // Update charge
+    const normalizedUpdateAmount = amount === undefined || amount === null ? undefined : (
+      typeof amount === 'string' ? parseFloat(amount.replace(/[^\d.-]/g, '')) : Number(amount)
+    );
+    if (normalizedUpdateAmount !== undefined && Number.isNaN(normalizedUpdateAmount)) {
+      return res.status(400).json({ success: false, message: 'Invalid amount' });
+    }
+    await charge.update({
+      chargeName: chargeName || charge.chargeName,
+      type: type || charge.type,
+      amount: normalizedUpdateAmount !== undefined ? normalizedUpdateAmount : charge.amount
+    });
+
+    res.json({
+      success: true,
+      message: 'Charge updated successfully',
+      charge: {
+        id: charge.id,
+        chargeName: charge.chargeName,
+        type: charge.type,
+        amount: `N${Number(charge.amount || 0).toLocaleString()}`,
+        lastUpdated: charge.updatedAt.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })
+      }
+    });
+  } catch (error) {
+    console.error('Update charge error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Delete charge
+exports.deleteCharge = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const merchantId = req.user.id;
+
+    const charge = await Charge.findOne({
+      where: {
+        id,
+        merchantId
+      }
+    });
+
+    if (!charge) {
+      return res.status(404).json({
+        success: false,
+        message: 'Charge not found'
+      });
+    }
+
+    // Soft delete by setting isActive to false
+    await charge.update({ isActive: false });
+
+    res.json({
+      success: true,
+      message: 'Charge deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete charge error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update charge assignment status (mark as paid)
+exports.updateChargeAssignmentStatus = async (req, res) => {
+  try {
+    const { id, status } = req.body;
+    const merchantId = req.user.id;
+
+    const assignment = await ChargeAssignment.findOne({
+      where: {
+        id,
+        merchantId
+      }
+    });
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Charge assignment not found'
+      });
+    }
+
+    const updateData = { status };
+    if (status === 'Paid') {
+      updateData.datePaid = new Date();
+    }
+
+    await assignment.update(updateData);
+
+    res.json({
+      success: true,
+      message: 'Charge assignment status updated successfully'
+    });
+  } catch (error) {
+    console.error('Update charge assignment status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};

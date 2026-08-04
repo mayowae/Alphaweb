@@ -1,23 +1,34 @@
 import paramiko
-import os
 
+# Credentials
 hostname = '159.198.36.24'
 port = 22
 username = 'root'
-password = 'Xr2J2Wx9Unk0l7rI1C'
+password = '96eUC4aTbMu1o3yAP2'
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(hostname, port=port, username=username, password=password, timeout=30)
+def run_remote_command(ssh, command):
+    print(f"Running: {command}")
+    stdin, stdout, stderr = ssh.exec_command(command)
+    print(stdout.read().decode('utf-8', 'ignore'))
+    print(stderr.read().decode('utf-8', 'ignore'))
 
-def run(cmd):
-    # Set PGPASSWORD so psql doesn't prompt for password
-    env = "export PGPASSWORD='mayowae_alpha';"
-    stdin, stdout, stderr = client.exec_command(env + cmd)
-    return stdout.read().decode('utf-8', errors='replace')
+try:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname, port, username, password, timeout=30)
+    print("Connected!")
 
-print("=== Checking Merchants Table Columns ===")
-out = run("psql -U mayowae -h localhost -d alphaweb_db -c \"SELECT column_name FROM information_schema.columns WHERE table_name = 'merchants';\"")
-print(out)
+    # Check database name first
+    # run_remote_command(ssh, "psql -U root -l")
+    
+    # Query ENUM values. I'll assume database is alpha_main or similar.
+    # I'll try to find the correct DB name from .env
+    run_remote_command(ssh, "grep DB_ /home/mayowae/public_html/alphaweb/backend/.env")
+    
+    # Run psql command
+    sql = "SELECT enumlabel FROM pg_enum JOIN pg_type ON pg_type.oid = pg_enum.enumtypid WHERE typname = 'enum_investments_status';"
+    run_remote_command(ssh, f"psql -U root -d alpha_main -c \"{sql}\"")
 
-client.close()
+    ssh.close()
+except Exception as e:
+    print(f"Error: {e}")

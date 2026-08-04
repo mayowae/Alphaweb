@@ -1,29 +1,32 @@
 import paramiko
 import sys
-sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+sys.stdout.reconfigure(encoding='utf-8')
 
 hostname = '159.198.36.24'
-port = 22
-username = 'root'
-password = '96eUC4aTbMu1o3yAP2'
+FRONTEND_PATH = '/home/mayowae/public_html/alphaweb'
 
-try:
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname, port, username, password)
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect(hostname, port=22, username='root', password='96eUC4aTbMu1o3yAP2', timeout=30)
+
+def run(cmd):
+    print(f"\n--- Running: {cmd} ---")
+    stdin, stdout, stderr = client.exec_command(cmd)
     
-    print("Running npm build and capturing errors...")
-    stdin, stdout, stderr = ssh.exec_command("cd /home/mayowae/public_html/alphaweb && npm run build")
-    
-    # Wait for completion
-    out = stdout.read().decode('utf-8', errors='ignore')
-    err = stderr.read().decode('utf-8', errors='ignore')
-    
-    print("STDOUT:")
-    print(out[-3000:]) 
-    print("\nSTDERR:")
-    print(err)
-    
-    ssh.close()
-except Exception as e:
-    print(f"Error: {e}")
+    out = stdout.read().decode('utf-8')
+    err = stderr.read().decode('utf-8')
+    return out, err
+
+print("=== CLEANING .next ===")
+run(f"rm -rf {FRONTEND_PATH}/.next")
+
+print("\n=== RUNNING BUILD AND CAPTURING OUTPUT ===")
+# Use npx directly to avoid any alias/path issues
+out, err = run(f"cd {FRONTEND_PATH} && export NODE_OPTIONS='--max-old-space-size=2048' && ./node_modules/.bin/next build")
+
+print("\nSTDOUT:")
+print(out)
+print("\nSTDERR:")
+print(err)
+
+client.close()

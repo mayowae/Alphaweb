@@ -446,23 +446,32 @@ const loginCollaborator = async (req, res) => {
       }
 
       if (!staff.password) {
-        return res.status(401).json({ message: 'Invalid credentials. Password not set.' });
-      }
-
-      const isValidPassword = await bcrypt.compare(password, staff.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      // Fetch role & permissions
-      let permissions = null;
-      if (staff.roleId) {
-        const roleRecord = await Role.findByPk(staff.roleId);
-        if (roleRecord && roleRecord.permissions) {
-          permissions = typeof roleRecord.permissions === 'string'
-            ? JSON.parse(roleRecord.permissions)
-            : roleRecord.permissions;
+        // If password is not set yet, check if matching default 'Staff123!' or auto-hash provided password
+        if (password === 'Staff123!') {
+          const hashedPassword = await bcrypt.hash('Staff123!', 10);
+          await staff.update({ password: hashedPassword });
+        } else {
+          return res.status(401).json({ message: 'Invalid credentials. Password not set.' });
         }
+      } else {
+        const isValidPassword = await bcrypt.compare(password, staff.password);
+        if (!isValidPassword) {
+          return res.status(401).json({ message: 'Invalid credentials' });
+        }
+      }
+
+      // Fetch role & permissions (check roleId or fallback to roleName)
+      let permissions = null;
+      let roleRecord = null;
+      if (staff.roleId) {
+        roleRecord = await Role.findByPk(staff.roleId);
+      } else if (staff.role) {
+        roleRecord = await Role.findOne({ where: { roleName: staff.role } });
+      }
+      if (roleRecord && roleRecord.permissions) {
+        permissions = typeof roleRecord.permissions === 'string'
+          ? JSON.parse(roleRecord.permissions)
+          : roleRecord.permissions;
       }
 
       const token = jwt.sign(

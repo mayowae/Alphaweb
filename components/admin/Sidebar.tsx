@@ -25,7 +25,7 @@ const Sidebar = ({ isOpen, setIsOpen }: DashboardHeaderProps) => {
         />
       )}
       <div className={`fixed top-0 left-0 h-screen pt-[88px]  transition-transform w-[264px] z-40 bg-[#150E46] text-[#E9E6FF] dark:bg-gray-900  dark:border dark:border-gray-500 shadow-md ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:block`}>
-        <div className="flex flex-col gap-[8px]  antialiased font-inter font-normal h-full overflow-y-auto hide-scrollbar pb-8 px-3">
+        <div className="flex flex-col gap-[8px]  antialiased font-inter font-normal h-full overflow-y-auto pb-8 px-3">
           {Sidemenuitems.map((items, index) => {
             return (
               <div key={index}>

@@ -4,167 +4,199 @@ const fetch = require('node-fetch');
 const PUBLIC_KEY = process.env.TRANSACTPAY_PUBLIC_KEY;
 const SECRET_KEY = process.env.TRANSACTPAY_SECRET_KEY;
 const ENCRYPTION_KEY_BASE64 = process.env.TRANSACTPAY_ENCRYPTION_KEY_BASE64;
+const TP_BASE_URL = 'https://payment-api-service.transactpay.ai';
 
+// ────────────────────────────────────────────────────────────────────────────
+// RSA Encryption (PKCS#1 v1.5) — required for VA creation payload only
+// ────────────────────────────────────────────────────────────────────────────
 const encryptPayload = (payload) => {
     try {
-        // 1. Decode Base64
         let xmlString = Buffer.from(ENCRYPTION_KEY_BASE64, 'base64').toString('utf8');
-        
-        // 2. Remove '4096!' prefix if present
         if (xmlString.startsWith('4096!')) {
             xmlString = xmlString.substring(5);
         }
-
-        // 3. Extract Modulus and Exponent basic regex
         const modulusMatch = xmlString.match(/<Modulus>(.*?)<\/Modulus>/);
         const exponentMatch = xmlString.match(/<Exponent>(.*?)<\/Exponent>/);
-
         if (!modulusMatch || !exponentMatch) {
             throw new Error('Invalid RSA XML Key Format');
         }
-
-        const modulusB64 = modulusMatch[1];
-        const exponentB64 = exponentMatch[1];
-
-        // 4. Decode Modulus and Exponent from Base64
-        const modulusBytes = forge.util.decode64(modulusB64);
-        const exponentBytes = forge.util.decode64(exponentB64);
-
+        const modulusBytes = forge.util.decode64(modulusMatch[1]);
+        const exponentBytes = forge.util.decode64(exponentMatch[1]);
         const modulus = new forge.jsbn.BigInteger(forge.util.bytesToHex(modulusBytes), 16);
         const exponent = new forge.jsbn.BigInteger(forge.util.bytesToHex(exponentBytes), 16);
-
-        // 5. Create Public Key
         const publicKey = forge.pki.setRsaPublicKey(modulus, exponent);
-
-        // 6. Encrypt Data (RSAES-PKCS1-V1_5)
         const jsonString = JSON.stringify(payload);
         const encryptedBytes = publicKey.encrypt(jsonString, 'RSAES-PKCS1-V1_5');
-
-        // 7. Base64 Encode
         return forge.util.encode64(encryptedBytes);
-
     } catch (error) {
-        console.error('Encryption Error:', error);
+        console.error('TransactPay Encryption Error:', error.message);
         throw error;
     }
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Create Virtual Account
+// Endpoint: POST /payment/virtual-account/generate
+// Payload:  { Alias: "merchant-alias" }  — must be RSA-encrypted
+// Headers:  api-key, encryption: RSA, Content-Type: application/json
+// ────────────────────────────────────────────────────────────────────────────
 const createVirtualAccount = async (userData) => {
     try {
-        console.log('Creating virtual account for:', userData.email);
+        // Use businessAlias as the TransactPay alias, fall back to a generated unique alias
+        const alias = userData.alias || userData.businessAlias || userData.Alias || `AK-${Date.now()}`;
+        console.log(`[TransactPay] Creating virtual account with alias: ${alias}`);
 
-        const payload = {
-            firstname: userData.firstname || userData.businessName || 'Merchant',
-            lastname: userData.lastname || 'User',
-            email: userData.email,
-            phonenumber: userData.phoneNumber || userData.phone,
-            dob: "1990-01-01",
-            bvn: userData.bvn || "22222222222",
-            gender: "M",
-            address: userData.address || "Lagos, Nigeria",
-            title: "Mr",
-            state: "Lagos",
-            lga: "Ikeja",
-            tx_ref: `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-        };
-        
-        console.log('Payload before encryption:', payload);
-
+        const payload = { Alias: alias };
         const encryptedData = encryptPayload(payload);
 
-        const apiUrl = process.env.TRANSACTPAY_API_URL || 'https://payment-api-service.transactpay.ai/payment/virtual-account/create';
-        const response = await fetch(apiUrl, { 
-             method: 'POST',
-             headers: {
-                 'Content-Type': 'application/json',
-                 'api-key': PUBLIC_KEY, 
-                 'Authorization': `Bearer ${SECRET_KEY}` 
-             },
-             body: JSON.stringify({
-                 data: encryptedData
-             })
-         });
+        const response = await fetch(`${TP_BASE_URL}/payment/virtual-account/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'api-key': PUBLIC_KEY,
+                'encryption': 'RSA'
+            },
+            body: JSON.stringify({ data: encryptedData })
+        });
 
         const text = await response.text();
-        console.log('TransactPay Raw Response:', response.status, text);
+        console.log(`[TransactPay] createVirtualAccount raw response (${response.status}):`, text.substring(0, 500));
 
         let result;
-        try {
-            result = JSON.parse(text);
-        } catch (e) {
-            console.error('Failed to parse JSON response:', e);
-            if (response.ok) return { status: 'success', data: {} };
-            throw new Error(`API Error ${response.status}: ${text}`);
-        }
-        
-        console.log('TransactPay API Response:', JSON.stringify(result, null, 2));
+        try { result = JSON.parse(text); } catch (e) { result = {}; }
 
-        if (result.status === 'success' || result.status === true || result.message === 'Success') {
+        // Handle both response shapes (status: true | "success")
+        if (result.status === true || result.status === 'success' || result.message?.toLowerCase().includes('success')) {
             const data = result.data || result;
             return {
                 status: 'success',
+                alias: alias,
                 accountNumber: data.accountNumber || data.account_number,
-                bankName: data.bankName || data.bank_name,
+                bankName: data.bank || data.bankName || data.bank_name,
                 accountName: data.accountName || data.account_name,
                 bankCode: data.bankCode || data.bank_code,
                 data: data
             };
         }
 
-        return result;
+        console.warn('[TransactPay] createVirtualAccount failed:', result.message || JSON.stringify(result));
+        return { status: 'failed', message: result.message || 'Unknown error', alias };
 
     } catch (error) {
-        console.error('createVirtualAccount Error:', error);
+        console.error('[TransactPay] createVirtualAccount Error:', error.message);
         return null;
     }
 };
 
-const getWalletBalance = async (accountNumber) => {
+// ────────────────────────────────────────────────────────────────────────────
+// Get Virtual Account Details by Alias
+// Endpoint: GET /payment/account-details?alias={alias}
+// Headers:  api-key only — NO encryption required
+// ────────────────────────────────────────────────────────────────────────────
+const getVirtualAccountDetails = async (alias) => {
     try {
-        const apiUrl = `https://payment-api-service.transactpay.ai/payment/virtual-account/balance/${accountNumber}`;
-        const response = await fetch(apiUrl, {
+        const response = await fetch(`${TP_BASE_URL}/payment/account-details?alias=${encodeURIComponent(alias)}`, {
             method: 'GET',
-            headers: {
-                'api-key': PUBLIC_KEY,
-                'Authorization': `Bearer ${SECRET_KEY}`
-            }
+            headers: { 'api-key': PUBLIC_KEY }
         });
 
-        const result = await response.json();
-        if (result.status === 'success' || result.status === true) {
+        const text = await response.text();
+        console.log(`[TransactPay] getVirtualAccountDetails (alias=${alias}):`, text.substring(0, 300));
+
+        let result;
+        try { result = JSON.parse(text); } catch (e) { return null; }
+
+        if (result.status === true || result.status === 'success') {
             return result.data || result;
         }
         return null;
     } catch (error) {
-        console.error('getWalletBalance Error:', error);
+        console.error('[TransactPay] getVirtualAccountDetails Error:', error.message);
         return null;
     }
 };
 
-const getWalletTransactions = async (accountNumber) => {
+// ────────────────────────────────────────────────────────────────────────────
+// Get Payout / Wallet Balance
+// Endpoint: GET /payout/balance-enquiry?currency=NGN
+// Headers:  api-key only — NO encryption required
+// Returns:  { currency: "NGN", availableBalance: 2463.085 }
+// ────────────────────────────────────────────────────────────────────────────
+const getWalletBalance = async (currency = 'NGN') => {
     try {
-        const apiUrl = `https://payment-api-service.transactpay.ai/payment/virtual-account/transactions/${accountNumber}`;
-        const response = await fetch(apiUrl, {
+        // TransactPay payout wallet balance supports NGN (and USD), fallback to NGN for others like XOF
+        const targetCurrency = (currency === 'USD') ? 'USD' : 'NGN';
+        const response = await fetch(`${TP_BASE_URL}/payout/balance-enquiry?currency=${targetCurrency}`, {
             method: 'GET',
-            headers: {
-                'api-key': PUBLIC_KEY,
-                'Authorization': `Bearer ${SECRET_KEY}`
-            }
+            headers: { 'api-key': SECRET_KEY }
         });
 
-        const result = await response.json();
-        if (result.status === 'success' || result.status === true) {
-            return result.data || result.transactions || [];
+        const text = await response.text();
+        console.log('[TransactPay] getWalletBalance response:', text.substring(0, 300));
+
+        let result;
+        try { result = JSON.parse(text); } catch (e) { return null; }
+
+        // Response: { currency, availableBalance }
+        if (result.availableBalance !== undefined) {
+            return {
+                availableBalance: parseFloat(result.availableBalance),
+                balance: parseFloat(result.availableBalance),
+                currency: result.currency || targetCurrency
+            };
         }
-        return [];
+        if (result.status === true || result.status === 'success') {
+            return result.data || result;
+        }
+        return null;
     } catch (error) {
-        console.error('getWalletTransactions Error:', error);
-        return [];
+        console.error('[TransactPay] getWalletBalance Error:', error.message);
+        return null;
+    }
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Get Wallet Transactions
+// NOTE: TransactPay has no "list all transactions" endpoint.
+// Transactions arrive via webhook and are stored locally in WalletTransaction table.
+// This function returns an empty array so the controller falls back to the local DB.
+// ────────────────────────────────────────────────────────────────────────────
+const getWalletTransactions = async (_accountNumber, _page, _limit) => {
+    // No TP API endpoint for listing transactions — handled by webhooks → local DB
+    return [];
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Get Transaction/Funding Details by sessionId
+// Endpoint: GET /payment/transaction-details/{sessionId}
+// Headers:  api-key only
+// ────────────────────────────────────────────────────────────────────────────
+const getTransactionDetails = async (sessionId) => {
+    try {
+        const response = await fetch(`${TP_BASE_URL}/payment/transaction-details/${sessionId}`, {
+            method: 'GET',
+            headers: { 'api-key': PUBLIC_KEY }
+        });
+
+        const text = await response.text();
+        let result;
+        try { result = JSON.parse(text); } catch (e) { return null; }
+
+        if (result.status === true || result.status === 'success') {
+            return result.data || result;
+        }
+        return null;
+    } catch (error) {
+        console.error('[TransactPay] getTransactionDetails Error:', error.message);
+        return null;
     }
 };
 
 module.exports = {
+    encryptPayload,
     createVirtualAccount,
+    getVirtualAccountDetails,
     getWalletBalance,
-    getWalletTransactions
+    getWalletTransactions,
+    getTransactionDetails
 };

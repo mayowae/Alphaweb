@@ -3,7 +3,7 @@ const { WalletUpgradeRequest, Merchant, AdminStaff, WalletTier, WalletTransactio
 // Submit upgrade request (Merchant)
 const submitUpgradeRequest = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const { targetLevel, metadata: metadataRaw } = req.body;
     
     const targetLvl = parseInt(targetLevel);
@@ -136,6 +136,19 @@ const submitUpgradeRequest = async (req, res) => {
         metadata.upgradeFee = upgradeFee;
         metadata.feeDeducted = true;
         metadata.deductedAt = new Date().toISOString();
+
+        // Book transaction fee double entry
+        try {
+          const { postJournalForTransaction } = require('../utils/transactionMapping');
+          await postJournalForTransaction(
+            'TRANSACTION_FEE',
+            upgradeFee,
+            merchantId,
+            `Upgrade to Tier ${targetLvl} (${targetTier.name}) Fee`
+          );
+        } catch (deErr) {
+          console.warn('⚠️ Double-entry skipped for upgrade fee:', deErr.message);
+        }
       } catch (deductionError) {
         console.error('Failed to deduct upgrade fee:', deductionError);
         // We continue with the request but mention the failure

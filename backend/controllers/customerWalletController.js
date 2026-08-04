@@ -1,5 +1,35 @@
-const { CustomerWallet, Customer, Merchant } = require('../models');
+const { CustomerWallet, Customer, Merchant, Loan, InvestmentTransaction } = require('../models');
 const { Op } = require('sequelize');
+
+const enrichWallet = async (wallet) => {
+  const json = wallet.toJSON ? wallet.toJSON() : { ...wallet };
+  const customerId = json.customerId;
+
+  if (customerId) {
+    const activeLoans = await Loan.findAll({
+      where: { customerId, status: { [Op.in]: ['Active', 'Approved', 'Disbursed'] } }
+    });
+    const computedLoanBalance = activeLoans.reduce(
+      (sum, loan) => sum + parseFloat(loan.remainingAmount || loan.totalAmount || loan.loanAmount || 0),
+      0
+    );
+
+    const investmentDeposits = await InvestmentTransaction.sum('amount', {
+      where: {
+        customerId,
+        transactionType: 'deposit',
+        status: 'completed'
+      }
+    });
+
+    // Always use computed values so balances stay accurate
+    json.loanBalance = computedLoanBalance;
+    json.investmentBalance = investmentDeposits || 0;
+  }
+
+  return json;
+};
+
 
 /**
  * @swagger
@@ -149,15 +179,18 @@ const { Op } = require('sequelize');
 // Get all customer wallets for a merchant
 const getCustomerWallets = async (req, res) => {
   try {
-    const merchantId = req.user.id;
-    const { page = 1, limit = 10, search, accountLevel, status } = req.query;
+    const merchantId = req.user.merchantId || req.user.id;
+    const { page = 1, limit = 10, search, accountLevel, status, customerId } = req.query;
 
     const whereClause = { merchantId };
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
     
     if (search) {
       whereClause[Op.or] = [
         { accountNumber: { [Op.iLike]: `%${search}%` } },
-        { '$customer.fullName$': { [Op.iLike]: `%${search}%` } }
+        { '$customer.full_name$': { [Op.iLike]: `%${search}%` } }
       ];
     }
     
@@ -185,9 +218,11 @@ const getCustomerWallets = async (req, res) => {
       offset: offset
     });
 
+    const enrichedWallets = await Promise.all(wallets.map(enrichWallet));
+
     res.json({
       success: true,
-      wallets,
+      wallets: enrichedWallets,
       pagination: {
         total: count,
         page: parseInt(page),
@@ -209,7 +244,7 @@ const getCustomerWallets = async (req, res) => {
 const getCustomerWalletById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const wallet = await CustomerWallet.findOne({
       where: { 
@@ -234,7 +269,7 @@ const getCustomerWalletById = async (req, res) => {
 
     res.json({
       success: true,
-      wallet
+      wallet: await enrichWallet(wallet)
     });
   } catch (error) {
     console.error('Error fetching customer wallet:', error);
@@ -250,7 +285,7 @@ const getCustomerWalletById = async (req, res) => {
 const createCustomerWallet = async (req, res) => {
   try {
     const { customerId, accountNumber, accountLevel, balance, notes } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     // Check if customer exists and belongs to this merchant
     const customer = await Customer.findOne({
@@ -312,7 +347,7 @@ const updateCustomerWallet = async (req, res) => {
   try {
     const { id } = req.params;
     const { accountLevel, balance, status, notes } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const wallet = await CustomerWallet.findOne({
       where: { 
@@ -355,7 +390,7 @@ const updateCustomerWallet = async (req, res) => {
 const deleteCustomerWallet = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const wallet = await CustomerWallet.findOne({
       where: { 
@@ -390,7 +425,7 @@ const deleteCustomerWallet = async (req, res) => {
 // Get customer wallet statistics
 const getCustomerWalletStats = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const [totalWallets, activeWallets, totalBalance] = await Promise.all([
       CustomerWallet.count({ where: { merchantId } }),

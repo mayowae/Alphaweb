@@ -1,5 +1,42 @@
-const { InvestmentTransaction, Customer, Merchant, Agent, Package, Investment } = require('../models');
+const { InvestmentTransaction, Customer, Merchant, Agent, Package, Investment, InvestmentApplication, CustomerWallet } = require('../models');
 const { Op } = require('sequelize');
+const { postJournalForTransaction } = require('../utils/transactionMapping');
+
+const sumTransactions = async (customerId, merchantId, packageName, transactionType) => {
+  const txs = await InvestmentTransaction.findAll({
+    where: {
+      customerId,
+      merchantId,
+      package: packageName,
+      transactionType,
+      status: 'completed'
+    }
+  });
+  return txs.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+};
+
+const getActiveApplication = async (customerId, merchantId) => {
+  return InvestmentApplication.findOne({
+    where: {
+      customerId,
+      merchantId,
+      status: { [Op.in]: ['Approved', 'Closed'] }
+    },
+    order: [['approvedAt', 'DESC']]
+  });
+};
+
+const updateInvestmentWalletBalance = async (customerId, merchantId, delta) => {
+  try {
+    const wallet = await CustomerWallet.findOne({ where: { customerId, merchantId } });
+    if (wallet) {
+      const current = parseFloat(wallet.investmentBalance || 0);
+      await wallet.update({ investmentBalance: Math.max(0, current + delta) });
+    }
+  } catch (err) {
+    console.warn('Could not update investment wallet balance:', err.message);
+  }
+};
 
 /**
  * @swagger
@@ -129,8 +166,8 @@ const createInvestmentTransaction = async (req, res) => {
     // Resolve merchantId from authenticated context
     let merchantId = req.user?.merchantId || req.body.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -222,9 +259,99 @@ const createInvestmentTransaction = async (req, res) => {
     const investedAmount = parseFloat(amount);
     const packageName = package || '';
 
+    // Centralized package/application validation for deposits and withdrawals
+    if (packageName && (transactionType === 'deposit' || transactionType === 'withdrawal')) {
+      const investmentPackage = await Package.findOne({
+        where: { name: packageName, merchantId, packageCategory: 'Investment' }
+      });
+
+      if (investmentPackage) {
+        const activeApplication = await getActiveApplication(customerRecord.id, merchantId);
+
+        if (transactionType === 'deposit') {
+          if (!activeApplication || activeApplication.status !== 'Approved') {
+            return res.status(400).json({
+              success: false,
+              message: 'Transaction failed. Customer must have an approved investment application.'
+            });
+          }
+
+          if (activeApplication.status === 'Closed') {
+            return res.status(400).json({
+              success: false,
+              message: 'Transaction failed. This investment application is CLOSED and no further postings are allowed.'
+            });
+          }
+
+          const defaultDays = parseInt(investmentPackage.defaultDays || 0);
+          if (defaultDays > 0) {
+            const lastTx = await InvestmentTransaction.findOne({
+              where: {
+                customerId: customerRecord.id,
+                merchantId,
+                transactionType: 'deposit',
+                status: 'completed'
+              },
+              order: [['transactionDate', 'DESC']]
+            });
+            const referenceDate = lastTx
+              ? new Date(lastTx.transactionDate)
+              : (activeApplication.approvedAt ? new Date(activeApplication.approvedAt) : new Date(activeApplication.createdAt));
+            const daysSinceLastPost = Math.floor((new Date() - referenceDate) / (1000 * 60 * 60 * 24));
+            if (daysSinceLastPost >= defaultDays) {
+              await activeApplication.update({ status: 'Closed' });
+              return res.status(400).json({
+                success: false,
+                message: `Transaction failed. No posting was made for ${daysSinceLastPost} days (limit: ${defaultDays} days). Application is now CLOSED.`
+              });
+            }
+          }
+
+          // No single-cycle cap — multi-cycle rollover is handled in the deposit loop below.
+          }
+
+        if (transactionType === 'withdrawal') {
+          const application = activeApplication;
+          if (application) {
+            const investmentDaysRequired = parseInt(investmentPackage.duration || 0);
+            const approvedDate = application.approvedAt
+              ? new Date(application.approvedAt)
+              : new Date(application.createdAt);
+            const daysElapsed = Math.floor((new Date() - approvedDate) / (1000 * 60 * 60 * 24));
+
+            if (investmentDaysRequired > 0 && daysElapsed < investmentDaysRequired) {
+              return res.status(400).json({
+                success: false,
+                message: `Withdrawal failed. Investment period of ${investmentDaysRequired} days has not been reached. Only ${daysElapsed} days have elapsed since approval.`
+              });
+            }
+          }
+
+          const totalPrincipal = await sumTransactions(customerRecord.id, merchantId, packageName, 'deposit');
+          const totalInterest = await sumTransactions(customerRecord.id, merchantId, packageName, 'interest');
+          const totalWithdrawn = await sumTransactions(customerRecord.id, merchantId, packageName, 'withdrawal');
+          const totalAvailable = totalPrincipal + totalInterest - totalWithdrawn;
+
+          if (totalAvailable <= 0) {
+            return res.status(400).json({
+              success: false,
+              message: 'Withdrawal failed. No funds available for withdrawal.'
+            });
+          }
+
+          if (investedAmount > totalAvailable) {
+            return res.status(400).json({
+              success: false,
+              message: `Withdrawal failed. Maximum withdrawable amount (principal + interest) is ₦${totalAvailable.toLocaleString()}.`
+            });
+          }
+        }
+      }
+    }
+
     // Handle advance payment logic for deposit transactions with investment packages
     if (transactionType === 'deposit' && packageName) {
-      // Find the investment package to get daily amount
+      // Find the investment package
       const investmentPackage = await Package.findOne({
         where: {
           name: packageName,
@@ -233,159 +360,253 @@ const createInvestmentTransaction = async (req, res) => {
         }
       });
 
-      if (investmentPackage && investmentPackage.amount > 0) {
+      if (investmentPackage) {
         const dailyAmount = parseFloat(investmentPackage.amount);
-        const daysCovered = Math.floor(investedAmount / dailyAmount);
-        const remainingAmount = investedAmount % dailyAmount;
+        const interestRate = parseFloat(investmentPackage.interestRate || 0);
+        const defaultDays = parseInt(investmentPackage.defaultDays || 0);
 
-        if (daysCovered > 0) {
-          // Get existing deposit transactions for this customer and package to determine which days are covered
-          const existingTransactions = await InvestmentTransaction.findAll({
-            where: {
-              customerId: customerRecord.id,
-              package: packageName,
-              transactionType: 'deposit',
-              merchantId: merchantId,
-              status: 'completed'
-            },
-            order: [['transactionDate', 'DESC']]
-          });
+        // Check if customer has an approved investment application
+        const activeApplication = await InvestmentApplication.findOne({
+          where: {
+            customerId: customerRecord.id,
+            merchantId: merchantId,
+            status: { [Op.in]: ['Approved', 'Closed'] }
+          },
+          order: [['approvedAt', 'DESC']]
+        });
 
-          // Check if customer has any active investment plan
-          // A customer can only have one active investment plan at a time
-          const activeInvestment = await Investment.findOne({
-            where: {
-              customerId: customerRecord.id,
-              status: 'Active',
-              merchantId: merchantId
-            }
-          });
+        if (activeApplication) {
+          // Block if application is closed
+          if (activeApplication.status === 'Closed') {
+            return res.status(400).json({
+              success: false,
+              message: 'Transaction failed. This investment application is CLOSED and no further postings are allowed.'
+            });
+          }
 
-          // If customer has an active investment, validate the transaction
-          if (activeInvestment) {
-            // If the active investment is for a different package, block the transaction
-            // Customer cannot pay for a new plan until the current one is fully completed
-            if (activeInvestment.plan !== packageName) {
+          // Check for default closure (no post for defaultDays)
+          if (defaultDays > 0) {
+            const lastTx = await InvestmentTransaction.findOne({
+              where: {
+                customerId: customerRecord.id,
+                merchantId: merchantId,
+                transactionType: 'deposit',
+                status: 'completed'
+              },
+              order: [['transactionDate', 'DESC']]
+            });
+
+            const referenceDate = lastTx
+              ? new Date(lastTx.transactionDate)
+              : (activeApplication.approvedAt ? new Date(activeApplication.approvedAt) : new Date(activeApplication.createdAt));
+            const daysSinceLastPost = Math.floor((new Date() - referenceDate) / (1000 * 60 * 60 * 24));
+
+            if (daysSinceLastPost >= defaultDays) {
+              // Mark the application as Closed (InvestmentApplication ENUM supports 'Closed')
+              await activeApplication.update({ status: 'Closed' });
               return res.status(400).json({
                 success: false,
-                message: 'Transaction failed. Investment number of days exceeded.'
+                message: `Transaction failed. No posting was made for ${daysSinceLastPost} days (limit: ${defaultDays} days). Application is now CLOSED.`
               });
             }
+          }
+        }
 
-            // If it's the same package, check if the new payment would exceed the duration
-            const packageDuration = investmentPackage.duration ? parseInt(investmentPackage.duration) : null;
+        if (dailyAmount > 0) {
+          const daysCovered = Math.floor(investedAmount / dailyAmount);
+          const remainingAmount = investedAmount % dailyAmount;
+
+          if (daysCovered > 0) {
+            const packageDuration = investmentPackage.duration ? parseInt(investmentPackage.duration) : 180;
+            const existingTxs = await InvestmentTransaction.findAll({
+              where: {
+                customerId: customerRecord.id,
+                package: packageName,
+                transactionType: 'deposit',
+                merchantId: merchantId,
+                status: 'completed'
+              }
+            });
             
-            if (packageDuration && packageDuration > 0) {
-              // Count how many days are already covered by existing transactions for this package
-              // Each transaction with amount equal to dailyAmount represents one day
-              let existingDaysCovered = 0;
-              for (const tx of existingTransactions) {
-                const txAmount = parseFloat(tx.amount);
-                if (txAmount >= dailyAmount) {
-                  // Count full days (transactions that are at least the daily amount)
-                  existingDaysCovered += Math.floor(txAmount / dailyAmount);
+            let existingDays = 0;
+            for (const tx of existingTxs) {
+              existingDays += Math.floor(parseFloat(tx.amount) / dailyAmount);
+            }
+
+            // Determine next available date
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let nextDate = new Date(today);
+
+            const lastTx = await InvestmentTransaction.findOne({
+              where: {
+                customerId: customerRecord.id,
+                package: packageName,
+                transactionType: 'deposit',
+                merchantId: merchantId,
+                status: 'completed'
+              },
+              order: [['transactionDate', 'DESC']]
+            });
+
+            if (lastTx) {
+              const lastDate = new Date(lastTx.transactionDate);
+              lastDate.setHours(0, 0, 0, 0);
+              nextDate = new Date(lastDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              if (nextDate < today) nextDate = new Date(today);
+            }
+
+            const { bookDoubleEntry } = require('../utils/doubleEntry');
+            const createdTransactions = [];
+            for (let i = 0; i < daysCovered; i++) {
+              const txDate = new Date(nextDate);
+              txDate.setDate(nextDate.getDate() + i);
+
+              const totalDayNum = existingDays + i + 1;
+              const cycleNum = Math.floor((totalDayNum - 1) / packageDuration) + 1;
+              const dayInCycle = ((totalDayNum - 1) % packageDuration) + 1;
+              
+              const noteText = notes || (i === 0 
+                ? `Advance payment covering ${daysCovered} days (Cycle ${cycleNum} - Day ${dayInCycle})` 
+                : `Cycle ${cycleNum} - Day ${dayInCycle}`);
+
+              const tx = await InvestmentTransaction.create({
+                customerId: customerRecord.id,
+                customer: customer || customerRecord.fullName || customerRecord.name,
+                accountNumber: accountNumber || customerRecord.accountNumber,
+                package: packageName,
+                amount: dailyAmount,
+                branch: branchName,
+                agent: agentName,
+                transactionType: 'deposit',
+                notes: noteText,
+                merchantId,
+                status: 'completed',
+                transactionDate: txDate
+              });
+              createdTransactions.push(tx);
+
+              // Book double-entry for advance deposit
+              try {
+                await postJournalForTransaction(
+                  'INVESTMENT_DEPOSIT',
+                  dailyAmount,
+                  merchantId,
+                  `Investment Deposit (Advance Day ${i+1}) - Package: ${packageName} (Tx #${tx.id})`
+                );
+              } catch (deErr) {
+                console.warn('⚠️ Double-entry skipped for advance deposit:', deErr.message);
+              }
+
+              // Generate interest transaction
+              if (interestRate > 0) {
+                const interestAmt = dailyAmount * (interestRate / 100);
+                await InvestmentTransaction.create({
+                  customerId: customerRecord.id,
+                  customer: customer || customerRecord.fullName || customerRecord.name,
+                  accountNumber: accountNumber || customerRecord.accountNumber,
+                  package: packageName,
+                  amount: interestAmt,
+                  branch: branchName,
+                  agent: agentName,
+                  transactionType: 'interest',
+                  notes: `% Interests transaction on deposit #${tx.id}`,
+                  merchantId,
+                  status: 'completed',
+                  transactionDate: txDate
+                });
+                // Book double-entry for interest
+                try {
+                  await postJournalForTransaction(
+                    'INVESTMENT_RETURNS',
+                    interestAmt,
+                    merchantId,
+                    `Interest Accrued on Deposit #${tx.id}`
+                  );
+                } catch (deErr) {
+                  console.warn('⚠️ Double-entry skipped for interest:', deErr.message);
                 }
               }
+            }
 
-              // Calculate total days that would be covered after this transaction
-              const totalDaysCovered = existingDaysCovered + daysCovered;
+            if (remainingAmount > 0) {
+              const txDate = new Date(nextDate);
+              txDate.setDate(nextDate.getDate() + daysCovered);
+              const remTx = await InvestmentTransaction.create({
+                customerId: customerRecord.id,
+                customer: customer || customerRecord.fullName || customerRecord.name,
+                accountNumber: accountNumber || customerRecord.accountNumber,
+                package: packageName,
+                amount: remainingAmount,
+                branch: branchName,
+                agent: agentName,
+                transactionType: 'deposit',
+                notes: notes || `Partial payment remainder`,
+                merchantId,
+                status: 'completed',
+                transactionDate: txDate
+              });
+              createdTransactions.push(remTx);
 
-              // Block transaction if it would exceed the package duration
-              if (totalDaysCovered > packageDuration) {
-                return res.status(400).json({
-                  success: false,
-                  message: 'Transaction failed. Investment number of days exceeded.'
+              // Book double-entry for remainder deposit
+              try {
+                await postJournalForTransaction(
+                  'INVESTMENT_DEPOSIT',
+                  remainingAmount,
+                  merchantId,
+                  `Investment Deposit Remainder - Package: ${packageName} (Tx #${remTx.id})`
+                );
+              } catch (deErr) {
+                console.warn('⚠️ Double-entry skipped for remainder deposit:', deErr.message);
+              }
+
+              if (interestRate > 0) {
+                const interestAmt = remainingAmount * (interestRate / 100);
+                await InvestmentTransaction.create({
+                  customerId: customerRecord.id,
+                  customer: customer || customerRecord.fullName || customerRecord.name,
+                  accountNumber: accountNumber || customerRecord.accountNumber,
+                  package: packageName,
+                  amount: interestAmt,
+                  branch: branchName,
+                  agent: agentName,
+                  transactionType: 'interest',
+                  notes: `% Interests transaction on remainder deposit #${remTx.id}`,
+                  merchantId,
+                  status: 'completed',
+                  transactionDate: txDate
                 });
+                // Book double-entry for remainder interest
+                try {
+                  await postJournalForTransaction(
+                    'INVESTMENT_RETURNS',
+                    interestAmt,
+                    merchantId,
+                    `Interest Accrued on Remainder Deposit #${remTx.id}`
+                  );
+                } catch (deErr) {
+                  console.warn('⚠️ Double-entry skipped for remainder interest:', deErr.message);
+                }
               }
             }
-          }
 
-          // Calculate the next available date
-          // Start from today, or the day after the furthest future date already covered
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          
-          let nextDate = new Date(today);
-          if (existingTransactions.length > 0) {
-            // Find the maximum (furthest future) transaction date
-            let maxDate = new Date(existingTransactions[0].transactionDate);
-            maxDate.setHours(0, 0, 0, 0);
-            
-            for (const tx of existingTransactions) {
-              const txDate = new Date(tx.transactionDate);
-              txDate.setHours(0, 0, 0, 0);
-              if (txDate > maxDate) {
-                maxDate = txDate;
-              }
-            }
-            
-            // Start from the day after the furthest future date
-            nextDate = new Date(maxDate);
-            nextDate.setDate(nextDate.getDate() + 1);
-            
-            // If the calculated next date is in the past, start from today
-            if (nextDate < today) {
-              nextDate = new Date(today);
-            }
-          }
+            const totalDeposited = createdTransactions
+              .filter(t => t.transactionType === 'deposit')
+              .reduce((s, t) => s + parseFloat(t.amount), 0);
+            await updateInvestmentWalletBalance(customerRecord.id, merchantId, totalDeposited);
 
-          // Create transactions for each day covered
-          const transactions = [];
-          for (let i = 0; i < daysCovered; i++) {
-            const transactionDate = new Date(nextDate);
-            transactionDate.setDate(nextDate.getDate() + i);
-            
-            const transaction = await InvestmentTransaction.create({
-              customerId: customerRecord.id,
-              customer: customer || customerRecord.fullName || customerRecord.name,
-              accountNumber: accountNumber || customerRecord.accountNumber,
-              package: packageName,
-              amount: dailyAmount,
-              branch: branchName,
-              agent: agentName,
-              transactionType: 'deposit',
-              notes: notes || (i === 0 ? `Advance payment covering ${daysCovered} days` : `Day ${i + 1} of advance payment`),
-              merchantId,
-              status: 'completed',
-              transactionDate: transactionDate
+            return res.status(201).json({
+              success: true,
+              message: `Investment transaction created successfully. Amount covers ${daysCovered} day(s).`,
+              transactions: createdTransactions
             });
-            transactions.push(transaction);
           }
-
-          // If there's a remainder, create a transaction for it on the day after the last covered day
-          if (remainingAmount > 0) {
-            const remainderDate = new Date(nextDate);
-            remainderDate.setDate(nextDate.getDate() + daysCovered);
-            
-            const remainderTransaction = await InvestmentTransaction.create({
-              customerId: customerRecord.id,
-              customer: customer || customerRecord.fullName || customerRecord.name,
-              accountNumber: accountNumber || customerRecord.accountNumber,
-              package: packageName,
-              amount: remainingAmount,
-              branch: branchName,
-              agent: agentName,
-              transactionType: 'deposit',
-              notes: notes || `Partial payment remainder (${daysCovered} full days covered, ${remainingAmount.toFixed(2)} remainder)`,
-              merchantId,
-              status: 'completed',
-              transactionDate: remainderDate
-            });
-            transactions.push(remainderTransaction);
-          }
-
-          return res.status(201).json({
-            success: true,
-            message: `Investment transaction created successfully. Amount covers ${daysCovered} day(s)${remainingAmount > 0 ? ` with ${remainingAmount.toFixed(2)} remainder` : ''}`,
-            transactions,
-            daysCovered,
-            remainingAmount: remainingAmount > 0 ? remainingAmount : null
-          });
         }
       }
     }
 
-    // Default behavior: create a single transaction (for non-deposit or packages without daily amount)
+    // Default behavior (non-advance payment or withdrawal/interest/penalty)
     const transaction = await InvestmentTransaction.create({
       customerId: customerRecord.id,
       customer: customer || customerRecord.fullName || customerRecord.name,
@@ -397,8 +618,70 @@ const createInvestmentTransaction = async (req, res) => {
       transactionType,
       notes: notes || '',
       merchantId,
-      status: 'completed' // Default to completed for now
+      status: 'completed'
     });
+
+    // Book double-entry for single transaction
+    try {
+      if (transactionType === 'deposit') {
+        await postJournalForTransaction(
+          'INVESTMENT_DEPOSIT',
+          investedAmount,
+          merchantId,
+          `Investment Deposit - Package: ${packageName} (Tx #${transaction.id})`
+        );
+      } else if (transactionType === 'withdrawal') {
+        await postJournalForTransaction(
+          'INVESTMENT_WITHDRAWAL',
+          investedAmount,
+          merchantId,
+          `Investment Withdrawal - Package: ${packageName} (Tx #${transaction.id})`
+        );
+      }
+    } catch (deErr) {
+      console.warn('⚠️ Double-entry skipped for investment transaction:', deErr.message);
+    }
+
+    if (transactionType === 'deposit') {
+      await updateInvestmentWalletBalance(customerRecord.id, merchantId, investedAmount);
+    } else if (transactionType === 'withdrawal') {
+      await updateInvestmentWalletBalance(customerRecord.id, merchantId, -investedAmount);
+    }
+
+    // Generate interest for single deposit
+    if (transactionType === 'deposit' && packageName) {
+      const investmentPackage = await Package.findOne({
+        where: { name: packageName, merchantId: merchantId, packageCategory: 'Investment' }
+      });
+      if (investmentPackage && parseFloat(investmentPackage.interestRate) > 0) {
+        const interestAmt = investedAmount * (parseFloat(investmentPackage.interestRate) / 100);
+        await InvestmentTransaction.create({
+          customerId: customerRecord.id,
+          customer: customer || customerRecord.fullName || customerRecord.name,
+          accountNumber: accountNumber || customerRecord.accountNumber,
+          package: packageName,
+          amount: interestAmt,
+          branch: branchName,
+          agent: agentName,
+          transactionType: 'interest',
+          notes: `% Interests transaction on deposit #${transaction.id}`,
+          merchantId,
+          status: 'completed',
+          transactionDate: transaction.transactionDate
+        });
+        // Book double-entry for generated interest
+        try {
+          await postJournalForTransaction(
+            'INVESTMENT_RETURNS',
+            interestAmt,
+            merchantId,
+            `Interest Accrued on Deposit #${transaction.id}`
+          );
+        } catch (deErr) {
+          console.warn('⚠️ Double-entry skipped for interest accrual:', deErr.message);
+        }
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -421,8 +704,8 @@ const getInvestmentTransactions = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -440,10 +723,16 @@ const getInvestmentTransactions = async (req, res) => {
       limit = 10,
       agentId,
       branch,
-      transactionType
+      transactionType,
+      customerId
     } = req.query;
 
     const whereClause = { merchantId };
+
+    // Customer filter
+    if (customerId) {
+      whereClause.customerId = parseInt(customerId);
+    }
     
     // Add filters
     if (status) {
@@ -476,6 +765,7 @@ const getInvestmentTransactions = async (req, res) => {
       };
     }
 
+
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
     const { count, rows: transactions } = await InvestmentTransaction.findAndCountAll({
@@ -486,7 +776,10 @@ const getInvestmentTransactions = async (req, res) => {
           attributes: ['id', 'fullName', 'email', 'phoneNumber']
         }
       ],
-      order: [['transactionDate', 'DESC']],
+      order: [
+        ['transactionDate', 'DESC'],
+        ['id', 'DESC']
+      ],
       limit: parseInt(limit),
       offset: offset
     });
@@ -516,8 +809,8 @@ const getInvestmentTransactionById = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -565,8 +858,8 @@ const updateInvestmentTransaction = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -613,8 +906,8 @@ const deleteInvestmentTransaction = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const agentOwner = await Agent.findByPk(req.user.id);
         merchantId = agentOwner ? agentOwner.merchantId : undefined;
@@ -633,6 +926,30 @@ const deleteInvestmentTransaction = async (req, res) => {
         success: false,
         message: 'Investment transaction not found'
       });
+    }
+
+    // Determine mapping type based on transactionType to post a reversal
+    let mappingType = null;
+    if (transaction.transactionType === 'deposit') {
+      mappingType = 'INVESTMENT_DEPOSIT';
+    } else if (transaction.transactionType === 'withdrawal') {
+      mappingType = 'INVESTMENT_WITHDRAWAL';
+    } else if (transaction.transactionType === 'interest') {
+      mappingType = 'INVESTMENT_RETURNS';
+    }
+
+    if (mappingType) {
+      try {
+        const { postReversalForTransaction } = require('../utils/transactionMapping');
+        await postReversalForTransaction(
+          mappingType,
+          transaction.amount,
+          merchantId,
+          `Original Tx ID: ${transaction.id}, Package: ${transaction.package || 'N/A'}, Customer: ${transaction.customer || 'N/A'}`
+        );
+      } catch (err) {
+        console.warn(`⚠️ Reversal failed during investment transaction delete: ${err.message}`);
+      }
     }
 
     await transaction.destroy();

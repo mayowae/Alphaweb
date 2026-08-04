@@ -1,5 +1,6 @@
-const { Collection, Customer, Agent, Package, Remittance } = require('../models');
+const { Collection, Customer, Agent, Package, Remittance, CustomerWallet } = require('../models');
 const { Op, Sequelize } = require('sequelize');
+const { postJournalForTransaction } = require('../utils/transactionMapping');
 
 /**
  * @swagger
@@ -312,7 +313,8 @@ const { Op, Sequelize } = require('sequelize');
 const createCollection = async (req, res) => {
   try {
     const { 
-      customerName, 
+      customerName,
+      customerId,
       amount, 
       dueDate, 
       type, 
@@ -321,17 +323,20 @@ const createCollection = async (req, res) => {
       packageAmount,
       cycle,
       cycleCounter,
-      isFirstCollection
+      isFirstCollection,
+      postToCollection
     } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
+    const parsedAmount = parseFloat(amount);
 
-    // Find customer by name
-    const customer = await Customer.findOne({
-      where: {
-        fullName: customerName,
-        merchantId: merchantId
-      }
-    });
+    // Find customer by ID or name
+    let customer = null;
+    if (customerId) {
+      customer = await Customer.findOne({ where: { id: customerId, merchantId } });
+    }
+    if (!customer && customerName) {
+      customer = await Customer.findOne({ where: { fullName: customerName, merchantId } });
+    }
 
     if (!customer) {
       return res.status(404).json({
@@ -355,11 +360,14 @@ const createCollection = async (req, res) => {
       }
     }
 
+    const isDirectPost = postToCollection === true || postToCollection === 'true' || type === 'Cash' || type === 'Manual';
     const collection = await Collection.create({
       customerId: customer.id,
-      customerName,
-      amount: parseFloat(amount),
+      customerName: customer.fullName || customerName,
+      amount: parsedAmount,
+      amountCollected: isDirectPost ? parsedAmount : 0,
       dueDate: new Date(dueDate),
+      collectedDate: isDirectPost ? new Date() : null,
       type,
       description: description || '',
       packageName: packageName || '',
@@ -368,15 +376,43 @@ const createCollection = async (req, res) => {
       cycle: cycle ? parseInt(cycle) : 31,
       cycleCounter: cycleCounter ? parseInt(cycleCounter) : 1,
       isFirstCollection: isFirstCollection === 'true' || isFirstCollection === true,
-      status: 'Pending',
+      status: isDirectPost ? 'Collected' : 'Pending',
       merchantId,
       dateCreated: new Date()
     });
+
+    // Credit collection wallet only (live wallet is for payment platform transactions)
+    if (isDirectPost) {
+      try {
+        let wallet = await CustomerWallet.findOne({ where: { customerId: customer.id, merchantId } });
+        if (!wallet) {
+          wallet = await CustomerWallet.create({
+            customerId: customer.id,
+            merchantId,
+            accountNumber: customer.accountNumber || `CW${customer.id}`,
+            collectionBalance: parsedAmount
+          });
+        } else {
+          const current = parseFloat(wallet.collectionBalance || 0);
+          await wallet.update({ collectionBalance: current + parsedAmount });
+        }
+      } catch (walletErr) {
+        console.error('Failed to update collection wallet:', walletErr);
+      }
+    }
 
     // Update customer's packgeId if not set
     if (!customer.packageId && packageId) {
         await customer.update({ packageId: packageId });
     }
+
+    // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
+    postJournalForTransaction(
+      'COLLECTION_RECEIVED',
+      parseFloat(amount),
+      merchantId,
+      `Collection #${collection.id} — ${customerName}`
+    );
 
     // Automatically place in a Remittance holding state per workflow rules
     try {
@@ -413,10 +449,19 @@ const createCollection = async (req, res) => {
 // Get all collections for a merchant
 const getCollections = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
+    const { customerId, status, fromDate, toDate, agentId } = req.query;
+
+    const whereClause = { merchantId };
+    if (customerId) whereClause.customerId = parseInt(customerId);
+    if (status) whereClause.status = status;
+    if (agentId) whereClause.agentId = parseInt(agentId);
+    if (fromDate && toDate) {
+      whereClause.collectedDate = { [Op.between]: [new Date(fromDate), new Date(toDate)] };
+    }
 
     const collections = await Collection.findAll({
-      where: { merchantId },
+      where: whereClause,
       include: [
         {
           model: Customer,
@@ -464,7 +509,7 @@ const getCollections = async (req, res) => {
 const getCollectionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const collection = await Collection.findOne({
       where: { 
@@ -505,7 +550,7 @@ const getCollectionById = async (req, res) => {
 const updateCollection = async (req, res) => {
   try {
     const { id, customerName, amount, dueDate, type, status, description } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const collection = await Collection.findOne({
       where: { 
@@ -531,8 +576,16 @@ const updateCollection = async (req, res) => {
       collectedDate: status === 'Collected' ? new Date() : collection.collectedDate
     });
 
-    // If marked as Collected, create a Remittance record
+    // If marked as Collected, post journal entry and create Remittance record
     if (status === 'Collected') {
+      // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
+      postJournalForTransaction(
+        'COLLECTION_RECEIVED',
+        amount ? parseFloat(amount) : collection.amount,
+        merchantId,
+        `Collection #${collection.id} — ${collection.customerName}`
+      );
+
       try {
         // Check if remittance already exists for this collection to avoid duplicates
         const existingRemittance = await Remittance.findOne({
@@ -583,7 +636,7 @@ const markAsCollected = async (req, res) => {
   try {
     const { id } = req.params;
     const { amountCollected, collectionNotes } = req.body;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const collection = await Collection.findOne({
       where: { 
@@ -605,6 +658,14 @@ const markAsCollected = async (req, res) => {
       amountCollected: amountCollected ? parseFloat(amountCollected) : collection.amount,
       collectionNotes: collectionNotes || ''
     });
+
+    // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
+    postJournalForTransaction(
+      'COLLECTION_RECEIVED',
+      parseFloat(amountCollected || collection.amount),
+      merchantId,
+      `Collection #${collection.id} — ${collection.customerName}`
+    );
 
     // Create a Remittance record
     try {
@@ -649,7 +710,7 @@ const markAsCollected = async (req, res) => {
 const deleteCollection = async (req, res) => {
   try {
     const { id } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const collection = await Collection.findOne({
       where: { 
@@ -663,6 +724,21 @@ const deleteCollection = async (req, res) => {
         success: false,
         message: 'Collection not found'
       });
+    }
+
+    // Book double-entry reversal if collection was already Collected
+    if (collection.status === 'Collected') {
+      try {
+        const { postReversalForTransaction } = require('../utils/transactionMapping');
+        await postReversalForTransaction(
+          'COLLECTION_RECEIVED',
+          parseFloat(collection.amountCollected || collection.amount),
+          merchantId,
+          `Original Collection ID: ${collection.id}, Customer: ${collection.customerName || 'N/A'}`
+        );
+      } catch (err) {
+        console.warn(`⚠️ Reversal failed during collection delete: ${err.message}`);
+      }
     }
 
     await collection.update({ status: 'Deleted' });
@@ -684,7 +760,7 @@ const deleteCollection = async (req, res) => {
 // Create multiple collections in bulk
 const createCollectionsBulk = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const payload = req.body && Array.isArray(req.body.collections) ? req.body.collections : [];
     if (!Array.isArray(payload) || payload.length === 0) {
       return res.status(400).json({ success: false, message: 'collections array is required' });
@@ -755,6 +831,15 @@ const createCollectionsBulk = async (req, res) => {
         } catch (remitError) {
           console.error('Failed to auto-create holding Remittance (Bulk):', remitError);
         }
+
+        // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
+        postJournalForTransaction(
+          'COLLECTION_RECEIVED',
+          parseFloat(amount),
+          merchantId,
+          `Bulk Collection #${created.id} — ${customerName}`
+        );
+
         results.push({ success: true, id: created.id });
       } catch (err) {
         results.push({ success: false, error: err.message || String(err) });
@@ -773,7 +858,7 @@ const createCollectionsBulk = async (req, res) => {
 const getCollectionsByStatus = async (req, res) => {
   try {
     const { status } = req.params;
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
 
     const collections = await Collection.findAll({
       where: { 
@@ -807,7 +892,7 @@ const getCollectionsByStatus = async (req, res) => {
 // Get overdue collections
 const getOverdueCollections = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const today = new Date();
 
     const collections = await Collection.findAll({

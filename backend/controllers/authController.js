@@ -6,41 +6,27 @@ const { Merchant } = require("../models");
 
 /* Swagger documentation for Merchant Auth intentionally removed from Swagger UI */
 
-// Configure nodemailer (env-driven; safe fallback)
+// Configure nodemailer — uses localhost Exim relay (no auth) by default
 let transporter;
-// const encodedPass = encodeURIComponent(process.env.EMAIL_PASS);
 try {
   if (String(process.env.EMAIL_DISABLED || "").toLowerCase() === "true") {
     transporter = null;
-  } else if (process.env.SMTP_HOST) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: String(process.env.SMTP_SECURE || "").toLowerCase() === "true",
-      auth:
-        process.env.EMAIL_USER && process.env.EMAIL_PASS
-          ? {
-              user: process.env.EMAIL_USER,
-              pass: process.env.EMAIL_PASS,
-            }
-          : undefined,
-      tls: { rejectUnauthorized: false },
-      requireTLS: true,
-      debug: true,
-    });
   } else {
-    // Default to Gmail if specified; otherwise mock
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-    } else {
-      transporter = null; // mock mode
-    }
+    const smtpHost = process.env.SMTP_HOST || 'localhost';
+    const smtpPort = Number(process.env.SMTP_PORT || 25);
+    const smtpSecure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true';
+    const hasAuth = process.env.EMAIL_USER && process.env.EMAIL_PASS;
+
+    transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: hasAuth
+        ? { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+        : undefined,
+      tls: { rejectUnauthorized: false },
+      // NOTE: requireTLS intentionally removed — breaks localhost:25 relay
+    });
   }
 } catch (_) {
   transporter = null;
@@ -51,31 +37,62 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send OTP email
+// Send OTP email with Alphakolect HTML branding
 const sendOTPEmail = async (email, otp) => {
   if (!transporter) {
-    console.warn(
-      "Email disabled or not configured. OTP:",
-      otp,
-      "Recipient:",
-      email,
-    );
-    return { sent: false, reason: "disabled_or_not_configured" };
+    console.warn('Email not configured. OTP:', otp, 'Recipient:', email);
+    return { sent: false, reason: 'disabled_or_not_configured' };
   }
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:40px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Alphakolect</h1>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Merchant Platform</p>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px 40px 32px;">
+          <h2 style="margin:0 0 12px;color:#1e1b4b;font-size:20px;font-weight:600;">Verify Your Email Address</h2>
+          <p style="margin:0 0 28px;color:#64748b;font-size:15px;line-height:1.6;">Use the one-time code below to complete your registration. This code expires in <strong>10 minutes</strong>.</p>
+          <!-- OTP Box -->
+          <div style="background:#f0f4ff;border:2px dashed #4f46e5;border-radius:10px;padding:24px;text-align:center;margin-bottom:28px;">
+            <p style="margin:0 0 6px;color:#64748b;font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:600;">Your OTP Code</p>
+            <p style="margin:0;color:#4f46e5;font-size:42px;font-weight:700;letter-spacing:10px;font-family:monospace;">${otp}</p>
+          </div>
+          <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.6;">If you did not create an account on Alphakolect, please ignore this email. Do not share this code with anyone.</p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; ${new Date().getFullYear()} Alphakolect. All rights reserved.</p>
+          <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;"><a href="https://alphakolect.com" style="color:#4f46e5;text-decoration:none;">alphakolect.com</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: process.env.EMAIL_FROM || 'noreply@alphakolect.com',
     to: email,
-    subject: "Your OTP for AlphaWeb",
-    text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
+    subject: `${otp} is your Alphakolect verification code`,
+    text: `Your Alphakolect OTP is: ${otp}. It will expire in 10 minutes. Do not share this code with anyone.`,
+    html: htmlBody,
   };
+
   try {
     const info = await transporter.sendMail(mailOptions);
+    console.log('OTP email sent to:', email, '| MessageId:', info.messageId);
     return { sent: true, info };
   } catch (err) {
-    console.error(
-      "Email sending failed:",
-      err && err.message ? err.message : err,
-    );
+    console.error('Email sending failed:', err && err.message ? err.message : err);
     return { sent: false, error: err };
   }
 };
@@ -104,6 +121,10 @@ const registerMerchant = async (req, res) => {
     console.log('OTP Expires:', otpExpires.toISOString());
     console.log('Email:', email);
 
+    const planId = req.body.planId || req.body.plan_id || 1;
+    const trialDays = 90;
+    const trialEndDate = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+
     // Create merchant
     const merchant = await Merchant.create({
       name: businessName,
@@ -115,30 +136,37 @@ const registerMerchant = async (req, res) => {
       password: hashedPassword,
       otp,
       otpExpires,
+      plan_id: planId,
+      subscription_status: 'Active',
+      trial_end_date: trialEndDate,
+      next_billing_date: trialEndDate,
     });
 
     console.log('Merchant created with ID:', merchant.id);
 
-    // Create Virtual Account via TransactPay
+    // Create Virtual Account via TransactPay — uses businessAlias as the unique TP alias
     try {
         const { createVirtualAccount } = require('../utils/transactPay');
-        const tpResult = await createVirtualAccount({
-            businessName,
-            email,
-            phone
-        });
+        // Use "AK-{id}-{businessAlias}" as alias so it's guaranteed unique per merchant
+        const tpAlias = `AK-${merchant.id}-${(businessAlias || '').replace(/\s+/g, '-').substring(0, 20)}`;
+        console.log(`[Auth] Provisioning TransactPay VA for merchant ${merchant.id} with alias: ${tpAlias}`);
+
+        const tpResult = await createVirtualAccount({ alias: tpAlias });
 
         if (tpResult && tpResult.status === 'success') {
             await merchant.update({
                 accountNumber: tpResult.accountNumber,
                 bankName: tpResult.bankName,
-                accountName: tpResult.accountName,
+                accountName: tpResult.accountName || businessName,
                 bankCode: tpResult.bankCode
             });
-            console.log(`Updated merchant ${merchant.id} with account: ${tpResult.accountNumber}`);
+            console.log(`[Auth] ✅ Merchant ${merchant.id} provisioned: ${tpResult.accountNumber} @ ${tpResult.bankName}`);
+        } else {
+            console.warn(`[Auth] ⚠️ TransactPay VA creation did not succeed for merchant ${merchant.id}:`, tpResult?.message);
         }
     } catch (tpError) {
-        console.error('Merchant TransactPay Integration Error:', tpError);
+        // VA creation failure must NOT block registration — merchant still gets created
+        console.error('[Auth] TransactPay VA Error (non-fatal):', tpError.message || tpError);
     }
 
     // Try to send OTP email, but don't fail registration if email fails
@@ -229,9 +257,11 @@ const loginMerchant = async (req, res) => {
 // Forgot password
 const forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body?.email || "").trim();
 
-    const merchant = await Merchant.findOne({ where: { email } });
+    const merchant = await Merchant.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!merchant) {
       return res.status(404).json({ message: "Email not found" });
     }
@@ -243,8 +273,8 @@ const forgotPassword = async (req, res) => {
     // Update merchant with OTP
     await merchant.update({ otp, otpExpires });
 
-    // Send OTP email (non-blocking for dev)
-    const emailResult = await sendOTPEmail(email, otp);
+    // Send OTP email
+    const emailResult = await sendOTPEmail(merchant.email, otp);
     res.json({
       message: emailResult.sent
         ? "OTP sent to your email"
@@ -263,9 +293,11 @@ const forgotPassword = async (req, res) => {
 // Resend OTP
 const resendOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body?.email || "").trim();
 
-    const merchant = await Merchant.findOne({ where: { email } });
+    const merchant = await Merchant.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!merchant) {
       return res.status(404).json({ message: "Email not found" });
     }
@@ -278,7 +310,7 @@ const resendOTP = async (req, res) => {
     await merchant.update({ otp, otpExpires });
 
     // Send OTP email
-    const emailResult = await sendOTPEmail(email, otp);
+    const emailResult = await sendOTPEmail(merchant.email, otp);
     res.json({
       message: emailResult.sent
         ? "OTP resent to your email"
@@ -401,10 +433,21 @@ const verifyOTP = async (req, res) => {
 // Change password
 const changePassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
+    const email = String(req.body?.email || "").trim();
+    const newPassword = String(req.body?.newPassword || "");
 
-    const merchant = await Merchant.findOne({ where: { email } });
+    console.log("=== Change Password Debug ===");
+    console.log("Received email:", email);
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: "Email and new password are required" });
+    }
+
+    const merchant = await Merchant.findOne({
+      where: { email: { [Op.iLike]: email } },
+    });
     if (!merchant) {
+      console.log("Merchant not found for password change:", email);
       return res.status(404).json({ message: "Email not found" });
     }
 
@@ -413,6 +456,7 @@ const changePassword = async (req, res) => {
 
     // Update password
     await merchant.update({ password: hashedPassword });
+    console.log("Password updated successfully for merchant:", merchant.id);
 
     res.json({ message: "Password changed successfully" });
   } catch (error) {
@@ -426,7 +470,7 @@ const changePassword = async (req, res) => {
 // Get merchant profile
 const getMerchantProfile = async (req, res) => {
   try {
-    const merchantId = req.user.id;
+    const merchantId = req.user.merchantId || req.user.id;
     const merchant = await Merchant.findByPk(merchantId, {
       attributes: { exclude: ["password", "otp", "otpExpires"] },
     });

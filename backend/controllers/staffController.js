@@ -1,4 +1,6 @@
+const bcrypt = require('bcryptjs');
 const { Staff, Role, Branch, Merchant } = require('../models');
+
 
 /**
  * @swagger
@@ -120,7 +122,15 @@ const { Staff, Role, Branch, Merchant } = require('../models');
 // Create staff
 const createStaff = async (req, res) => {
   try {
-    const { fullName, email, phoneNumber, branch, role, merchantId, roleId } = req.body;
+    const { fullName, email, phoneNumber, branch, role, merchantId, roleId, password } = req.body;
+
+    const resolvedMerchantId = merchantId
+      ? parseInt(merchantId)
+      : (req.user?.merchantId || (req.user?.type === 'merchant' ? req.user.id : null));
+
+    if (!resolvedMerchantId) {
+      return res.status(400).json({ message: 'merchantId is required' });
+    }
 
     // Check if staff already exists
     const existingStaff = await Staff.findOne({ where: { email } });
@@ -128,27 +138,35 @@ const createStaff = async (req, res) => {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    // Verify merchant exists
-    const merchant = await Merchant.findByPk(merchantId);
-    if (!merchant) {
-      return res.status(404).json({ message: 'Merchant not found' });
+    // Resolve roleId & role name
+    let finalRoleId = roleId ? parseInt(roleId) : (role && !isNaN(Number(role)) ? parseInt(role) : null);
+    let finalRoleName = typeof role === 'string' && isNaN(Number(role)) ? role : '';
+
+    if (finalRoleId) {
+      const staffRole = await Role.findByPk(finalRoleId);
+      if (staffRole) {
+        finalRoleName = staffRole.roleName || staffRole.name || finalRoleName;
+      }
+    } else if (finalRoleName) {
+      const staffRole = await Role.findOne({ where: { roleName: finalRoleName } });
+      if (staffRole) {
+        finalRoleId = staffRole.id;
+      }
     }
 
-    // Verify role exists
-    const staffRole = await Role.findByPk(roleId);
-    if (!staffRole) {
-      return res.status(404).json({ message: 'Role not found' });
-    }
+    // Hash password (use provided password or default 'Staff123!')
+    const plainPassword = password && String(password).trim().length > 0 ? String(password).trim() : 'Staff123!';
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-    // Create staff
     const staff = await Staff.create({
       fullName,
       email,
       phoneNumber,
-      branch,
-      role,
-      merchantId,
-      roleId,
+      branch: branch || 'Main',
+      role: finalRoleName || 'Staff',
+      merchantId: resolvedMerchantId,
+      roleId: finalRoleId,
+      password: hashedPassword,
     });
 
     res.status(201).json({
@@ -160,6 +178,7 @@ const createStaff = async (req, res) => {
         phoneNumber: staff.phoneNumber,
         branch: staff.branch,
         role: staff.role,
+        roleId: staff.roleId,
       },
     });
   } catch (error) {
@@ -171,7 +190,7 @@ const createStaff = async (req, res) => {
 // Update staff
 const updateStaff = async (req, res) => {
   try {
-    const { id, fullName, email, phoneNumber, branch, role, roleId } = req.body;
+    const { id, fullName, email, phoneNumber, branch, role, roleId, status, password } = req.body;
 
     const staff = await Staff.findByPk(id);
     if (!staff) {
@@ -179,7 +198,7 @@ const updateStaff = async (req, res) => {
     }
 
     // Check if email is being changed and if it's already taken
-    if (email !== staff.email) {
+    if (email && email !== staff.email) {
       const existingStaff = await Staff.findOne({ where: { email } });
       if (existingStaff) {
         return res.status(400).json({ message: 'Email already taken' });
@@ -194,15 +213,20 @@ const updateStaff = async (req, res) => {
       }
     }
 
-    // Update staff
-    await staff.update({
-      fullName,
-      email,
-      phoneNumber,
-      branch,
-      role,
-      roleId,
-    });
+    const updateFields = {};
+    if (fullName) updateFields.fullName = fullName;
+    if (email) updateFields.email = email;
+    if (phoneNumber) updateFields.phoneNumber = phoneNumber;
+    if (branch) updateFields.branch = branch;
+    if (role) updateFields.role = role;
+    if (roleId) updateFields.roleId = roleId;
+    if (status) updateFields.status = status;
+    if (password && String(password).trim().length > 0) {
+      updateFields.password = await bcrypt.hash(String(password).trim(), 10);
+    }
+
+    await staff.update(updateFields);
+
 
     res.json({
       message: 'Staff updated successfully',
@@ -227,8 +251,8 @@ const listStaff = async (req, res) => {
     // Resolve merchantId for both merchants and agents
     let merchantId = req.user?.merchantId;
     if (!merchantId) {
-      if (req.user?.type === 'merchant') {
-        merchantId = req.user.id;
+      if (req.user?.type === 'merchant' || req.user?.type === 'collaborator' || req.user?.type === 'staff') {
+        merchantId = req.user.merchantId || req.user.id;
       } else if (req.user?.type === 'agent') {
         const { Agent } = require('../models');
         const agentOwner = await Agent.findByPk(req.user.id);

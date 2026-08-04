@@ -5,6 +5,10 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    merchantId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     roleName: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -23,7 +27,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     permissions: {
       type: DataTypes.JSON,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: {},
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -37,6 +42,15 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'roles',
     timestamps: true,
   });
+
+  Role.associate = (models) => {
+    if (models.Merchant) {
+      Role.belongsTo(models.Merchant, { foreignKey: 'merchantId' });
+    }
+    if (models.Staff) {
+      Role.hasMany(models.Staff, { foreignKey: 'roleId' });
+    }
+  };
 
   return Role;
 };

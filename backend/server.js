@@ -57,10 +57,11 @@ const accountingController = require('./controllers/accountingController');
 const walletTierController = require('./controllers/walletTierController');
 const verificationController = require('./controllers/verificationController');
 const webhookController = require('./controllers/webhookController');
+const { runBillingCycle, resolvePlanByAgentCount } = require('./services/billingService');
 
 
 // Import middleware
-const { verifyToken, requireMerchant, requireCollaborator, requireAuthenticated, requireSuperAdmin } = require('./middleware/auth');
+const { verifyToken, requireMerchant, requireCollaborator, requireAuthenticated, requireSuperAdmin, checkActiveSubscription } = require('./middleware/auth');
 
 // Swagger configuration moved to ./swagger.js
 
@@ -201,6 +202,10 @@ app.get('/superadmin/merchants/:id/transactions', verifyToken, requireSuperAdmin
 app.get('/superadmin/merchants/:id/subscriptions', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantSubscriptions);
 app.get('/superadmin/merchants/:id/logs', verifyToken, requireSuperAdmin, merchantManagementController.getMerchantLogs);
 
+// Merchant self-service subscription route
+app.get('/merchant/subscription', verifyToken, requireAuthenticated, merchantManagementController.getMySubscription);
+app.post('/merchant/reactivate', verifyToken, requireAuthenticated, merchantManagementController.reactivateSubscription);
+
 // Wallet Tier routes (Super Admin)
 app.get('/superadmin/wallet-tiers', verifyToken, requireSuperAdmin, walletTierController.listTiers);
 app.post('/superadmin/wallet-tiers', upload.none(), verifyToken, requireSuperAdmin, walletTierController.createTier);
@@ -218,25 +223,25 @@ app.get('/superadmin/verifications/:id', verifyToken, requireSuperAdmin, verific
 // Protected routes (require authentication)
 
 // Agent routes
-app.post('/agents', upload.none(), verifyToken, requireAuthenticated, agentController.registerAgent);
-app.put('/agents', upload.none(), verifyToken, requireAuthenticated, agentController.updateAgent);
+app.post('/agents', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, agentController.registerAgent);
+app.put('/agents', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, agentController.updateAgent);
 app.get('/agents', verifyToken, requireAuthenticated, agentController.listAgents);
 app.get('/agents/:id', verifyToken, requireAuthenticated, agentController.getAgentById);
 app.patch('/agents/:id/status', upload.none(), verifyToken, requireAuthenticated, agentController.updateAgentStatus);
 
 
 // Branch routes
-app.post('/branches', upload.none(), verifyToken, requireAuthenticated, branchController.createBranch);
-app.put('/branches', upload.none(), verifyToken, requireAuthenticated, branchController.updateBranch);
+app.post('/branches', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, branchController.createBranch);
+app.put('/branches', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, branchController.updateBranch);
 app.get('/branches', verifyToken, requireAuthenticated, branchController.listBranches);
 app.get('/branches/:id', verifyToken, requireAuthenticated, branchController.getBranchById);
 app.delete('/branches/:id', verifyToken, requireAuthenticated, branchController.deleteBranch);
 
 // Customer routes
-app.post('/customers', upload.none(), verifyToken, requireAuthenticated, customerController.createCustomer);
+app.post('/customers', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, customerController.createCustomer);
 app.get('/customers', verifyToken, requireAuthenticated, customerController.listCustomers);
 app.get('/customers/:id', verifyToken, requireAuthenticated, customerController.getCustomerById);
-app.put('/customers', upload.none(), verifyToken, requireAuthenticated, customerController.updateCustomer);
+app.put('/customers', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, customerController.updateCustomer);
 
 // Role routes
 app.post('/roles', upload.none(), verifyToken, requireAuthenticated, roleController.createRole);
@@ -251,29 +256,29 @@ app.get('/staff', verifyToken, requireAuthenticated, staffController.listStaff);
 app.get('/staff/:id', verifyToken, requireAuthenticated, staffController.getStaffById);
 
 // Charge routes
-app.post('/charges', upload.none(), verifyToken, requireAuthenticated, chargeController.createCharge);
+app.post('/charges', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, chargeController.createCharge);
 app.get('/charges', verifyToken, requireAuthenticated, chargeController.getCharges);
-app.put('/charges', upload.none(), verifyToken, requireAuthenticated, chargeController.updateCharge);
-app.delete('/charges/:id', verifyToken, requireAuthenticated, chargeController.deleteCharge);
-app.post('/charges/assign', upload.none(), verifyToken, requireAuthenticated, chargeController.assignCharge);
+app.put('/charges', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, chargeController.updateCharge);
+app.delete('/charges/:id', verifyToken, requireAuthenticated, checkActiveSubscription, chargeController.deleteCharge);
+app.post('/charges/assign', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, chargeController.assignCharge);
 app.get('/charges/history', verifyToken, requireAuthenticated, chargeController.getChargeHistory);
 app.put('/charges/assignments/status', upload.none(), verifyToken, requireAuthenticated, chargeController.updateChargeAssignmentStatus);
 
 // Investment routes
-app.post('/investments', upload.none(), verifyToken, requireAuthenticated, investmentController.createInvestment);
+app.post('/investments', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, investmentController.createInvestment);
 app.get('/investments', verifyToken, requireAuthenticated, investmentController.getInvestments);
 app.get('/investments/:id', verifyToken, requireAuthenticated, investmentController.getInvestmentById);
 // app.put('/investments', upload.none(), verifyToken, requireAuthenticated, investmentController.updateInvestment);
-app.delete('/investments/:id', verifyToken, requireAuthenticated, investmentController.deleteInvestment);
+app.delete('/investments/:id', verifyToken, requireAuthenticated, checkActiveSubscription, investmentController.deleteInvestment);
 
 // Investment Transaction routes
-app.post('/investment-transactions', upload.none(), verifyToken, requireAuthenticated, investmentTransactionController.createInvestmentTransaction);
+app.post('/investment-transactions', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, investmentTransactionController.createInvestmentTransaction);
 app.get('/investment-transactions', verifyToken, requireAuthenticated, investmentTransactionController.getInvestmentTransactions);
 app.get('/investment-transactions/:id', verifyToken, requireAuthenticated, investmentTransactionController.getInvestmentTransactionById);
-app.put('/investment-transactions/:id', upload.none(), verifyToken, requireAuthenticated, investmentTransactionController.updateInvestmentTransaction);
-app.delete('/investment-transactions/:id', verifyToken, requireAuthenticated, investmentTransactionController.deleteInvestmentTransaction);
+app.put('/investment-transactions/:id', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, investmentTransactionController.updateInvestmentTransaction);
+app.delete('/investment-transactions/:id', verifyToken, requireAuthenticated, checkActiveSubscription, investmentTransactionController.deleteInvestmentTransaction);
 
-app.post('/investment-applications', upload.none(), verifyToken, requireAuthenticated, investmentApplicationController.createInvestmentApplication);
+app.post('/investment-applications', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, investmentApplicationController.createInvestmentApplication);
 app.get('/investment-applications', verifyToken, requireAuthenticated, investmentApplicationController.getInvestmentApplications);
 
 app.get('/investment-applications/:id', verifyToken, requireAuthenticated, investmentApplicationController.getInvestmentApplicationById);
@@ -283,22 +288,22 @@ app.put('/investment-applications/:id/status', upload.none(), verifyToken, requi
 app.put('/investment-applications/:id', upload.none(), verifyToken, requireAuthenticated, investmentApplicationController.updateInvestmentApplication);
 
 // Loan Application routes
-app.post('/loan-applications', upload.none(), verifyToken, requireAuthenticated, loanApplicationController.createLoanApplication);
+app.post('/loan-applications', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, loanApplicationController.createLoanApplication);
 app.get('/loan-applications', verifyToken, requireAuthenticated, loanApplicationController.getLoanApplications);
 app.get('/loan-applications/:id', verifyToken, requireAuthenticated, loanApplicationController.getLoanApplicationById);
-app.put('/loan-applications/:id/status', upload.none(), verifyToken, requireAuthenticated, loanApplicationController.updateApplicationStatus);
-app.delete('/loan-applications/:id', verifyToken, requireAuthenticated, loanApplicationController.deleteLoanApplication);
+app.put('/loan-applications/:id/status', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, loanApplicationController.updateApplicationStatus);
+app.delete('/loan-applications/:id', verifyToken, requireAuthenticated, checkActiveSubscription, loanApplicationController.deleteLoanApplication);
 
 // Loan routes
-app.post('/loans', upload.single('loanForm'), verifyToken, requireAuthenticated, loanController.createLoan);
+app.post('/loans', upload.single('loanForm'), verifyToken, requireAuthenticated, checkActiveSubscription, loanController.createLoan);
 app.get('/loans', verifyToken, requireAuthenticated, loanController.getLoans);
 app.get('/loans/:id', verifyToken, requireAuthenticated, loanController.getLoanById);
-app.put('/loans/:id/status', upload.none(), verifyToken, requireAuthenticated, loanController.updateLoanStatus);
-app.delete('/loans/:id', verifyToken, requireAuthenticated, loanController.deleteLoan);
+app.put('/loans/:id/status', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, loanController.updateLoanStatus);
+app.delete('/loans/:id', verifyToken, requireAuthenticated, checkActiveSubscription, loanController.deleteLoan);
 app.get('/loans/stats/summary', verifyToken, requireAuthenticated, loanController.getLoanStats);
 
 // Repayment routes
-app.post('/repayments', upload.none(), verifyToken, requireAuthenticated, repaymentController.createRepayment);
+app.post('/repayments', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, repaymentController.createRepayment);
 app.get('/repayments', verifyToken, requireAuthenticated, repaymentController.getRepayments);
 app.get('/repayments/:id', verifyToken, requireAuthenticated, repaymentController.getRepaymentById);
 app.put('/repayments/:id/status', upload.none(), verifyToken, requireAuthenticated, repaymentController.updateRepaymentStatus);
@@ -314,8 +319,8 @@ app.put('/packages', upload.none(), verifyToken, requireAuthenticated, packageCo
 app.delete('/packages/:id', verifyToken, requireAuthenticated, packageController.deletePackage);
 
 // Collection routes
-app.post('/collections', upload.none(), verifyToken, requireAuthenticated, collectionController.createCollection);
-app.post('/collections/bulk', upload.none(), verifyToken, requireAuthenticated, collectionController.createCollectionsBulk);
+app.post('/collections', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, collectionController.createCollection);
+app.post('/collections/bulk', upload.none(), verifyToken, requireAuthenticated, checkActiveSubscription, collectionController.createCollectionsBulk);
 app.get('/collections', verifyToken, requireAuthenticated, collectionController.getCollections);
 app.get('/collections/:id', verifyToken, requireAuthenticated, collectionController.getCollectionById);
 app.put('/collections', upload.none(), verifyToken, requireAuthenticated, collectionController.updateCollection);
@@ -400,6 +405,9 @@ app.get('/accounting/reports/trial-balance', verifyToken, requireAuthenticated, 
 app.get('/accounting/reports/balance-sheet', verifyToken, requireAuthenticated, accountingController.getBalanceSheet);
 app.get('/accounting/reports/income-statement', verifyToken, requireAuthenticated, accountingController.getIncomeStatement);
 
+// Transaction Mapping Configuration route
+app.get('/accounting/transaction-mappings', verifyToken, requireAuthenticated, accountingController.getTransactionMappings);
+
 // Dashboard routes
 
 app.get('/dashboard/stats', verifyToken, requireAuthenticated, dashboardController.getDashboardStats);
@@ -423,9 +431,67 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// ─── Billing Cron Job ─────────────────────────────────────────────────────────
+// Runs every day at midnight (00:00) server time
+const BILLING_CRON_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function scheduleBillingCron() {
+  const now = new Date();
+  // Next midnight
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const msUntilMidnight = midnight.getTime() - now.getTime();
+
+  console.log(`[BillingCron] First run scheduled in ${Math.round(msUntilMidnight / 60000)} minutes.`);
+
+  setTimeout(async () => {
+    try {
+      console.log('[BillingCron] Running scheduled billing cycle...');
+      await runBillingCycle({ ...db, Op: require('sequelize').Op });
+    } catch (err) {
+      console.error('[BillingCron] Error during billing cycle:', err.message);
+    }
+    // Repeat every 24h
+    setInterval(async () => {
+      try {
+        console.log('[BillingCron] Running daily billing cycle...');
+        await runBillingCycle({ ...db, Op: require('sequelize').Op });
+      } catch (err) {
+        console.error('[BillingCron] Error during billing cycle:', err.message);
+      }
+    }, BILLING_CRON_INTERVAL_MS);
+  }, msUntilMidnight);
+}
+
+// ─── Admin: Manual billing trigger & plan check endpoints ──────────────────────
+// POST /admin/billing/run — Super Admin manually triggers billing cycle
+app.post('/admin/billing/run', verifyToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const results = await runBillingCycle({ ...db, Op });
+    res.json({ success: true, message: 'Billing cycle completed.', results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /admin/billing/preview/:merchantId — Preview which plan a merchant would be billed on
+app.get('/admin/billing/preview/:merchantId', verifyToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const { Agent } = db;
+    const merchantId = parseInt(req.params.merchantId);
+    const agentCount = await Agent.count({ where: { merchantId } });
+    const resolved = resolvePlanByAgentCount(agentCount);
+    res.json({ success: true, merchantId, agentCount, resolvedPlan: resolved });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  scheduleBillingCron();
 });
 
 module.exports = app;

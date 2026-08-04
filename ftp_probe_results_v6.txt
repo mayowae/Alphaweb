@@ -1,0 +1,92 @@
+=== Reading /var/webuzo/users/mayowae/ftp ===
+{
+    "mayowae": {
+        "fuser": "mayowae",
+        "pass": "$6$c65teCXZiaUrLZF0$Hs66T4tVaE0rp.sdKm0Wc7S.4iwh50V4H2NLdiSOZJEqlqDjOwEHEWfG12IDb2JNur5.DLmhgomVLi8CoihDn.",
+        "dir": "\/home\/mayowae",
+        "quota": 0
+    }
+}
+
+=== Reading /var/webuzo/users/mayowae/info ===
+{
+    "domain": "alphakolect.com",
+    "user": "mayowae",
+    "resource_limit": "",
+    "email": "mayorwae@gmail.com",
+    "plan": "alpha",
+    "homedir": "\/home\/mayowae",
+    "p": {
+        "options": {
+            "shell": 1
+        }
+    },
+    "reseller": null,
+    "owner": "",
+    "uuid": "drrx1tl6",
+    "created": 1771530095,
+    "domains": {
+        "alphakolect.com": {
+            "path": "\/home\/mayowae\/public_html",
+            "type": "parked"
+        },
+        "paxalphaltd.com": {
+            "path": "\/home\/mayowae\/paxalphaltd.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "bhislass.com": {
+            "path": "\/home\/mayowae\/bhislass.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "kosheglobal.com": {
+            "path": "\/home\/mayowae\/kosheglobal.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "vinemorrisgroup.com": {
+            "path": "\/home\/mayowae\/vinemorrisgroup.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "modoniteintegrated.com.ng": {
+            "path": "\/home\/mayowae\/modoniteintegrated.com.ng",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "suppakash.com": {
+            "path": "\/home\/mayowae\/suppakash.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "godproposescollege.com": {
+            "path": "\/home\/mayowae\/godproposescollege.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        },
+        "thepeopleimpact.com": {
+            "path": "\/home\/mayowae\/thepeopleimpact.com",
+            "type": "addon",
+            "addon": 1,
+            "force_https": 1
+        }
+    },
+    "name": "mayowae",
+    "username": "mayowae",
+    "disable_nginx_cache": "0"
+}
+
+=== Checking for any .webuzo_password or similar ===
+total 12
+drwxrwx---  3 mayowae webuzo 4096 Feb 19 19:41 .
+drwx--x--x 18 mayowae nobody 4096 Mar 22 22:46 ..
+drwxrwx--- 10 mayowae webuzo 4096 Mar  8 13:29 mails
+
