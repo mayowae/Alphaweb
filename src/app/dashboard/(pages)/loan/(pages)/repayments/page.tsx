@@ -172,24 +172,38 @@ const CreateRepaymentModal = ({
     const loan = customerApprovedLoans.find((l: any) => String(l.id) === loanIdStr);
     if (loan) {
       const pkgName = loan.packageName || loan.package || (loan as any).loanPackage || (loan as any).Package?.name || (`Loan #${loan.id}`);
-      // Outstanding = loanAmount + interest - amountPaid
       const loanAmt = Number(loan.loanAmount || 0);
-      const interestRate = Number((loan as any).interestRate || 0);
-      const interest = loanAmt * interestRate / 100;
-      const total = loanAmt + interest;  // loanAmount + interest
-      const paid = Number(loan.amountPaid || 0);
-      const outstanding = total - paid;  // loanAmount + interest - amountPaid
+      let interest = 0;
+      if (loan.totalAmount && Number(loan.totalAmount) > loanAmt) {
+        interest = Number(loan.totalAmount) - loanAmt;
+      } else {
+        const rate = Number((loan as any).interestRate || 0);
+        if (rate > 100) {
+          interest = rate; // Flat rate
+        } else {
+          interest = loanAmt * (rate / 100);
+        }
+      }
+      const totalWithInterest = loanAmt + interest;
+      const paid = Number((loan as any).amountPaid || 0);
       
+      let outstanding = 0;
+      if (loan.remainingAmount !== undefined && loan.remainingAmount !== null && Number(loan.remainingAmount) >= 0 && Number(loan.remainingAmount) < totalWithInterest) {
+        outstanding = Number(loan.remainingAmount);
+      } else {
+        outstanding = Math.max(0, totalWithInterest - paid);
+      }
+
       setForm(prev => ({
         ...prev,
         loanId: String(loan.id),
         packageName: pkgName,
-        packageAmount: String(total),
-        outstandingAmount: String(outstanding > 0 ? outstanding : 0),
+        packageAmount: String(totalWithInterest),
+        outstandingAmount: String(outstanding),
         accountNumber: loan.accountNumber || selectedCustomer?.accountNumber || prev.accountNumber,
         agentId: loan.agentId ? String(loan.agentId) : prev.agentId,
         branch: loan.branch || prev.branch,
-        amountToPay: outstanding > 0 ? String(outstanding) : String(total)
+        amountToPay: outstanding > 0 ? String(outstanding) : String(totalWithInterest)
       }));
     } else {
       setForm(prev => ({

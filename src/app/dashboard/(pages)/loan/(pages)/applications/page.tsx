@@ -471,20 +471,20 @@ const Page = () => {
                     const pkgName = e.target.value;
                     const pkg = packages.find((p:any)=>p.name===pkgName);
                     
-                    let interestVal = newLoan.interestRate;
+                    let interestVal = '10';
                     let interestLbl = 'Interest Rate (%)';
                     let interestDisp = '';
 
                     if (pkg) {
-                      const type = String(pkg.type || '').toLowerCase();
+                      const type = String(pkg.type || pkg.packageType || '').toLowerCase();
                       const isFlat = type.includes('flat') || 
                                      (pkg.interestAmount !== undefined && pkg.interestAmount !== null && Number(pkg.interestAmount) > 0 && !pkg.loanInterestRate);
                       
                       if (isFlat) {
                         const flatAmt = pkg.interestAmount ?? pkg.interest_amount ?? pkg.interestRate ?? 0;
                         interestVal = String(flatAmt);
-                        interestLbl = 'Interest (Flat Amount)';
-                        interestDisp = `₦${Number(flatAmt).toLocaleString()}`;
+                        interestLbl = 'Interest Rate (₦)';
+                        interestDisp = `₦${Number(flatAmt).toLocaleString('en-NG')}`;
                       } else {
                         const pctRate = pkg.loanInterestRate ?? pkg.loan_interest_rate ?? pkg.interestRate ?? pkg.interest_rate ?? 0;
                         interestVal = String(pctRate);
@@ -539,21 +539,19 @@ const Page = () => {
                 <div>
                   <label className='text-sm flex justify-between'>
                     <span>{(newLoan as any).interestLabel || 'Interest Rate (%)'}</span>
-                    {Boolean((newLoan as any).packageName) && <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>}
+                    <span className='text-xs text-indigo-600 font-normal'>🔒 Locked</span>
                   </label>
                   <input
-                    type={(newLoan as any).packageName ? 'text' : 'number'}
+                    type='text'
                     value={
-                      (newLoan as any).packageName && (newLoan as any).interestDisplay
+                      (newLoan as any).interestDisplay
                         ? (newLoan as any).interestDisplay
-                        : newLoan.interestRate
+                        : ((newLoan as any).packageName ? `${newLoan.interestRate}%` : newLoan.interestRate ? `${newLoan.interestRate}%` : '')
                     }
-                    onChange={(e)=>setNewLoan({...newLoan, interestRate:e.target.value})}
-                    placeholder='e.g. 10'
-                    readOnly={Boolean((newLoan as any).packageName)}
-                    className={`w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 ${
-                      Boolean((newLoan as any).packageName) ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : ''
-                    }`}
+                    disabled={true}
+                    readOnly={true}
+                    placeholder='Autofilled by loan package'
+                    className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-100 cursor-not-allowed text-gray-700 font-medium'
                   />
                 </div>
                 <div>
@@ -707,7 +705,19 @@ const Page = () => {
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.customerName}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.accountNumber || 'N/A'}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(loan.loanAmount)}</td>
-                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.interestRate}%</td>
+                    <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">
+                      {(() => {
+                        const pkg = packages.find((p: any) => p.name === (loan as any).packageName || p.name === (loan as any).package);
+                        const isFlat = pkg 
+                          ? (String(pkg.type || pkg.packageType || '').toLowerCase().includes('flat') || (pkg.interestAmount !== undefined && pkg.interestAmount !== null && Number(pkg.interestAmount) > 0 && !pkg.loanInterestRate))
+                          : Number(loan.interestRate || 0) > 100;
+                        if (isFlat) {
+                          const flatVal = pkg?.interestAmount ?? pkg?.interest_amount ?? loan.interestRate ?? 0;
+                          return `₦${Number(flatVal).toLocaleString('en-NG')}`;
+                        }
+                        return `${loan.interestRate || 0}%`;
+                      })()}
+                    </td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.duration} days</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.agentName || 'N/A'}</td>
                     <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.branch || 'N/A'}</td>
@@ -774,7 +784,19 @@ const Page = () => {
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Interest Rate:</span>
-                      <span className="font-semibold">{loan.interestRate}%</span>
+                      <span className="font-semibold">
+                        {(() => {
+                          const pkg = packages.find((p: any) => p.name === (loan as any).packageName || p.name === (loan as any).package);
+                          const isFlat = pkg 
+                            ? (String(pkg.type || pkg.packageType || '').toLowerCase().includes('flat') || (pkg.interestAmount !== undefined && pkg.interestAmount !== null && Number(pkg.interestAmount) > 0 && !pkg.loanInterestRate))
+                            : Number(loan.interestRate || 0) > 100;
+                          if (isFlat) {
+                            const flatVal = pkg?.interestAmount ?? pkg?.interest_amount ?? loan.interestRate ?? 0;
+                            return `₦${Number(flatVal).toLocaleString('en-NG')}`;
+                          }
+                          return `${loan.interestRate || 0}%`;
+                        })()}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>Duration:</span>

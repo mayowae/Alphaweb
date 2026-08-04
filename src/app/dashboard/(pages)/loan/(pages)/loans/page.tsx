@@ -232,25 +232,45 @@ const Page = () => {
     }
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(parseInt(value));
     setCurrentPage(1);
+  };
+
+  const calculateOutstanding = (loan: Loan) => {
+    const loanAmt = Number(loan.loanAmount || 0);
+    const paid = Number(loan.amountPaid || 0);
+    
+    let interest = 0;
+    if (loan.totalAmount && Number(loan.totalAmount) > loanAmt) {
+      interest = Number(loan.totalAmount) - loanAmt;
+    } else {
+      const rate = Number(loan.interestRate || 0);
+      if (rate > 100) {
+        interest = rate; // Flat rate amount
+      } else {
+        interest = loanAmt * (rate / 100);
+      }
+    }
+    
+    const totalWithInterest = loanAmt + interest;
+    
+    if (loan.remainingAmount !== undefined && loan.remainingAmount !== null && Number(loan.remainingAmount) >= 0 && Number(loan.remainingAmount) < totalWithInterest) {
+      return Number(loan.remainingAmount);
+    }
+    
+    return Math.max(0, totalWithInterest - paid);
   };
 
   // ── Export handlers ───────────────────────────────────────
   const loansHeaders = ['Customer', 'Account No.', 'Loan Amount', 'Outstanding', 'Due Date', 'Agent', 'Date Added', 'Status'];
   const getLoansRows = () => loans.map(l => [
     l.customerName, l.accountNumber || 'N/A', formatCurrency(l.loanAmount),
-    formatCurrency(l.totalAmount || (Number(l.loanAmount || 0) + (Number(l.loanAmount || 0) * (Number(l.interestRate || 0) / 100)))), formatDate(l.dueDate), l.agentName || 'N/A',
+    formatCurrency(calculateOutstanding(l)), formatDate(l.dueDate), l.agentName || 'N/A',
     formatDate(l.dateIssued), l.status
   ]);
   const handleExportPDF = () => { setShow(false); exportTableToPDF('Loans', loansHeaders, getLoansRows(), loans.length); };
   const handleExportCSV = () => { setShow(false); exportToCSV('Loans', loansHeaders, getLoansRows()); };
-
 
   const handleCreateLoan = async () => {
     try {
@@ -258,7 +278,6 @@ const Page = () => {
         return Swal.fire('Missing fields', 'Please fill required fields', 'warning');
       }
       setUploading(true);
-      // Optional: upload file to a simple file endpoint if available; for now we skip and store loan without file
       await createLoan({
         customerName: newLoan.customerName,
         accountNumber: newLoan.accountNumber || undefined,
@@ -596,7 +615,7 @@ const Page = () => {
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.customerName}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.accountNumber || 'N/A'}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(loan.loanAmount)}</td>
-                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(Number(loan.loanAmount || 0) + (Number(loan.loanAmount || 0) * (Number(loan.interestRate || 0) / 100)))}</td>
+                      <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatCurrency(calculateOutstanding(loan))}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(loan.dueDate)}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{loan.agentName || 'N/A'}</td>
                       <td className="px-5 py-4 text-gray-600 text-[14px] leading-[20px] font-lato font-normal ">{formatDate(loan.dateIssued)}</td>
@@ -654,7 +673,7 @@ const Page = () => {
                     <div className="flex justify-between text-sm text-gray-600"><span>Customer:</span><span className="font-semibold">{loan.customerName}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Account number:</span><span className="font-semibold">{loan.accountNumber || 'N/A'}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Loan amount:</span><span className="font-semibold">{formatCurrency(loan.loanAmount)}</span></div>
-                    <div className="flex justify-between text-sm text-gray-600"><span>Outstanding:</span><span className="font-semibold">{formatCurrency(loan.totalAmount || (Number(loan.loanAmount || 0) + (Number(loan.loanAmount || 0) * (Number(loan.interestRate || 0) / 100))))}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600"><span>Outstanding:</span><span className="font-semibold">{formatCurrency(calculateOutstanding(loan))}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Due date:</span><span className="font-semibold">{formatDate(loan.dueDate)}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Agent:</span><span className="font-semibold">{loan.agentName || 'N/A'}</span></div>
                     <div className="flex justify-between text-sm text-gray-600"><span>Date added:</span><span className="font-semibold">{formatDate(loan.dateIssued)}</span></div>

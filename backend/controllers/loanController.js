@@ -443,9 +443,34 @@ const createLoan = async (req, res) => {
 
     // Calculate total amount and remaining amount
     const principal = parseFloat(loanAmount);
-    const rate = parseFloat(interestRate) / 100;
-    const durationInMonths = parseInt(duration) / 30; // Convert days to months
-    const interest = principal * rate * durationInMonths;
+    let interest = 0;
+    const rateNum = parseFloat(interestRate || 0);
+
+    if (req.body.packageName) {
+      try {
+        const { Package } = require('../models');
+        const pkg = await Package.findOne({ where: { merchantId, name: req.body.packageName } });
+        if (pkg) {
+          const type = String(pkg.type || pkg.packageType || '').toLowerCase();
+          const isFlat = type.includes('flat') || (pkg.interestAmount !== undefined && pkg.interestAmount !== null && Number(pkg.interestAmount) > 0 && !pkg.loanInterestRate);
+          if (isFlat) {
+            interest = parseFloat(pkg.interestAmount || pkg.interest_amount || rateNum || 0);
+          } else {
+            const pctRate = parseFloat(pkg.loanInterestRate || pkg.loan_interest_rate || rateNum || 0);
+            interest = principal * (pctRate / 100);
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (interest === 0 && rateNum > 0) {
+      if (rateNum > 100) {
+        interest = rateNum; // Flat rate amount
+      } else {
+        interest = principal * (rateNum / 100);
+      }
+    }
+
     const totalAmount = principal + interest;
 
     const enrichedNotes = formUrl ? JSON.stringify({ formUrl, notes: notes || null }) : notes;
