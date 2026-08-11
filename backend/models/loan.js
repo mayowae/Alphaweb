@@ -7,7 +7,7 @@ module.exports = (sequelize) => {
     customerName: { type: DataTypes.STRING, allowNull: true, field: 'customer_name' },
     accountNumber: { type: DataTypes.STRING, allowNull: true, field: 'account_number', comment: 'Customer account number' },
     loanAmount: { type: DataTypes.DECIMAL(15, 2), allowNull: false, field: 'loan_amount', comment: 'Original loan amount' },
-    interestRate: { type: DataTypes.DECIMAL(5, 2), allowNull: true, field: 'interest_rate', comment: 'Interest rate percentage' },
+    interestRate: { type: DataTypes.DECIMAL(15, 2), allowNull: true, field: 'interest_rate', comment: 'Interest rate percentage or flat interest amount' },
     duration: { type: DataTypes.INTEGER, allowNull: true, comment: 'Duration in days' },
     agentId: { type: DataTypes.INTEGER, allowNull: true, field: 'agent_id', references: { model: 'agents', key: 'id' } },
     agentName: { type: DataTypes.STRING, allowNull: true, field: 'agent_name', comment: 'Agent handling the loan' },

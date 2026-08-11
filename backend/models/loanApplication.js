@@ -30,9 +30,9 @@ module.exports = (sequelize) => {
       comment: 'Requested loan amount'
     },
     interestRate: {
-      type: DataTypes.DECIMAL(5, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
-      comment: 'Interest rate percentage'
+      comment: 'Interest rate percentage or flat interest amount'
     },
     duration: {
       type: DataTypes.INTEGER,
