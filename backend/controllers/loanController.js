@@ -1,4 +1,5 @@
-const { Loan, Customer, Agent, Staff } = require('../models');
+const db = require('../models');
+const { Loan, Customer, Agent, Staff, Package, Charge, ChargeAssignment, CustomerWallet, WalletTransaction } = db;
 const { Op } = require('sequelize');
 const { postJournalForTransaction } = require('../utils/transactionMapping');
 
@@ -445,10 +446,10 @@ const createLoan = async (req, res) => {
     const principal = parseFloat(loanAmount);
     let interest = 0;
     const rateNum = parseFloat(interestRate || 0);
+    let loanChargesAmount = 0;
 
     if (req.body.packageName) {
       try {
-        const { Package } = require('../models');
         const pkg = await Package.findOne({ where: { merchantId, name: req.body.packageName } });
         if (pkg) {
           const type = String(pkg.type || pkg.packageType || '').toLowerCase();
@@ -459,6 +460,7 @@ const createLoan = async (req, res) => {
             const pctRate = parseFloat(pkg.loanInterestRate || pkg.loan_interest_rate || rateNum || 0);
             interest = principal * (pctRate / 100);
           }
+          loanChargesAmount = parseFloat(pkg.loanCharges || 0);
         }
       } catch (_) {}
     }
@@ -505,6 +507,84 @@ const createLoan = async (req, res) => {
       );
     } catch (deErr) {
       console.warn('⚠️ Double-entry booking skipped for loan disbursement:', deErr.message);
+    }
+
+    // Deduct package loan charges from customer's collection wallet
+    if (loanChargesAmount > 0) {
+      try {
+        const deductionTransaction = await db.sequelize.transaction();
+        try {
+          // Find or create a Charge record for this package charge
+          const chargeName = `Loan Charge - ${req.body.packageName || 'Loan'}`;
+          let charge = await Charge.findOne({
+            where: { chargeName, merchantId, isActive: true },
+            transaction: deductionTransaction
+          });
+          if (!charge) {
+            charge = await Charge.create({
+              chargeName,
+              type: 'Loan',
+              amount: loanChargesAmount,
+              merchantId,
+              isActive: true
+            }, { transaction: deductionTransaction });
+          }
+
+          // Deduct from collection wallet
+          const wallet = await CustomerWallet.findOne({
+            where: { customerId: customer.id, merchantId },
+            lock: deductionTransaction.LOCK.UPDATE,
+            transaction: deductionTransaction
+          });
+
+          const oldBalance = wallet ? parseFloat(wallet.collectionBalance || 0) : 0;
+          const newBalance = oldBalance - loanChargesAmount;
+
+          if (wallet) {
+            await wallet.update({ collectionBalance: newBalance }, { transaction: deductionTransaction });
+          } else {
+            await CustomerWallet.create({
+              customerId: customer.id,
+              merchantId,
+              collectionBalance: newBalance
+            }, { transaction: deductionTransaction });
+          }
+
+          // Create charge assignment (paid immediately)
+          const assignment = await ChargeAssignment.create({
+            chargeId: charge.id,
+            customerId: customer.id,
+            amount: loanChargesAmount,
+            dueDate: new Date(),
+            merchantId,
+            status: 'Paid',
+            datePaid: new Date()
+          }, { transaction: deductionTransaction });
+
+          // Record wallet transaction
+          await WalletTransaction.create({
+            transactionType: 'charge_deduction',
+            merchantId,
+            type: 'debit',
+            amount: loanChargesAmount,
+            description: `Loan Package Charge deducted: ${req.body.packageName || 'N/A'} (Loan #${loan.id})`,
+            status: 'Completed',
+            balanceBefore: oldBalance,
+            balanceAfter: newBalance,
+            category: 'charge',
+            relatedId: assignment.id,
+            relatedType: 'ChargeAssignment'
+          }, { transaction: deductionTransaction });
+
+          await deductionTransaction.commit();
+          console.log(`✅ Loan charges ₦${loanChargesAmount} deducted from collection wallet for loan #${loan.id}`);
+        } catch (innerErr) {
+          await deductionTransaction.rollback();
+          console.warn('⚠️ Loan charge deduction failed:', innerErr.message);
+        }
+      } catch (txErr) {
+        console.warn('⚠️ Loan charge deduction skipped:', txErr.message);
+      }
     }
 
     res.status(201).json({
