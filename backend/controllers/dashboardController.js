@@ -138,11 +138,11 @@ const getDashboardStats = async (req, res) => {
 
     walletBalance = Math.max(0, walletBalance);
 
-    // Cumulative Collection Wallets - sum of all customer wallet balances (clamped to 0 minimum)
-    const rawCollectionWallet = await CustomerWallet.sum('balance', { 
+    // Cumulative Collection Wallets - sum of all customer wallet collection balances
+    const rawCollectionWallet = await CustomerWallet.sum('collection_balance', { 
         where: { merchantId } 
     }) || 0;
-    const allCollectionWallet = Math.max(0, parseFloat(rawCollectionWallet));
+    const allCollectionWallet = parseFloat(rawCollectionWallet);
 
     res.json({
       success: true,

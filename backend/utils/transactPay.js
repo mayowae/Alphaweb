@@ -100,7 +100,7 @@ const getVirtualAccountDetails = async (alias) => {
     try {
         const response = await fetch(`${TP_BASE_URL}/payment/account-details?alias=${encodeURIComponent(alias)}`, {
             method: 'GET',
-            headers: { 'api-key': getPublicKey() }
+            headers: { 'api-key': getSecretKey() }
         });
 
         const text = await response.text();

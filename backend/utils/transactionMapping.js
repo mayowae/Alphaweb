@@ -5,15 +5,19 @@
  * Uses the existing account codes from the seeded Chart of Accounts.
  * 
  * Account Code Reference:
+ *   100200 = Wallet
  *   100300 = Bank (Cash at Bank)
  *   100400 = Cash
- *   200100 = Customer Collection - Savings (Customer Wallet Deposits)
- *   200300 = Customer Collection - Investment (Customer Investments Held)
- *   200500 = Customer Loans (Loans Receivable)
- *   400200 = Charges - Collection (Transaction Fee Income)
- *   400600 = Interest Loan (Loan Interest Income)
- *   500300 = Interest Fixed Deposit (Investment Interest Expense)
- *   200550 = Loan Repayment (Remittance Clearing)
+ *   200100 = Customer Collection - Savings
+ *   200200 = Customer Collection - Target Savings
+ *   200300 = Customer Collection - Investment
+ *   200500 = Customer Loans
+ *   200550 = Loan Repayment
+ *   400100 = Commission on Collection
+ *   400200 = Charges - Collection
+ *   400600 = Interest Loan
+ *   400700 = Subscription Revenue
+ *   500200 = Interest Target Savings
  */
 
 const { bookDoubleEntry } = require('./doubleEntry');
@@ -22,69 +26,111 @@ const { bookDoubleEntry } = require('./doubleEntry');
  * TRANSACTION_MAPPING:
  * Each key maps to { debitCode, creditCode, description }
  * 
- * Mapping from the Transaction Mapping Configuration Table:
- * ┌─────────────────────────────┬──────────┬──────────┐
- * │ Transaction Type            │ Dr       │ Cr       │
- * ├─────────────────────────────┼──────────┼──────────┤
- * │ Wallet Funding (Deposit)    │ 100300   │ 200100   │
- * │ Wallet Withdrawal           │ 200100   │ 100300   │
- * │ Transaction Fees (Charges)  │ 200100   │ 400200   │
- * │ Loan Disbursement           │ 200500   │ 200100   │
- * │ Loan Repayment (Principal)  │ 200100   │ 200500   │
- * │ Loan Interest Repayment     │ 200100   │ 400600   │
- * │ Investment Deposit           │ 200100   │ 200300   │
- * │ Investment Returns (Payout) │ 500300   │ 200100   │
- * │ Investment Withdrawal       │ 200300   │ 200100   │
- * │ Remittance Created (Sent)   │ 200100   │ 200550   │
- * │ Remittance Payout (Rec.)    │ 200550   │ 100300   │
- * │ Collection Received         │ 100400   │ 200100   │
- * └─────────────────────────────┴──────────┴──────────┘
+ *  ┌─────────────────────────────────────────────┬───────────────────────────┬─────────────────────────────┐
+ *  │ Transaction Type                            │ Dr                        │ Cr                         │
+ *  ├─────────────────────────────────────────────┼───────────────────────────┼─────────────────────────────┤
+ *  │ Collection                                  │ Cash                      │ Customer Collection - Savings│
+ *  │ Collection Commission                       │ Customer Collection - Savings │ Cash                     │
+ *  │ First Saving (Collection Charge)            │ Cash                      │ Charges - Collection        │
+ *  │ Move fund Collection wallet → Loan wallet   │ Customer Collection - Savings │ Customer Loans           │
+ *  │ Collection Withdrawal                       │ Customer Collection - Savings │ Cash                     │
+ *  │ Loan disbursed                              │ Customer Loans            │ Cash                       │
+ *  │ Loan repayment                              │ Cash                      │ Loan Repayment             │
+ *  │ Loan Interest                               │ Cash                      │ Interest - Loan            │
+ *  │ Investment Collection                       │ Cash                      │ Customer Collection - Target Savings │
+ *  │ Interest on Investment                      │ Interest - Target Savings │ Cash                       │
+ *  │ Investment Withdrawal to Cash               │ Customer Collection - Target Savings │ Cash            │
+ *  │ Load Wallet                                 │ Bank                      │ Wallet                     │
+ *  │ Wallet → Customer transfer                  │ Wallet                    │ Customer Collection - Savings│
+ *  │ Subscription Payment                        │ Cash                      │ Subscription Revenue       │
+ *  │ Subscription Payment using platform wallet  │ Wallet                    │ Subscription Revenue       │
+ *  └─────────────────────────────────────────────┴───────────────────────────┴─────────────────────────────┘
  */
 const TRANSACTION_MAPPING = {
-  WALLET_DEPOSIT: {
-    debitCode: '100300',
+  COLLECTION_RECEIVED: {
+    debitCode: '100400',
     creditCode: '200100',
-    label: 'Wallet Funding (Deposit)'
+    label: 'Collection'
   },
-  WALLET_WITHDRAWAL: {
+  COLLECTION_COMMISSION: {
     debitCode: '200100',
-    creditCode: '100300',
-    label: 'Wallet Withdrawal'
+    creditCode: '100400',
+    label: 'Collection Commission'
   },
-  TRANSACTION_FEE: {
-    debitCode: '200100',
+  CHARGE_DEDUCTION: {
+    debitCode: '100400',
     creditCode: '400200',
-    label: 'Transaction Fee'
+    label: 'First Saving (Collection Charge)'
+  },
+  LOAN_WALLET_TRANSFER: {
+    debitCode: '200100',
+    creditCode: '200500',
+    label: 'Move Fund from Collection Wallet to Loan Wallet'
+  },
+  COLLECTION_WITHDRAWAL: {
+    debitCode: '200100',
+    creditCode: '100400',
+    label: 'Collection Withdrawal'
   },
   LOAN_DISBURSEMENT: {
     debitCode: '200500',
-    creditCode: '200100',
-    label: 'Loan Disbursement'
+    creditCode: '100400',
+    label: 'Loan Disbursed'
   },
   LOAN_REPAYMENT_PRINCIPAL: {
-    debitCode: '200100',
-    creditCode: '200500',
-    label: 'Loan Repayment (Principal)'
+    debitCode: '100400',
+    creditCode: '200550',
+    label: 'Loan Repayment'
   },
   LOAN_INTEREST_REPAYMENT: {
-    debitCode: '200100',
+    debitCode: '100400',
     creditCode: '400600',
-    label: 'Loan Interest Repayment'
+    label: 'Loan Interest'
   },
   INVESTMENT_DEPOSIT: {
-    debitCode: '200100',
-    creditCode: '200300',
-    label: 'Investment Deposit'
+    debitCode: '100400',
+    creditCode: '200200',
+    label: 'Investment Collection'
   },
   INVESTMENT_RETURNS: {
-    debitCode: '500300',
-    creditCode: '200100',
-    label: 'Investment Returns (Payout)'
+    debitCode: '500200',
+    creditCode: '100400',
+    label: 'Interest on Investment'
   },
   INVESTMENT_WITHDRAWAL: {
-    debitCode: '200300',
+    debitCode: '200200',
+    creditCode: '100400',
+    label: 'Investment Withdrawal to Cash'
+  },
+  WALLET_DEPOSIT: {
+    debitCode: '100300',
+    creditCode: '100200',
+    label: 'Load Wallet'
+  },
+  WALLET_TRANSFER_TO_CUSTOMER: {
+    debitCode: '100200',
     creditCode: '200100',
-    label: 'Investment Withdrawal (Principal)'
+    label: 'Wallet - Wallet Transfer to Customer'
+  },
+  SUBSCRIPTION_PAYMENT: {
+    debitCode: '100400',
+    creditCode: '400700',
+    label: 'Subscription Payment'
+  },
+  SUBSCRIPTION_PAYMENT_WALLET: {
+    debitCode: '100200',
+    creditCode: '400700',
+    label: 'Subscription Payment using Platform Wallet'
+  },
+  WALLET_WITHDRAWAL: {
+    debitCode: '100200',
+    creditCode: '100400',
+    label: 'Wallet Withdrawal'
+  },
+  TRANSACTION_FEE: {
+    debitCode: '100200',
+    creditCode: '400200',
+    label: 'Transaction Fee'
   },
   REMITTANCE_SENT: {
     debitCode: '200100',
@@ -95,11 +141,6 @@ const TRANSACTION_MAPPING = {
     debitCode: '200550',
     creditCode: '100300',
     label: 'Remittance Payout (Received)'
-  },
-  COLLECTION_RECEIVED: {
-    debitCode: '100400',
-    creditCode: '200100',
-    label: 'Collection Received (Savings)'
   }
 };
 

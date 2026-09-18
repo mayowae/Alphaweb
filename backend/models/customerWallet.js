@@ -102,9 +102,9 @@ module.exports = (sequelize) => {
     updatedAt: 'updated_at',
     hooks: {
       beforeCreate: (wallet) => {
-        // Generate account number if not provided
+        // Generate account number if not provided (must fit STRING(20))
         if (!wallet.accountNumber) {
-          wallet.accountNumber = `CW${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+          wallet.accountNumber = `CW${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         }
       }
     }

@@ -155,17 +155,9 @@ const createRemittance = async (req, res) => {
       notes: notes || null
     });
 
-    try {
-      const { postJournalForTransaction } = require('../utils/transactionMapping');
-      await postJournalForTransaction(
-        'REMITTANCE_SENT',
-        parseFloat(amount),
-        merchantId,
-        `Remittance #${remittance.id} created for customer ${customer.fullName}`
-      );
-    } catch (deErr) {
-      console.warn('⚠️ Double-entry skipped for remittance creation:', deErr.message);
-    }
+    // NOTE: No journal entry is posted when a remittance is created.
+    // Per the "remitted only" policy, entries enter the company's books
+    // only when the remittance is APPROVED (see approveRemittance).
 
     res.status(201).json({ success: true, message: 'Remittance created', remittance });
   } catch (error) {
@@ -294,80 +286,106 @@ const approveRemittance = async (req, res) => {
     const customerId = remittance.customerId;
     const customerAccountNumber = remittanceWithCustomer.customer?.accountNumber;
 
-    // Step 4: Lock and update customer wallet
-    let wallet = await CustomerWallet.findOne({
-      where: { customerId, merchantId },
-      lock: transaction.LOCK.UPDATE,
-      transaction
-    });
-
-    let oldBalance = 0;
-    let newBalance = parseFloat(remittance.amount);
-
-    if (!wallet) {
-      wallet = await CustomerWallet.create({
-        customerId,
-        merchantId,
-        accountNumber: customerAccountNumber || `CW${Date.now()}`,
-        collectionBalance: newBalance,
-        status: 'Active',
-        activationDate: new Date()
-      }, { transaction });
-    } else {
-      oldBalance = parseFloat(wallet.collectionBalance) || 0;
-      newBalance = oldBalance + parseFloat(remittance.amount);
-      await wallet.update({
-        collectionBalance: newBalance,
-        lastTransactionDate: new Date()
-      }, { transaction });
+    // Determine whether this remittance settles a first-saving (income) charge.
+    // Such amounts are COMPANY INCOME — remitted once at day 1, never credited
+    // to the customer's savings wallet.
+    let isIncomeCharge = false;
+    let linkedCollection = null;
+    if (remittance.collectionId) {
+      linkedCollection = await Collection.findByPk(remittance.collectionId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+      isIncomeCharge = !!(linkedCollection &&
+        (linkedCollection.isFirstCollection === true || linkedCollection.isFirstCollection === 'true'));
     }
 
-    // Step 4.5: Book double-entry transaction (inside the same DB transaction for atomicity)
+    // Step 4: Lock and update customer wallet (skipped for income charges)
+    let wallet = null;
+    let oldBalance = 0;
+    let newBalance = isIncomeCharge ? 0 : parseFloat(remittance.amount);
+
+    if (!isIncomeCharge) {
+      wallet = await CustomerWallet.findOne({
+        where: { customerId, merchantId },
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+
+      if (!wallet) {
+        wallet = await CustomerWallet.create({
+          customerId,
+          merchantId,
+          accountNumber: customerAccountNumber || `CW${Date.now()}`,
+          collectionBalance: newBalance,
+          status: 'Active',
+          activationDate: new Date()
+        }, { transaction });
+      } else {
+        oldBalance = parseFloat(wallet.collectionBalance) || 0;
+        newBalance = oldBalance + parseFloat(remittance.amount);
+        await wallet.update({
+          collectionBalance: newBalance,
+          lastTransactionDate: new Date()
+        }, { transaction });
+      }
+    }
+
+    // Step 4.5: Book the journal entry. Per the "remitted only" policy this is
+    // the SINGLE moment a collection enters the company's books:
+    //   - regular collection  -> COLLECTION_RECEIVED (Dr Cash / Cr Customer Savings)
+    //   - first-saving charge -> CHARGE_DEDUCTION   (Dr Cash / Cr Charges - Collection) = income
     try {
       const { postJournalForTransaction } = require('../utils/transactionMapping');
-      await postJournalForTransaction(
-        'REMITTANCE_RECEIVED',
-        parseFloat(remittance.amount),
-        merchantId,
-        `Remittance #${remittance.id} Approved - Customer: ${remittanceWithCustomer.customer?.fullName || 'N/A'}`,
-        transaction
-      );
+      if (isIncomeCharge) {
+        await postJournalForTransaction(
+          'CHARGE_DEDUCTION',
+          parseFloat(remittance.amount),
+          merchantId,
+          `First Saving Charge (Remitted) — Remittance #${remittance.id} — Customer: ${remittanceWithCustomer.customer?.fullName || 'N/A'}`,
+          transaction
+        );
+      } else {
+        await postJournalForTransaction(
+          'COLLECTION_RECEIVED',
+          parseFloat(remittance.amount),
+          merchantId,
+          `Remittance #${remittance.id} Approved — Customer: ${remittanceWithCustomer.customer?.fullName || 'N/A'}`,
+          transaction
+        );
+      }
     } catch (deErr) {
       console.warn('⚠️ Double-entry skipped for remittance approval:', deErr.message);
     }
 
-    // Step 5: Record wallet ledger entry
-    await WalletTransaction.create({
-      transactionType: 'remittance_approval',
-      merchantId,
-      type: 'credit',
-      amount: parseFloat(remittance.amount),
-      description: `Remittance #${remittance.id} Approved`,
-      status: 'Completed',
-      balanceBefore: oldBalance,
-      balanceAfter: newBalance,
-      category: 'collection',
-      relatedId: remittance.id,
-      relatedType: 'Remittance',
-      paymentMethod: remittance.source || 'Web',
-      // Fix: Removed processedBy to avoid "fk_wallet_transactions_processed_by" crash 
-      // as req.user.id refers to merchants/collaborators table, not the users table.
-      processedBy: null
-    }, { transaction });
+    // Step 5: Record wallet ledger entry (only when savings are credited)
+    if (!isIncomeCharge && wallet) {
+      await WalletTransaction.create({
+        transactionType: 'remittance_approval',
+        merchantId,
+        type: 'credit',
+        amount: parseFloat(remittance.amount),
+        description: `Remittance #${remittance.id} Approved`,
+        status: 'Completed',
+        balanceBefore: oldBalance,
+        balanceAfter: newBalance,
+        category: 'collection',
+        relatedId: remittance.id,
+        relatedType: 'Remittance',
+        paymentMethod: remittance.source || 'Web',
+        // Fix: Removed processedBy to avoid "fk_wallet_transactions_processed_by" crash 
+        // as req.user.id refers to merchants/collaborators table, not the users table.
+        processedBy: null
+      }, { transaction });
+    }
 
     // Step 6: Update linked Collection if present
-    if (remittance.collectionId) {
-      const collection = await Collection.findByPk(remittance.collectionId, {
-        lock: transaction.LOCK.UPDATE,
-        transaction
-      });
-      if (collection) {
-        await collection.update({
-          status: 'Collected',
-          collectedDate: new Date(),
-          amountCollected: remittance.amount
-        }, { transaction });
-      }
+    if (linkedCollection) {
+      await linkedCollection.update({
+        status: 'Collected',
+        collectedDate: new Date(),
+        amountCollected: remittance.amount
+      }, { transaction });
     }
 
     // Step 7: Audit log
@@ -429,12 +447,17 @@ const deleteRemittance = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Remittance not found' });
     }
     
-    // If there is an associated collection, delete it as well
-    if (remittance.collectionId) {
-      const collection = await Collection.findByPk(remittance.collectionId, { transaction });
-      if (collection) {
-        await collection.destroy({ transaction });
-      }
+    // Capture the first-saving (income) flag BEFORE the collection is destroyed,
+    // so the reversal knows whether this was an income charge (CHARGE_DEDUCTION)
+    // or a regular collection entry (COLLECTION_RECEIVED). Destroying it first
+    // would make the lookup return null and misclassify the reversal.
+    let isIncomeCharge = false;
+    const linkedCollection = remittance.collectionId
+      ? await Collection.findByPk(remittance.collectionId, { transaction })
+      : null;
+    if (linkedCollection) {
+      isIncomeCharge = (linkedCollection.isFirstCollection === true || linkedCollection.isFirstCollection === 'true');
+      await linkedCollection.destroy({ transaction });
     }
 
     // Log the deletion activity
@@ -446,30 +469,22 @@ const deleteRemittance = async (req, res) => {
       details: `Permanently deleted remittance #${remittance.id} (Amount: ${remittance.amount}) and its associated collection records.`
     }, { transaction });
 
-    // Book double-entry reversals for remittance deletion
-    try {
-      const { postReversalForTransaction } = require('../utils/transactionMapping');
-      // Always reverse REMITTANCE_SENT
-      await postReversalForTransaction(
-        'REMITTANCE_SENT',
-        parseFloat(remittance.amount),
-        merchantId,
-        `Original Remittance ID: ${remittance.id}, Customer: ${remittance.customerName || 'N/A'}`,
-        transaction
-      );
-      
-      // If approved, also reverse REMITTANCE_RECEIVED
-      if (remittance.status === 'Approved') {
+    // Reverse the journal entry that was booked at approval (if any).
+    // Per the "remitted only" policy, pending remittances have NO journal entry,
+    // so nothing is reversed in that case.
+    if (remittance.status === 'Approved') {
+      try {
+        const { postReversalForTransaction } = require('../utils/transactionMapping');
         await postReversalForTransaction(
-          'REMITTANCE_RECEIVED',
+          isIncomeCharge ? 'CHARGE_DEDUCTION' : 'COLLECTION_RECEIVED',
           parseFloat(remittance.amount),
           merchantId,
           `Original Remittance ID: ${remittance.id}, Customer: ${remittance.customerName || 'N/A'}`,
           transaction
         );
+      } catch (err) {
+        console.warn(`⚠️ Reversal failed during remittance delete: ${err.message}`);
       }
-    } catch (err) {
-      console.warn(`⚠️ Reversal failed during remittance delete: ${err.message}`);
     }
 
     await remittance.destroy({ transaction });

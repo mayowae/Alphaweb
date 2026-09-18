@@ -640,7 +640,7 @@ export async function listStaff() {
   return data;
 }
 
-export async function updateStaff(staffData: { id: number; branch: string; fullName: string; email: string; phoneNumber: string; role: string; status: string; password?: string; }) {
+export async function updateStaff(staffData: { id: number; branch: string; fullName: string; email: string; phoneNumber: string; role: string; status: string; password?: string; roleId?: number | string }) {
   const formData = new FormData();
   formData.append('id', String(staffData.id));
   formData.append('branch', staffData.branch);
@@ -649,6 +649,9 @@ export async function updateStaff(staffData: { id: number; branch: string; fullN
   formData.append('phoneNumber', staffData.phoneNumber);
   formData.append('role', staffData.role);
   formData.append('status', staffData.status);
+  if (staffData.roleId && !Number.isNaN(Number(staffData.roleId))) {
+    formData.append('roleId', String(staffData.roleId));
+  }
   if (staffData.password && staffData.password.trim()) {
     formData.append('password', staffData.password.trim());
   }

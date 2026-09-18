@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Download, Filter } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { fetchAccounts, fetchGeneralLedger } from '@/services/api';
+import { getTransactionType } from '@/lib/utils';
 
 interface Account {
   id: number;
@@ -227,6 +228,7 @@ export default function LedgersPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
@@ -235,7 +237,7 @@ export default function LedgersPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {ledgerEntries.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                           No transactions found for this account in the selected period.
                         </td>
                       </tr>
@@ -249,6 +251,11 @@ export default function LedgersPage() {
                             {entry.reference}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900">{entry.description}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
+                              {getTransactionType(entry.description)}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
                             {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
                           </td>

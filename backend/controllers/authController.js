@@ -157,7 +157,7 @@ const registerMerchant = async (req, res) => {
             await merchant.update({
                 accountNumber: tpResult.accountNumber,
                 bankName: tpResult.bankName,
-                accountName: tpResult.accountName || businessName,
+                accountName: businessName,
                 bankCode: tpResult.bankCode
             });
             console.log(`[Auth] ✅ Merchant ${merchant.id} provisioned: ${tpResult.accountNumber} @ ${tpResult.bankName}`);

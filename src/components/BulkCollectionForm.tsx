@@ -178,25 +178,37 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
 
     setLoading(true);
     try {
+      let totalCreated = 0;
       for (const row of rows) {
-        const collectionData = {
-          customerName: row.customerName,
-          amount: parseFloat(row.packageAmount),
-          dueDate: row.dueDate || new Date().toISOString().split('T')[0],
-          type: 'Package Payment',
-          packageName: row.packageName,
-          packageAmount: parseFloat(row.packageAmount),
-          cycle: parseInt(row.cycle.toString()) || 31,
-          cycleCounter: parseInt(row.cycleCounter.toString()) || 1,
-          isFirstCollection: parseInt(row.cycleCounter.toString()) === 1
-        };
-        await createCollection(collectionData);
+        // The counter determines the number of collection transactions to create
+        // per customer (e.g., counter 31 = 31 daily collections for the cycle).
+        const count = Math.max(1, parseInt(row.cycleCounter.toString()) || 1);
+        const baseDate = new Date(row.dueDate || new Date().toISOString().split('T')[0]);
+
+        for (let i = 1; i <= count; i++) {
+          const due = new Date(baseDate);
+          due.setDate(due.getDate() + (i - 1));
+
+          const collectionData = {
+            customerName: row.customerName,
+            amount: parseFloat(row.packageAmount),
+            dueDate: due.toISOString().split('T')[0],
+            type: 'Package Payment',
+            packageName: row.packageName,
+            packageAmount: parseFloat(row.packageAmount),
+            cycle: parseInt(row.cycle.toString()) || 31,
+            cycleCounter: i,
+            isFirstCollection: i === 1
+          };
+          await createCollection(collectionData);
+          totalCreated++;
+        }
       }
 
       Swal.fire({
         icon: 'success',
         title: 'Success',
-        text: `${rows.length} collection(s) posted successfully!`
+        text: `${totalCreated} collection(s) posted successfully!`
       });
 
       onSuccess();
@@ -284,11 +296,11 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
                   <input
                     type="number"
                     value={row.packageAmount}
-                    onChange={(e) => handleFieldChange(row.id, 'packageAmount', e.target.value)}
+                    readOnly
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                     required
                   />
                 </div>
@@ -300,25 +312,26 @@ const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
                   <input
                     type="number"
                     value={row.cycle}
-                    onChange={(e) => handleFieldChange(row.id, 'cycle', parseInt(e.target.value) || 31)}
+                    readOnly
                     min="1"
                     max="365"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm text-center"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm text-center"
                   />
                 </div>
 
                 <div className="w-full md:w-20">
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Counter
+                    Counter (No.)
                   </label>
                   <input
                     type="number"
                     value={row.cycleCounter}
-                    onChange={(e) => handleFieldChange(row.id, 'cycleCounter', parseInt(e.target.value) || 1)}
+                    readOnly
                     min="1"
                     max="365"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm text-center"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm text-center"
                   />
+                  <p className="text-[10px] text-gray-400 mt-0.5 text-center">No. of collections per customer</p>
                 </div>
 
                 <div className="w-full md:w-36">

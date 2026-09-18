@@ -1,6 +1,5 @@
 const { Collection, Customer, Agent, Package, Remittance, CustomerWallet } = require('../models');
 const { Op, Sequelize } = require('sequelize');
-const { postJournalForTransaction } = require('../utils/transactionMapping');
 
 /**
  * @swagger
@@ -309,6 +308,15 @@ const { postJournalForTransaction } = require('../utils/transactionMapping');
  *                   status: "Pending"
  */
 
+// True when a collection is the FIRST transaction of a savings cycle.
+// Per the 31-day cycle / "first saving" rule, the very first one-day payment
+// of each cycle is deducted as company income rather than added to the
+// customer's savings wallet.
+const isFirstSaving = (collection) => collection && (
+  collection.isFirstCollection === true ||
+  collection.isFirstCollection === 'true'
+);
+
 // Create a new collection
 const createCollection = async (req, res) => {
   try {
@@ -381,8 +389,9 @@ const createCollection = async (req, res) => {
       dateCreated: new Date()
     });
 
-    // Credit collection wallet only (live wallet is for payment platform transactions)
-    if (isDirectPost) {
+    // Credit collection wallet only for non-first (regular) collections.
+    // The first saving of a cycle is company income and is NOT credited to the wallet.
+    if (isDirectPost && !isFirstSaving(collection)) {
       try {
         let wallet = await CustomerWallet.findOne({ where: { customerId: customer.id, merchantId } });
         if (!wallet) {
@@ -406,15 +415,13 @@ const createCollection = async (req, res) => {
         await customer.update({ packageId: packageId });
     }
 
-    // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
-    postJournalForTransaction(
-      'COLLECTION_RECEIVED',
-      parseFloat(amount),
-      merchantId,
-      `Collection #${collection.id} — ${customerName}`
-    );
+    // NOTE: No journal entry is posted at collection time. Per policy, only
+    // REMITTED transactions enter the company's books — the entry is booked
+    // when this collection's remittance is approved (remittanceController).
 
-    // Automatically place in a Remittance holding state per workflow rules
+    // Auto-create a holding Remittance for EVERY collection (including the
+    // first-saving of a cycle) so the amount can be remitted and verified
+    // before it enters the company's books.
     try {
       await Remittance.create({
         collectionId: collection.id,
@@ -576,16 +583,10 @@ const updateCollection = async (req, res) => {
       collectedDate: status === 'Collected' ? new Date() : collection.collectedDate
     });
 
-    // If marked as Collected, post journal entry and create Remittance record
+    // If marked as Collected, create a holding Remittance record.
+    // NOTE: journal entry is NOT booked here — only remitted transactions
+    // enter the books, booked at remittance approval.
     if (status === 'Collected') {
-      // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
-      postJournalForTransaction(
-        'COLLECTION_RECEIVED',
-        amount ? parseFloat(amount) : collection.amount,
-        merchantId,
-        `Collection #${collection.id} — ${collection.customerName}`
-      );
-
       try {
         // Check if remittance already exists for this collection to avoid duplicates
         const existingRemittance = await Remittance.findOne({
@@ -659,15 +660,9 @@ const markAsCollected = async (req, res) => {
       collectionNotes: collectionNotes || ''
     });
 
-    // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
-    postJournalForTransaction(
-      'COLLECTION_RECEIVED',
-      parseFloat(amountCollected || collection.amount),
-      merchantId,
-      `Collection #${collection.id} — ${collection.customerName}`
-    );
-
-    // Create a Remittance record
+    // Create a Remittance record for the collection.
+    // NOTE: journal entry is NOT booked here — only remitted transactions
+    // enter the books, booked at remittance approval.
     try {
       const existingRemittance = await Remittance.findOne({
         where: { collectionId: collection.id }
@@ -726,13 +721,18 @@ const deleteCollection = async (req, res) => {
       });
     }
 
-    // Book double-entry reversal if collection was already Collected
-    if (collection.status === 'Collected') {
+    // A journal entry is only ever posted once this collection's remittance
+    // was APPROVED (the "remitted only" policy). Reverse it in that case only.
+    const approvedRemittance = await Remittance.findOne({
+      where: { collectionId: collection.id, status: 'Approved' }
+    });
+    if (approvedRemittance) {
       try {
         const { postReversalForTransaction } = require('../utils/transactionMapping');
+        const entryType = isFirstSaving(collection) ? 'CHARGE_DEDUCTION' : 'COLLECTION_RECEIVED';
         await postReversalForTransaction(
-          'COLLECTION_RECEIVED',
-          parseFloat(collection.amountCollected || collection.amount),
+          entryType,
+          parseFloat(approvedRemittance.amount || collection.amountCollected || collection.amount),
           merchantId,
           `Original Collection ID: ${collection.id}, Customer: ${collection.customerName || 'N/A'}`
         );
@@ -815,7 +815,9 @@ const createCollectionsBulk = async (req, res) => {
             await customer.update({ packageId: packageId });
         }
 
-        // Automatically place in a Remittance holding state per workflow rules
+        // Auto-create a holding Remittance for EVERY collection (including
+        // the first-saving of a cycle) so the amount can be remitted and
+        // verified before it enters the company's books.
         try {
           await Remittance.create({
             collectionId: created.id,
@@ -832,13 +834,8 @@ const createCollectionsBulk = async (req, res) => {
           console.error('Failed to auto-create holding Remittance (Bulk):', remitError);
         }
 
-        // Post double-entry journal: Dr Cash (100400) → Cr Customer Savings (200100)
-        postJournalForTransaction(
-          'COLLECTION_RECEIVED',
-          parseFloat(amount),
-          merchantId,
-          `Bulk Collection #${created.id} — ${customerName}`
-        );
+        // NOTE: no journal entry is posted here — only remitted transactions
+        // enter the company's books, booked at remittance approval.
 
         results.push({ success: true, id: created.id });
       } catch (err) {

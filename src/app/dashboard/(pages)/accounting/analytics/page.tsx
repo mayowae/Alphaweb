@@ -5,6 +5,7 @@ import { Eye, Calendar, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import { fetchJournalEntries } from '@/services/api';
+import { getTransactionType } from '@/lib/utils';
 
 interface JournalEntry {
   id: number;
@@ -169,6 +170,7 @@ export default function AnalyticsPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
@@ -187,6 +189,11 @@ export default function AnalyticsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">
                       {transaction.reference}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
+                        {getTransactionType(transaction.description)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                       {transaction.description}

@@ -96,10 +96,6 @@ export default function Wallet() {
 
       if (balanceResponse.success) {
         const bal = balanceResponse.balance;
-        if (bal.bankName && (bal.bankName.toLowerCase().includes('transactpay'))) {
-          bal.bankName = 'Wema Bank';
-        }
-        if (!bal.bankName) bal.bankName = 'Wema Bank';
         setWalletBalance(bal);
         // Update merchantInfo from the balance response (most authoritative source)
         if (bal.accountNumber) {
@@ -157,7 +153,7 @@ export default function Wallet() {
           customerName: wallet.customer?.fullName || 'Unknown Customer',
           accountNumber: wallet.accountNumber,
           accountLevel: wallet.accountLevel,
-          balance: `₦${Math.abs(parseFloat(wallet.balance || 0)).toLocaleString()}`,
+          balance: `₦${parseFloat(wallet.balance || 0).toLocaleString()}`,
           lastTransactionDate: new Date(wallet.activationDate || wallet.createdAt).toLocaleDateString('en-GB'),
           status: wallet.status,
           customerId: wallet.customerId,
@@ -530,7 +526,7 @@ export default function Wallet() {
             <div className="w-full md:w-5/12">
               <div className="balance-overview flex flex-col justify-between min-h-[100px]">
                 <div className="flex justify-between items-start">
-                  <p className="text-xs text-gray-500 font-medium">{String((walletBalance as any).bankName || 'Wema Bank').replace(/TransactPay/gi, 'Wema Bank')} - {(walletBalance as any).accountName || merchantInfo.businessName}</p>
+                  <p className="text-xs text-gray-500 font-medium">{(walletBalance as any).bankName || 'Wema Bank'} - {(walletBalance as any).accountName || merchantInfo.businessName}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-[10px] text-gray-500 font-medium">Live account: {merchantInfo.accountLevel}</p>
                     {pendingUpgrade?.status === 'pending' ? (

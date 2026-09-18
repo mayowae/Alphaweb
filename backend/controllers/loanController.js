@@ -578,6 +578,18 @@ const createLoan = async (req, res) => {
 
           await deductionTransaction.commit();
           console.log(`✅ Loan charges ₦${loanChargesAmount} deducted from collection wallet for loan #${loan.id}`);
+
+          // Book double-entry journal for charge deduction
+          try {
+            await postJournalForTransaction(
+              'CHARGE_DEDUCTION',
+              loanChargesAmount,
+              merchantId,
+              `Loan Charge for Loan #${loan.id} — ${req.body.packageName || 'Package'}`
+            );
+          } catch (chargeJeErr) {
+            console.warn('⚠️ Journal entry skipped for charge deduction:', chargeJeErr.message);
+          }
         } catch (innerErr) {
           await deductionTransaction.rollback();
           console.warn('⚠️ Loan charge deduction failed:', innerErr.message);

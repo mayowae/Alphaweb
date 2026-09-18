@@ -207,13 +207,27 @@ const EditStaffModal = ({
 }) => {
   const [formData, setFormData] = useState<StaffData>({ id: '', name: '', email: '', phone: '', role: '', date: '', status: '' });
   const [password, setPassword] = useState('');
+  const [roleOptions, setRoleOptions] = useState<{ value: string; label: string }[]>([]);
 
   useEffect(() => {
+    if (!isOpen) return;
     if (staffData) {
       setFormData(staffData);
       setPassword('');
     }
-  }, [staffData]);
+    (async () => {
+      try {
+        const data = await fetchRoles();
+        const roles = (Array.isArray(data) ? data : data?.roles || []) as any[];
+        const opts = roles.map((r: any) => ({ value: String(r.id), label: r.roleName }));
+        setRoleOptions(opts);
+        if (staffData?.role) {
+          const match = opts.find((o: any) => o.label === staffData.role);
+          if (match) setFormData((prev) => ({ ...prev, role: match.value }));
+        }
+      } catch { setRoleOptions([]); }
+    })();
+  }, [isOpen, staffData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -224,10 +238,12 @@ const EditStaffModal = ({
   const handleSave = async () => {
     setSaving(true);
     try {
+      const selectedRole = roleOptions.find((r) => r.value === formData.role);
       await updateStaff({
         id: Number(formData.id), branch: '',
         fullName: formData.name, email: formData.email,
-        phoneNumber: formData.phone, role: formData.role,
+        phoneNumber: formData.phone, role: selectedRole ? selectedRole.label : formData.role,
+        roleId: formData.role,
         status: formData.status || 'Active',
         ...(password.trim() ? { password: password.trim() } : {}),
       });
@@ -254,7 +270,6 @@ const EditStaffModal = ({
             { label: 'Full Name', name: 'name', type: 'text' },
             { label: 'Email', name: 'email', type: 'email' },
             { label: 'Phone Number', name: 'phone', type: 'tel' },
-            { label: 'Role', name: 'role', type: 'text' },
           ].map(({ label, name, type }) => (
             <div key={name}>
               <label className="block text-sm font-medium text-gray-700">{label}</label>
@@ -264,6 +279,20 @@ const EditStaffModal = ({
               />
             </div>
           ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Role</label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            >
+              <option value="" disabled>Select role</option>
+              {roleOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">New Password <span className="text-xs text-gray-400 font-normal">(Leave blank to keep unchanged)</span></label>
             <input

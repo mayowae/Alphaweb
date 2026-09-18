@@ -1,7 +1,19 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const { Op } = require('sequelize');
 const { Collaborator, Staff, Role } = require('../models');
+
+// Helper: find a user in Staff (first) or Collaborator table by email
+// Returns { user, source } where source is 'staff' or 'collaborator', or null if not found
+async function findCollaboratorByEmail(email) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  let user = await Staff.findOne({ where: { email: { [Op.iLike]: cleanEmail } } });
+  if (user) return { user, source: 'staff' };
+  user = await Collaborator.findOne({ where: { email: { [Op.iLike]: cleanEmail } } });
+  if (user) return { user, source: 'collaborator' };
+  return null;
+}
 
 /**
  * @swagger
@@ -318,37 +330,25 @@ const { Collaborator, Staff, Role } = require('../models');
  *                   example: "Password change failed"
  */
 
-// Configure nodemailer (env-driven; safe fallback)
+// Configure nodemailer — uses localhost Exim relay (no auth) by default
 let transporter;
 try {
   if (String(process.env.EMAIL_DISABLED || '').toLowerCase() === 'true') {
     transporter = null;
-  } else if (process.env.SMTP_HOST) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
-      auth: process.env.EMAIL_USER && process.env.EMAIL_PASS ? {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      } : undefined,
-      tls: { rejectUnauthorized: false },
-      requireTLS: true,
-      debug: true,
-    });
   } else {
-    // Default to Gmail if specified; otherwise mock
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-    } else {
-      transporter = null; // mock mode
-    }
+    const smtpHost = process.env.SMTP_HOST || 'localhost';
+    const smtpPort = Number(process.env.SMTP_PORT || 25);
+    const smtpSecure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true';
+    const hasAuth = process.env.EMAIL_USER && process.env.EMAIL_PASS;
+    transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: hasAuth
+        ? { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+        : undefined,
+      tls: { rejectUnauthorized: false },
+    });
   }
 } catch (_) {
   transporter = null;
@@ -366,7 +366,7 @@ const sendOTPEmail = async (email, otp) => {
     return { sent: false, reason: 'disabled_or_not_configured' };
   }
   const mailOptions = {
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    from: process.env.EMAIL_FROM || 'noreply@alphakolect.com',
     to: email,
     subject: 'Your OTP for AlphaWeb',
     text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
@@ -543,23 +543,18 @@ const loginCollaborator = async (req, res) => {
 const collaboratorForgotPassword = async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim();
-
-    const collaborator = await Collaborator.findOne({
-      where: { email: { [Op.iLike]: email } },
-    });
-    if (!collaborator) {
+    const found = await findCollaboratorByEmail(email);
+    if (!found) {
       return res.status(404).json({ message: 'Email not found' });
     }
+    const { user } = found;
 
-    // Generate OTP
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Update collaborator with OTP
-    await collaborator.update({ otp, otpExpires });
+    await user.update({ otp, otpExpires });
 
-    // Send OTP email
-    const emailResult = await sendOTPEmail(collaborator.email, otp);
+    const emailResult = await sendOTPEmail(user.email, otp);
     res.json({
       message: emailResult.sent ? 'OTP sent to your email' : 'Email not sent; use the OTP shown here',
       otp: otp,
@@ -575,23 +570,18 @@ const collaboratorForgotPassword = async (req, res) => {
 const collaboratorResendOTP = async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim();
-
-    const collaborator = await Collaborator.findOne({
-      where: { email: { [Op.iLike]: email } },
-    });
-    if (!collaborator) {
+    const found = await findCollaboratorByEmail(email);
+    if (!found) {
       return res.status(404).json({ message: 'Email not found' });
     }
+    const { user } = found;
 
-    // Generate new OTP
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Update collaborator with new OTP
-    await collaborator.update({ otp, otpExpires });
+    await user.update({ otp, otpExpires });
 
-    // Send OTP email
-    const emailResult = await sendOTPEmail(collaborator.email, otp);
+    const emailResult = await sendOTPEmail(user.email, otp);
     console.log(`[ResendOTP] OTP for ${email}: ${otp}`);
     res.json({
       message: emailResult.sent ? 'OTP resent to your email' : 'Email not sent; use the OTP shown here',
@@ -609,25 +599,21 @@ const collaboratorVerifyOTP = async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim();
     const otp = String(req.body?.otp || '').trim();
-
-    const collaborator = await Collaborator.findOne({
-      where: { email: { [Op.iLike]: email } },
-    });
-    if (!collaborator) {
+    const found = await findCollaboratorByEmail(email);
+    if (!found) {
       return res.status(404).json({ message: 'Email not found' });
     }
+    const { user } = found;
 
-    // Check if OTP is valid and not expired
     const isMasterOtp = process.env.OTP_MASTER && otp === process.env.OTP_MASTER;
-    const isCorrectOtp = collaborator.otp === otp && new Date() <= collaborator.otpExpires;
+    const isCorrectOtp = user.otp === otp && new Date() <= user.otpExpires;
 
     if (!isMasterOtp && !isCorrectOtp) {
-      console.log(`[VerifyOTP] Failed attempt for ${email}. Provided: ${otp}, Expected: ${collaborator.otp}`);
+      console.log(`[VerifyOTP] Failed attempt for ${email}. Provided: ${otp}, Expected: ${user.otp}`);
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
-    // Mark email as verified and clear OTP
-    await collaborator.update({
+    await user.update({
       isVerified: true,
       otp: null,
       otpExpires: null,
@@ -650,18 +636,14 @@ const collaboratorChangePassword = async (req, res) => {
       return res.status(400).json({ message: 'Email and new password are required' });
     }
 
-    const collaborator = await Collaborator.findOne({
-      where: { email: { [Op.iLike]: email } },
-    });
-    if (!collaborator) {
+    const found = await findCollaboratorByEmail(email);
+    if (!found) {
       return res.status(404).json({ message: 'Email not found' });
     }
+    const { user } = found;
 
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update password
-    await collaborator.update({ password: hashedPassword });
+    await user.update({ password: hashedPassword });
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {

@@ -493,6 +493,8 @@ const Page = () => {
                       }
                     }
 
+                    const chargesAmt = pkg ? parseFloat(pkg.loanCharges || (pkg as any).loan_charges || 0) : 0;
+
                     setNewLoan({
                       ...newLoan,
                       packageName: pkgName,
@@ -500,7 +502,8 @@ const Page = () => {
                       duration: pkg ? String(pkg.loanPeriod || pkg.duration || '') : newLoan.duration,
                       interestRate: pkg ? interestVal : newLoan.interestRate,
                       interestLabel: interestLbl,
-                      interestDisplay: interestDisp
+                      interestDisplay: interestDisp,
+                      loanCharges: chargesAmt
                     } as any);
                   }} className={`w-full h-[40px] border rounded-[4px] px-2 text-sm bg-white ${
                     packages.length === 0 ? 'border-amber-300 text-amber-800 bg-amber-50' : 'border-[#D0D5DD]'
@@ -554,6 +557,21 @@ const Page = () => {
                     className='w-full h-[40px] border border-[#D0D5DD] rounded-[4px] px-2 bg-gray-100 cursor-not-allowed text-gray-700 font-medium'
                   />
                 </div>
+                {(newLoan as any).loanCharges > 0 && (
+                <div>
+                  <label className='text-sm flex justify-between'>
+                    <span>Loan Package Charges</span>
+                    <span className='text-xs text-red-600 font-normal'>Deducted from collection wallet</span>
+                  </label>
+                  <input
+                    type='text'
+                    value={`₦${Number((newLoan as any).loanCharges || 0).toLocaleString('en-NG')}`}
+                    disabled={true}
+                    readOnly={true}
+                    className='w-full h-[40px] border border-red-200 rounded-[4px] px-2 bg-red-50 cursor-not-allowed text-red-700 font-medium'
+                  />
+                </div>
+                )}
                 <div>
                   <label className='text-sm flex justify-between'>
                     <span>Duration (days)</span>

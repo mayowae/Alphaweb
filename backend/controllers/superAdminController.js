@@ -453,6 +453,9 @@ const getAllMerchants = async (req, res) => {
     const merchantsWithCounts = await Promise.all(
       merchants.map(async (merchant) => {
         const merchantData = merchant.toJSON();
+        delete merchantData.password;
+        delete merchantData.otp;
+        delete merchantData.otpExpires;
         
         // Count agents and customers
         const agentCount = merchantData.agents ? merchantData.agents.length : 0;

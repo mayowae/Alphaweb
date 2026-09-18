@@ -350,7 +350,7 @@ const postJournalEntry = async (req, res) => {
           capitalDebitDetails.push(`${account.name} (Code: ${account.code}) debited for ₦${debit.toLocaleString()}`);
         }
 
-        // Update balance based on account type
+        // Update balance based on account type (atomic increment prevents lost updates)
         let balanceChange = 0;
         if (['Asset', 'Expense'].includes(account.type)) {
           balanceChange = debit - credit;
@@ -358,9 +358,10 @@ const postJournalEntry = async (req, res) => {
           balanceChange = credit - debit;
         }
 
-        await account.update({
-          balance: parseFloat(account.balance) + balanceChange
-        }, { transaction });
+        await account.increment('balance', {
+          by: balanceChange,
+          transaction
+        });
       }
     }
 
@@ -459,9 +460,10 @@ const reverseJournalEntry = async (req, res) => {
           balanceChange = credit - debit;
         }
 
-        await account.update({
-          balance: parseFloat(account.balance) + balanceChange
-        }, { transaction });
+        await account.increment('balance', {
+          by: balanceChange,
+          transaction
+        });
       }
     }
 

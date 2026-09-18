@@ -430,7 +430,7 @@ const getCustomerWalletStats = async (req, res) => {
     const [totalWallets, activeWallets, totalBalance] = await Promise.all([
       CustomerWallet.count({ where: { merchantId } }),
       CustomerWallet.count({ where: { merchantId, status: 'Active' } }),
-      CustomerWallet.sum('balance', { where: { merchantId, status: 'Active' } })
+      CustomerWallet.sum('collection_balance', { where: { merchantId, status: 'Active' } })
     ]);
 
     // Get wallets by account level
@@ -439,7 +439,7 @@ const getCustomerWalletStats = async (req, res) => {
       attributes: [
         'accountLevel',
         [CustomerWallet.sequelize.fn('COUNT', CustomerWallet.sequelize.col('id')), 'count'],
-        [CustomerWallet.sequelize.fn('SUM', CustomerWallet.sequelize.col('balance')), 'totalBalance']
+        [CustomerWallet.sequelize.fn('SUM', CustomerWallet.sequelize.col('collection_balance')), 'totalBalance']
       ],
       group: ['accountLevel']
     });

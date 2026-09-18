@@ -23,6 +23,7 @@ const seedDefaultAccounts = async (merchantId, transaction = null) => {
       { code: '400400', name: 'General Charges (SMS charges, card charges etc.)', type: 'Revenue', category: 'Operating Revenue', balance: 0, description: 'SMS alerts and general fees' },
       { code: '400500', name: 'Charges for Target Savings', type: 'Revenue', category: 'Operating Revenue', balance: 0, description: 'Target savings administration fees' },
       { code: '400600', name: 'Interest Loan', type: 'Revenue', category: 'Operating Revenue', balance: 0, description: 'Interest income on customer loans' },
+      { code: '400700', name: 'Subscription Revenue', type: 'Revenue', category: 'Operating Revenue', balance: 0, description: 'Income from platform subscription payments' },
       { code: '500200', name: 'Interest Target Savings', type: 'Expense', category: 'Operating Expenses', balance: 0, description: 'Interest paid on target savings' },
       { code: '500300', name: 'Interest Fixed Deposit', type: 'Expense', category: 'Operating Expenses', balance: 0, description: 'Interest paid on fixed deposits' },
       { code: '500400', name: 'Platform Subscription', type: 'Expense', category: 'Operating Expenses', balance: 0, description: 'Software platform subscription fees' }
@@ -124,18 +125,21 @@ const bookDoubleEntry = async (merchantId, { date, description, debitCode, credi
       description
     }, { transaction });
 
-    // Update account balances
+    // Update account balances using ATOMIC increments so concurrent bookings
+    // never lose updates (read-modify-write races below caused stale balances).
     // Debit Account: Assets and Expenses increase with debits; others decrease
     const debitChange = ['Asset', 'Expense'].includes(debitAccount.type) ? parsedAmount : -parsedAmount;
-    await debitAccount.update({
-      balance: parseFloat(debitAccount.balance || 0) + debitChange
-    }, { transaction });
+    await debitAccount.increment('balance', {
+      by: debitChange,
+      transaction
+    });
 
     // Credit Account: Assets and Expenses decrease with credits; others increase
     const creditChange = ['Asset', 'Expense'].includes(creditAccount.type) ? -parsedAmount : parsedAmount;
-    await creditAccount.update({
-      balance: parseFloat(creditAccount.balance || 0) + creditChange
-    }, { transaction });
+    await creditAccount.increment('balance', {
+      by: creditChange,
+      transaction
+    });
 
     console.log(`📝 Posted double-entry JE [${reference}]: Dr ${debitCode} / Cr ${creditCode} for ₦${parsedAmount.toLocaleString()}`);
     return journalEntry;

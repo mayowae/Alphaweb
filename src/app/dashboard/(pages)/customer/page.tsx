@@ -40,7 +40,7 @@ const AddCustomerSidebar: React.FC<{ isOpen: boolean; onClose: () => void; onCus
         ]).then(([branchesRes, agentsRes, packagesRes]) => {
             setBranches(branchesRes?.branches || branchesRes || []);
             setAgents(agentsRes?.agents || agentsRes || []);
-            // Show all packages (Investment, Loan, Collection, etc.)
+            // Show only collection packages
             setPackages(packagesRes?.packages || packagesRes || []);
         }).finally(() => setLoading(false));
     }, [isOpen]);

@@ -11,6 +11,7 @@ import {
   deleteJournalEntry,
   fetchAccounts
 } from '@/services/api';
+import { getTransactionType } from '@/lib/utils';
 
 interface JournalLine {
   accountId: string;
@@ -299,6 +300,7 @@ export default function JournalsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction Type</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debit</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Credit</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -308,7 +310,7 @@ export default function JournalsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     {journalEntries.length === 0 
                       ? "No journal entries found. Click \"Create Entry\" to add one."
                       : "No entries match your search criteria."}
@@ -324,6 +326,11 @@ export default function JournalsPage() {
                       {new Date(entry.date).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">{entry.description}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
+                        {getTransactionType(entry.description)}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
                       {formatCurrency(entry.totalDebit)}
                     </td>

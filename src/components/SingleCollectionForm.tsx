@@ -249,17 +249,17 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Package Amount *
+Package Amount *
             </label>
             <input
               type="number"
               name="packageAmount"
               value={formData.packageAmount}
-              onChange={handleInputChange}
+              readOnly
               placeholder="0.00"
               min="0"
               step="0.01"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
               required
             />
           </div>
@@ -272,10 +272,10 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
               type="number"
               name="cycle"
               value={formData.cycle}
-              onChange={handleInputChange}
+              readOnly
               min="1"
               max="365"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
             />
             <p className="text-xs text-gray-500 mt-1">
               Total cycle length in days (default: 31)
@@ -290,13 +290,13 @@ const SingleCollectionForm: React.FC<SingleCollectionFormProps> = ({
               type="number"
               name="cycleCounter"
               value={formData.cycleCounter}
-              onChange={handleInputChange}
+              readOnly
               min="1"
               max="365"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Current day in cycle (automatically increments by 1 for single collection)
+              Current day in cycle (auto-assigned)
             </p>
           </div>
 

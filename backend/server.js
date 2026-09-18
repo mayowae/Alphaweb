@@ -135,7 +135,7 @@ app.get('/health', (req, res) => {
 });
 
 // Webhooks
-app.post('/api/webhooks/transactpay', webhookController.handleTransactPayWebhook);
+app.post('/webhooks/transactpay', webhookController.handleTransactPayWebhook);
 
 app.post('/merchant/signup', authController.registerMerchant);
 app.post('/merchant/login', authController.loginMerchant);

@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, FileText, CheckCircle, XCircle, Clock } from 'luci
 import { useRouter, useParams } from 'next/navigation';
 import Swal from 'sweetalert2';
 import { fetchJournalEntries } from '@/services/api';
+import { getTransactionType } from '@/lib/utils';
 
 interface JournalLine {
   id: number;
@@ -126,6 +127,9 @@ export default function TransactionDetailsPage() {
               <p className="text-gray-600 mt-1">Reference: {transaction.reference}</p>
             </div>
             <div className="flex items-center gap-3">
+              <span className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-semibold">
+                {getTransactionType(transaction.description)}
+              </span>
               {getStatusIcon(transaction.status)}
               <span className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 ${getStatusBadge(transaction.status)}`}>
                 {transaction.status.toUpperCase()}

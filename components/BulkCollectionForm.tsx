@@ -1,8 +1,7 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
-import { fetchCustomers, fetchPackages, createCollection } from '../services/api';
+import { fetchCustomers, fetchPackages, createCollection } from '@/services/api';
 import Swal from 'sweetalert2';
 
 interface BulkCollectionFormProps {
@@ -38,22 +37,27 @@ interface CollectionRow {
   dueDate: string;
 }
 
-const createDefaultRow = (): CollectionRow => ({
-  id: Math.random().toString(36).substring(2, 9),
-  selectedCustomerId: '',
-  customerName: '',
-  selectedPackageId: '',
-  packageName: '',
-  packageAmount: '',
-  cycle: 31,
-  cycleCounter: 1,
-  dueDate: new Date().toISOString().split('T')[0]
-});
-
-export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkCollectionFormProps) {
+const BulkCollectionForm: React.FC<BulkCollectionFormProps> = ({
+  isOpen,
+  onClose,
+  onSuccess
+}) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const createDefaultRow = (): CollectionRow => ({
+    id: Math.random().toString(36).substring(2, 9),
+    selectedCustomerId: '',
+    customerName: '',
+    selectedPackageId: '',
+    packageName: '',
+    packageAmount: '',
+    cycle: 31,
+    cycleCounter: 1,
+    dueDate: new Date().toISOString().split('T')[0]
+  });
+
   const [rows, setRows] = useState<CollectionRow[]>([createDefaultRow()]);
 
   useEffect(() => {
@@ -70,10 +74,10 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
         fetchPackages('Collection').catch(() => [])
       ]);
 
-      const rawCusts = (customersRes as any).customers || (customersRes as any).data || customersRes || [];
+      const rawCusts = customersRes.customers || customersRes.data || customersRes || [];
       setCustomers(Array.isArray(rawCusts) ? rawCusts : []);
 
-      const rawPkgs = ((packagesRes as any).packages || (packagesRes as any).data || packagesRes || []) as Package[];
+      const rawPkgs = (packagesRes.packages || packagesRes.data || packagesRes || []) as Package[];
       const collectionPkgs = (Array.isArray(rawPkgs) ? rawPkgs : []).filter(
         (p: any) => !p.packageCategory || p.packageCategory.toLowerCase() === 'collection'
       );
@@ -87,18 +91,30 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
     setRows(prevRows =>
       prevRows.map(row => {
         if (row.id !== rowId) return row;
+
         if (!custId) {
-          return { ...row, selectedCustomerId: '', customerName: '', selectedPackageId: '', packageName: '', packageAmount: '' };
+          return {
+            ...row,
+            selectedCustomerId: '',
+            customerName: '',
+            selectedPackageId: '',
+            packageName: '',
+            packageAmount: ''
+          };
         }
+
         const customer = customers.find(c => c.id.toString() === custId);
         if (!customer) return row;
 
         let assignedPkg = null;
         const pkgId = customer.packageId || (customer as any).package_id || (customer as any).PackageId || (customer as any).Package?.id;
-        if (pkgId) assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
+        if (pkgId) {
+          assignedPkg = packages.find(p => p.id.toString() === pkgId.toString());
+        }
         if (!assignedPkg && customer.packageName && customer.packageName !== '—' && customer.packageName !== '-') {
           assignedPkg = packages.find(p => p.name.toLowerCase() === customer.packageName!.toLowerCase());
         }
+
         const selectedPkg = assignedPkg || (packages.length > 0 ? packages[0] : null);
 
         return {
@@ -129,39 +145,81 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
   };
 
   const handleFieldChange = (rowId: string, fieldName: keyof CollectionRow, value: any) => {
-    setRows(prevRows => prevRows.map(row => row.id !== rowId ? row : { ...row, [fieldName]: value }));
+    setRows(prevRows =>
+      prevRows.map(row => {
+        if (row.id !== rowId) return row;
+        return { ...row, [fieldName]: value };
+      })
+    );
   };
 
-  const handleAddRow = () => setRows(prev => [...prev, createDefaultRow()]);
-  const handleRemoveRow = (rowId: string) => { if (rows.length > 1) setRows(prev => prev.filter(r => r.id !== rowId)); };
+  const handleAddRow = () => {
+    setRows(prev => [...prev, createDefaultRow()]);
+  };
+
+  const handleRemoveRow = (rowId: string) => {
+    if (rows.length <= 1) return;
+    setRows(prev => prev.filter(r => r.id !== rowId));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate rows
     const invalidRow = rows.find(r => !r.selectedCustomerId || !r.packageName || !r.packageAmount);
     if (invalidRow) {
-      Swal.fire({ icon: 'warning', title: 'Missing Information', text: 'Please select a customer, package, and amount for all rows.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing Information',
+        text: 'Please select a customer, package, and amount for all rows.'
+      });
       return;
     }
+
     setLoading(true);
     try {
+      let totalCreated = 0;
       for (const row of rows) {
-        await createCollection({
-          customerName: row.customerName,
-          amount: parseFloat(row.packageAmount),
-          dueDate: row.dueDate || new Date().toISOString().split('T')[0],
-          type: 'Package Payment',
-          packageName: row.packageName,
-          packageAmount: parseFloat(row.packageAmount),
-          cycle: parseInt(row.cycle.toString()) || 31,
-          cycleCounter: parseInt(row.cycleCounter.toString()) || 1,
-          isFirstCollection: parseInt(row.cycleCounter.toString()) === 1
-        });
+        // The number of days specified equals the number of collections to create
+        // for this customer. The package amount is posted for each day, so a
+        // counter of 31 days creates 31 collections of the package amount each.
+        const count = Math.max(1, parseInt(row.cycleCounter.toString()) || 1);
+        const baseDate = new Date(row.dueDate || new Date().toISOString().split('T')[0]);
+
+        for (let i = 1; i <= count; i++) {
+          const due = new Date(baseDate);
+          due.setDate(due.getDate() + (i - 1));
+
+          const collectionData = {
+            customerName: row.customerName,
+            amount: parseFloat(row.packageAmount),
+            dueDate: due.toISOString().split('T')[0],
+            type: 'Package Payment',
+            packageName: row.packageName,
+            packageAmount: parseFloat(row.packageAmount),
+            cycle: parseInt(row.cycle.toString()) || 31,
+            cycleCounter: i,
+            isFirstCollection: i === 1
+          };
+          await createCollection(collectionData);
+          totalCreated++;
+        }
       }
-      Swal.fire({ icon: 'success', title: 'Success', text: `${rows.length} collection(s) posted successfully!` });
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: `${totalCreated} collection(s) posted successfully!`
+      });
+
       onSuccess();
       onClose();
     } catch (error: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Failed to post bulk collection' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.message || 'Failed to post bulk collection'
+      });
     } finally {
       setLoading(false);
     }
@@ -171,24 +229,31 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Bulk Collection</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><FaTimes size={20} /></button>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Bulk Collection
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <FaTimes size={20} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="space-y-3">
-            {rows.map((row) => (
-              <div key={row.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-wrap items-end gap-3">
-
-                {/* Customer */}
-                <div className="flex-1 min-w-[160px]">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Customer *</label>
+            {rows.map((row, index) => (
+              <div key={row.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Customer *
+                  </label>
                   <select
                     value={row.selectedCustomerId}
                     onChange={(e) => handleCustomerChange(row.id, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                     required
                   >
                     <option value="">Select customer</option>
@@ -200,13 +265,14 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
                   </select>
                 </div>
 
-                {/* Package */}
-                <div className="flex-1 min-w-[150px]">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Package *</label>
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Package *
+                  </label>
                   <select
                     value={row.selectedPackageId}
-                    onChange={(e) => handlePackageChange(row.id, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                     required
                   >
                     {packages.length === 0 ? (
@@ -215,69 +281,78 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
                       <>
                         <option value="">Select Package</option>
                         {packages.map((pkg) => (
-                          <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.name}
+                          </option>
                         ))}
                       </>
                     )}
                   </select>
                 </div>
 
-                {/* Amount */}
-                <div className="w-full sm:w-28">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Amount *</label>
+                <div className="w-full md:w-28">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Amount *
+                  </label>
                   <input
                     type="number"
                     value={row.packageAmount}
-                    onChange={(e) => handleFieldChange(row.id, 'packageAmount', e.target.value)}
+                    readOnly
                     placeholder="0.00"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                     required
                   />
                 </div>
 
-                {/* Cycle */}
-                <div className="w-full sm:w-20">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Cycle</label>
+                <div className="w-full md:w-20">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Cycle
+                  </label>
                   <input
                     type="number"
                     value={row.cycle}
-                    onChange={(e) => handleFieldChange(row.id, 'cycle', parseInt(e.target.value) || 31)}
+                    readOnly
                     min="1"
                     max="365"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm text-center"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm text-center"
                   />
                 </div>
 
-                {/* Cycle Counter */}
-                <div className="w-full sm:w-20">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Counter</label>
+                <div className="w-full md:w-24">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Counter
+                  </label>
                   <input
                     type="number"
                     value={row.cycleCounter}
-                    onChange={(e) => handleFieldChange(row.id, 'cycleCounter', parseInt(e.target.value) || 1)}
+                    onChange={(e) => handleFieldChange(row.id, 'cycleCounter', e.target.value)}
                     min="1"
                     max="365"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm text-center"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm text-center"
                   />
+                  <p className="text-[10px] text-gray-400 mt-0.5 text-center">No. of days = collections</p>
                 </div>
 
-                {/* Due Date */}
-                <div className="w-full sm:w-36">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Due Date *</label>
+                <div className="w-full md:w-36">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Total Amount
+                  </label>
                   <input
-                    type="date"
-                    value={row.dueDate}
-                    onChange={(e) => handleFieldChange(row.id, 'dueDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-sm"
-                    required
+                    type="number"
+                    value={Number(row.packageAmount) * (Math.max(1, parseInt(row.cycleCounter.toString()) || 1))}
+                    readOnly
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed text-sm"
                   />
+                  <p className="text-[10px] text-gray-400 mt-0.5 text-center">Package amount × No. of days</p>
                 </div>
 
-                {/* Remove row */}
                 {rows.length > 1 && (
-                  <div className="flex items-end pb-1">
+                  <div className="flex items-end pb-1 justify-end">
                     <button
                       type="button"
                       onClick={() => handleRemoveRow(row.id)}
@@ -307,14 +382,14 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+              className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Save All'}
             </button>
@@ -323,4 +398,6 @@ export default function BulkCollectionForm({ isOpen, onClose, onSuccess }: BulkC
       </div>
     </div>
   );
-}
+};
+
+export default BulkCollectionForm;

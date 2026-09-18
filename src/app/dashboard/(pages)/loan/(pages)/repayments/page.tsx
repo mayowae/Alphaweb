@@ -318,8 +318,14 @@ const CreateRepaymentModal = ({
               {customerApprovedLoans.map((l: any) => {
                 const name = l.packageName || l.package || (l as any).loanPackage || (l as any).Package?.name || (`Loan #${l.id}`);
                 const lAmt = Number(l.loanAmount || 0);
-                const iRate = Number((l as any).interestRate || 0);
-                const totalWithInterest = lAmt + (lAmt * iRate / 100);
+                let displayInterest = 0;
+                if (l.totalAmount && Number(l.totalAmount) > lAmt) {
+                  displayInterest = Number(l.totalAmount) - lAmt;
+                } else {
+                  const iRate = Number((l as any).interestRate || 0);
+                  displayInterest = iRate > 100 ? iRate : lAmt * (iRate / 100);
+                }
+                const totalWithInterest = lAmt + displayInterest;
                 return (
                   <option key={l.id} value={l.id}>
                     {name} — ₦{totalWithInterest.toLocaleString()}

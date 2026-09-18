@@ -2,6 +2,11 @@ const { WalletTransaction, Merchant } = require('../models');
 const { Op } = require('sequelize');
 const { postJournalForTransaction } = require('../utils/transactionMapping');
 
+// Customer-side ledger records that other modules (remittances, charges, loans)
+// write into wallet_transactions. They never touch the merchant wallet, so they
+// are excluded from wallet balance and wallet activities.
+const NON_WALLET_TYPES = ['remittance_approval', 'charge_deduction', 'loan_disbursement', 'loan_repayment'];
+
 /**
  * @swagger
  * tags:
@@ -402,16 +407,13 @@ const getWalletBalance = async (req, res) => {
       const amount = parseFloat(transaction.amount || 0);
 
       if (isCompleted) {
-        if (tType === 'credit') {
+        if (NON_WALLET_TYPES.includes(trType)) {
+          return;
+        }
+        if (tType === 'credit' || trType === 'credit' || trType === 'initial_balance' || trType === 'transfer_in') {
           totalBalance += amount;
           availableBalance += amount;
-        } else if (tType === 'debit') {
-          totalBalance -= amount;
-          availableBalance -= amount;
-        } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
-          totalBalance += amount;
-          availableBalance += amount;
-        } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
+        } else if (tType === 'debit' || trType === 'debit' || trType === 'transfer_out' || trType === 'subscription') {
           totalBalance -= amount;
           availableBalance -= amount;
         }
@@ -431,7 +433,7 @@ const getWalletBalance = async (req, res) => {
           await merchant.update({
             accountNumber: tpResult.accountNumber,
             bankName: tpResult.bankName,
-            accountName: tpResult.accountName || merchant.businessName,
+            accountName: merchant.businessName,
             bankCode: tpResult.bankCode
           });
           console.log(`[Wallet] ✅ Auto-provisioned VA for merchant ${merchant.id}: ${tpResult.accountNumber}`);
@@ -466,8 +468,8 @@ const getWalletBalance = async (req, res) => {
         currency: merchant?.currency || 'NGN',
         fromWallet: true,
         accountNumber: merchant?.accountNumber || null,
-        bankName: merchant?.bankName || null,
-        accountName: merchant?.accountName || null,
+        bankName: merchant?.bankName || 'Wema Bank',
+        accountName: merchant?.businessName || merchant?.accountName || null,
         platformMasterBalance: platformTpBalance
       }
     });
@@ -573,8 +575,20 @@ const getWalletTransactions = async (req, res) => {
         }
     }
 
-    const whereClause = { merchantId };
-    
+    // Only expose real merchant wallet movements. Other modules (remittances,
+    // charges, loans) write customer-side ledger entries into this table with
+    // merchantId, so we exclude them here to keep the wallet page clean.
+    const WALLET_ONLY_TRANSACTION_TYPES = [
+      'credit', 'debit', 'transfer_in', 'transfer_out', 'subscription', 'initial_balance'
+    ];
+    const whereClause = {
+      merchantId,
+      [Op.or]: [
+        { transactionType: null },
+        { transactionType: { [Op.in]: WALLET_ONLY_TRANSACTION_TYPES } }
+      ]
+    };
+
     if (type) {
       whereClause.type = type;
     }
@@ -894,13 +908,12 @@ const transferToCustomer = async (req, res) => {
         const amt = parseFloat(transaction.amount || 0);
 
         if (isCompleted) {
-          if (tType === 'credit') {
+          if (NON_WALLET_TYPES.includes(trType)) {
+            return;
+          }
+          if (tType === 'credit' || trType === 'credit' || trType === 'initial_balance' || trType === 'transfer_in') {
             merchantBalance += amt;
-          } else if (tType === 'debit') {
-            merchantBalance -= amt;
-          } else if (trType === 'credit' || trType === 'initial_balance' || trType === 'remittance_approval' || trType === 'transfer_in') {
-            merchantBalance += amt;
-          } else if (trType === 'debit' || trType === 'charge_deduction' || trType === 'loan_disbursement' || trType === 'transfer_out') {
+          } else if (tType === 'debit' || trType === 'debit' || trType === 'transfer_out' || trType === 'subscription') {
             merchantBalance -= amt;
           }
         }

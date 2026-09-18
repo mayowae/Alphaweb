@@ -4,7 +4,13 @@ const { Merchant, WalletTransaction, InvestmentTransaction, LoanApplication, Rep
 
 const { Op } = require('sequelize');
 
-
+const sanitizeMerchant = (merchant) => {
+  const safe = merchant.toJSON ? merchant.toJSON() : { ...merchant };
+  delete safe.password;
+  delete safe.otp;
+  delete safe.otpExpires;
+  return safe;
+};
 
 // Update merchant
 
@@ -58,7 +64,7 @@ const updateMerchant = async (req, res) => {
 
       message: 'Merchant updated successfully',
 
-      data: merchant,
+      data: sanitizeMerchant(merchant),
 
     });
 
@@ -140,7 +146,7 @@ const updateMerchantStatus = async (req, res) => {
 
       message: 'Merchant status updated successfully',
 
-      data: merchant,
+      data: sanitizeMerchant(merchant),
 
     });
 
@@ -710,10 +716,12 @@ const getMySubscription = async (req, res) => {
 
     const agentCount = await Agent.count({ where: { merchantId: id } });
 
+    const safeMerchant = sanitizeMerchant(merchant);
+
     res.json({
       success: true,
       data: {
-        merchant: merchant,
+        merchant: safeMerchant,
         history: history,
         agentCount: agentCount
       },
